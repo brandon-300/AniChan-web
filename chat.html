@@ -78,12 +78,16 @@
     padding: 12px 16px; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 12px; background: var(--card);
   }
+  .chat-header .avatar-link {
+    display: block; flex-shrink: 0;
+  }
   .chat-header .avatar {
     width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
     border: 2px solid var(--border);
   }
   .chat-header .name { font-weight: 600; }
   .chat-header .status { font-size: 12px; color: var(--muted); }
+  .chat-header .last-seen { font-size: 11px; color: var(--muted); }
   .chat-box {
     flex: 1; overflow-y: auto; padding: 16px;
     display: flex; flex-direction: column; gap: 8px;
@@ -124,19 +128,26 @@
   }
   .input-area {
     padding: 12px 16px; border-top: 1px solid var(--border);
-    display: flex; gap: 8px; background: var(--card);
+    display: flex; flex-direction: column; gap: 6px; background: var(--card);
   }
-  .input-area input {
+  .input-row {
+    display: flex; gap: 8px;
+  }
+  .input-row input {
     flex: 1; padding: 12px; border-radius: 8px;
     background: var(--panel); border: 1px solid var(--border);
     color: var(--text); font-size: 14px; outline: none;
   }
-  .input-area button {
+  .input-row button {
     padding: 12px 18px; border: none; border-radius: 8px;
     background: var(--accent); color: #062525; font-weight: 700;
     cursor: pointer; transition: filter 0.15s;
   }
-  .input-area button:hover { filter: brightness(1.05); }
+  .input-row button:hover { filter: brightness(1.05); }
+  .input-note {
+    text-align: center; font-size: 11px; color: var(--muted);
+    user-select: none;
+  }
   .empty-chat {
     flex: 1; display: flex; align-items: center; justify-content: center;
     color: var(--muted); font-size: 14px; text-align: center; padding: 20px;
@@ -165,22 +176,27 @@
   <!-- Chat Area -->
   <div class="chat-area" id="chatArea">
     <div class="chat-header" id="chatHeader" style="display: none;">
-      <img class="avatar" id="chatPartnerAvatar" src="" alt="" />
+      <a class="avatar-link" id="chatAvatarLink" href="#" target="_blank">
+        <img class="avatar" id="chatPartnerAvatar" src="" alt="" />
+      </a>
       <div>
         <div class="name" id="chatPartnerName"></div>
         <div class="status" id="chatPartnerStatus"></div>
+        <div class="last-seen" id="chatPartnerLastSeen"></div>
       </div>
     </div>
     <div class="typing-indicator" id="typingIndicator"></div>
     <div class="chat-box" id="chatBox">
       <div class="empty-chat" id="emptyChatPlaceholder">
-        Select a conversation to start chatting<br>
-        <small style="color:var(--muted);font-size:12px">Text & emoji only · no images or files</small>
+        Select a conversation to start chatting
       </div>
     </div>
     <div class="input-area" id="inputArea" style="display: none;">
-      <input type="text" id="messageInput" placeholder="Type a message..." />
-      <button id="sendBtn">Send</button>
+      <div class="input-row">
+        <input type="text" id="messageInput" placeholder="Type a message..." />
+        <button id="sendBtn">Send</button>
+      </div>
+      <div class="input-note">Text & emoji only · no files or images</div>
     </div>
   </div>
 
@@ -328,16 +344,26 @@
     $('chatHeader').style.display = 'flex';
     $('inputArea').style.display = 'flex';
 
-    // Fetch partner details (in case we don't have them from sidebar)
+    // Fetch partner details
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username, full_name, avatar_url, is_online')
+      .select('username, full_name, avatar_url, is_online, last_seen')
       .eq('id', otherUserId)
       .single();
     if (profile) {
       $('chatPartnerAvatar').src = profile.avatar_url || DEFAULT_AVATAR;
       $('chatPartnerName').textContent = profile.full_name || profile.username;
       $('chatPartnerStatus').textContent = profile.is_online ? 'Online' : 'Offline';
+      // Show last seen only when offline
+      if (profile.is_online) {
+        $('chatPartnerLastSeen').textContent = '';
+      } else {
+        $('chatPartnerLastSeen').textContent = profile.last_seen
+          ? `Last seen: ${new Date(profile.last_seen).toLocaleString()}`
+          : 'Last seen: —';
+      }
+      // Avatar link to profile
+      $('chatAvatarLink').href = `profile.html?user=${otherUserId}`;
     }
 
     renderRoomList(rooms);
@@ -577,7 +603,6 @@
     // If a room ID is passed in the URL, open it directly
     const roomParam = new URLSearchParams(window.location.search).get('room');
     if (roomParam) {
-      // Fetch the room details to get the other user's ID
       const { data: room, error } = await supabase
         .from('chat_rooms')
         .select('user_one_id, user_two_id')
@@ -588,7 +613,6 @@
         openRoom(roomParam, otherUserId);
       } else {
         alert('Chat room not found.');
-        // Remove the parameter to avoid endless loop
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
