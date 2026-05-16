@@ -152,7 +152,7 @@
         </div>
       </section>
 
-      <!-- Site Logo (moved up here) -->
+      <!-- Site Logo -->
       <section class="panel">
         <h2>Site Logo</h2>
         <p class="help">Change the logo that appears in the homepage header.</p>
@@ -315,7 +315,6 @@
     $("broadcastInput").value = (data && data.value) || "";
   }
   async function saveBroadcast(value){
-    // Upsert without updated_at
     const { error } = await sb.from("settings").upsert({
       key: "broadcast_message",
       value: value || ""
@@ -541,18 +540,36 @@
     }
   }
 
-  // ---------- Bulk Import ----------
+  // ---------- Bulk Import (fixed) ----------
   async function bulkImport(){
     const btn = $("bulkImportBtn");
     const status = $("bulkStatus");
     btn.disabled = true;
-    status.textContent = "Fetching top anime…";
+    status.textContent = "Fetching top anime (page 1)…";
+    
     try {
-      const res = await fetch("https://api.jikan.moe/v4/top/anime?limit=50");
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json();
-      const list = data.data || [];
-      if (!list.length) { status.textContent = "No results."; return; }
+      // Fetch two pages of 25 to avoid Jikan limit error
+      const [res1, res2] = await Promise.all([
+        fetch("https://api.jikan.moe/v4/top/anime?limit=25&page=1"),
+        fetch("https://api.jikan.moe/v4/top/anime?limit=25&page=2")
+      ]);
+
+      if (!res1.ok) throw new Error("Page 1 failed: HTTP " + res1.status);
+      if (!res2.ok) throw new Error("Page 2 failed: HTTP " + res2.status);
+
+      const data1 = await res1.json();
+      const data2 = await res2.json();
+
+      const list = [
+        ...(data1.data || []),
+        ...(data2.data || [])
+      ];
+
+      if (!list.length) {
+        status.textContent = "No results from Jikan.";
+        btn.disabled = false;
+        return;
+      }
 
       const { data: existing } = await sb.from("anime").select("title");
       const existingTitles = new Set((existing || []).map(item => item.title.toLowerCase().trim()));
@@ -582,7 +599,7 @@
       }
     } catch (e) {
       console.warn("Bulk import failed:", e);
-      status.textContent = "Import failed.";
+      status.textContent = "Import failed. Check console for details.";
       toast("Bulk import failed: " + e.message);
     } finally {
       btn.disabled = false;
@@ -760,25 +777,21 @@
 
   async function uploadAndSaveLogo(file) {
     if (!file) { toast("Please select an image file."); return; }
-    // Upload to avatars bucket, path 'site-logo/logo.png' (overwrite)
     const { error: uploadError } = await sb.storage
       .from("avatars")
       .upload("site-logo/logo.png", file, { upsert: true });
     if (uploadError) { toast("Upload failed: " + uploadError.message); return; }
 
-    // Get public URL
     const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
     const newUrl = urlData?.publicUrl;
     if (!newUrl) { toast("Could not get public URL."); return; }
 
-    // Update settings table (no updated_at column)
     const { error: upsertError } = await sb.from("settings").upsert({
       key: "site_logo",
       value: newUrl
     });
     if (upsertError) { toast("Settings update failed: " + upsertError.message); return; }
 
-    // Update preview
     $("currentLogoPreview").src = newUrl;
     $("currentLogoUrl").textContent = newUrl;
     toast("Logo updated successfully!");
@@ -812,7 +825,6 @@
     $("bulkImportBtn").addEventListener("click", bulkImport);
     $("refreshMembers").addEventListener("click", renderMemberList);
 
-    // Logo upload
     $("uploadLogoBtn").addEventListener("click", () => {
       const file = $("logoFileInput").files[0];
       uploadAndSaveLogo(file);
