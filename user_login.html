@@ -119,6 +119,12 @@
     padding-right:30px;
   }
   .dob-row select:focus{border-color:var(--accent)}
+  .forgot-link {
+    display: block; text-align: right; margin-top: 8px;
+  }
+  .forgot-link a {
+    color: var(--muted); font-size: 12px; text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -129,7 +135,7 @@
     </div>
     <div class="forms-wrapper">
       <div class="forms-slider" id="slider">
-        <!-- Login panel (username only) -->
+        <!-- Login panel -->
         <div class="form-panel" id="loginPanel">
           <h2>Welcome back</h2>
           <div class="field">
@@ -142,6 +148,9 @@
               <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
               <button type="button" class="reveal" data-target="loginPassword">👁️</button>
             </div>
+          </div>
+          <div class="forgot-link">
+            <a href="forgot_password.html">Forgot password?</a>
           </div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">Log in</button>
@@ -368,7 +377,7 @@
     }
   });
 
-  // --- Signup ---
+  // --- Signup (unchanged) ---
   $("signupSubmit").addEventListener("click", async () => {
     const firstName = $("signupFirstName").value.trim();
     const lastName = $("signupLastName").value.trim();
@@ -385,32 +394,26 @@
     err.classList.remove("show");
     success.classList.remove("show");
 
-    // All fields compulsory
     if (!firstName || !lastName || !country || !username || !email || !password || !day || !month || !year) {
       err.textContent = "All fields are required.";
       err.classList.add("show");
       return;
     }
-
     const age = parseInt(signupAge.value, 10);
     if (isNaN(age) || age < 14) {
       err.textContent = "You must be at least 14 years old to create an account.";
       err.classList.add("show");
       return;
     }
-
-    // Password rules
     if (!isValidPassword(password)) {
       err.textContent = "Password must be at least 8 characters with at least 1 letter, 1 number, and 1 special character.";
       err.classList.add("show");
       return;
     }
-
     const fullName = `${firstName} ${lastName}`;
     const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
     try {
-      // Check username uniqueness
       const { data: existingUser, error: checkError } = await supabase
         .from("profiles")
         .select("id")
@@ -422,7 +425,6 @@
         err.classList.add("show");
         return;
       }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -445,9 +447,8 @@
       });
       if (insertError) throw new Error("Profile creation failed: " + insertError.message);
 
-      success.textContent = "Check your email to confirm your account.";
+      success.textContent = "Account created! You can now log in.";
       success.classList.add("show");
-      // Clear form
       $("signupFirstName").value = "";
       $("signupLastName").value = "";
       $("signupCountry").value = "";
