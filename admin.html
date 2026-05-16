@@ -182,7 +182,7 @@
 
         <!-- Bulk Import -->
         <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
-          <p class="help" style="margin-bottom:10px;">Import 50 popular anime at once (no duplicates).</p>
+          <p class="help" style="margin-bottom:10px;">Import 50 popular anime at once (no duplicates). Each click loads the next batch.</p>
           <button class="btn btn-primary" id="bulkImportBtn">Bulk Import 50 Anime</button>
           <span id="bulkStatus" style="font-size:12px; color:var(--muted); margin-left:12px;"></span>
         </div>
@@ -540,33 +540,35 @@
     }
   }
 
-  // ---------- Bulk Import (fixed) ----------
+  // ---------- Bulk Import (pages auto‑advance) ----------
+  let bulkPage = 1;   // next page pair to fetch (1 => pages 1 & 2)
+
   async function bulkImport(){
     const btn = $("bulkImportBtn");
     const status = $("bulkStatus");
     btn.disabled = true;
-    status.textContent = "Fetching top anime (page 1)…";
-    
+    const p1 = bulkPage;
+    const p2 = bulkPage + 1;
+    status.textContent = `Fetching top anime (pages ${p1}‑${p2})…`;
+
     try {
-      // Fetch two pages of 25 to avoid Jikan limit error
       const [res1, res2] = await Promise.all([
-        fetch("https://api.jikan.moe/v4/top/anime?limit=25&page=1"),
-        fetch("https://api.jikan.moe/v4/top/anime?limit=25&page=2")
+        fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p1}`),
+        fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p2}`)
       ]);
 
-      if (!res1.ok) throw new Error("Page 1 failed: HTTP " + res1.status);
-      if (!res2.ok) throw new Error("Page 2 failed: HTTP " + res2.status);
+      if (!res1.ok) throw new Error("Page " + p1 + " failed: HTTP " + res1.status);
+      if (!res2.ok) throw new Error("Page " + p2 + " failed: HTTP " + res2.status);
 
       const data1 = await res1.json();
       const data2 = await res2.json();
-
       const list = [
         ...(data1.data || []),
         ...(data2.data || [])
       ];
 
       if (!list.length) {
-        status.textContent = "No results from Jikan.";
+        status.textContent = "No more titles available.";
         btn.disabled = false;
         return;
       }
@@ -594,12 +596,16 @@
         toast(`Imported ${inserts.length} anime successfully.`);
         renderList();
         status.textContent = `Added ${inserts.length} new entries.`;
+        // Advance to next page pair only if we actually added something
+        bulkPage += 2;
       } else {
-        status.textContent = "No new anime to import (all already exist).";
+        // Nothing new in this batch – maybe no more titles, but still advance
+        status.textContent = "No new titles in this batch (may already exist).";
+        bulkPage += 2;   // keep advancing to try later pages
       }
     } catch (e) {
       console.warn("Bulk import failed:", e);
-      status.textContent = "Import failed. Check console for details.";
+      status.textContent = "Import failed. Check console.";
       toast("Bulk import failed: " + e.message);
     } finally {
       btn.disabled = false;
@@ -751,7 +757,6 @@
     });
   }
 
-  // Expose for inline onclick
   window.unsuspendUser = unsuspendUser;
   window.openMemberModal = openMemberModal;
 

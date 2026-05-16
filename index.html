@@ -86,7 +86,7 @@
   .shelf{scrollbar-width:none}
   .shelf .card{flex:0 0 140px;scroll-snap-align:start}
 
-  /* Collection grid – fixed 2 columns everywhere */
+  /* Collection grid – fixed 2 columns */
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;
     overflow:hidden;transition:transform .15s ease,border-color .15s ease}
@@ -98,6 +98,40 @@
 
   .empty{padding:28px;text-align:center;color:var(--muted);
     border:1px dashed var(--border);border-radius:14px;background:var(--panel)}
+
+  /* Pagination controls */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .pagination button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .pagination button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .pagination button:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--card);
+  }
+  .page-indicator {
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
 
   /* Smart back-to-top button */
   #toTop {
@@ -171,7 +205,7 @@
       <input id="searchInput" type="text" placeholder="Search your library…" autocomplete="off" />
     </div>
 
-    <!-- Sections stacked vertically on all devices -->
+    <!-- Sections stacked vertically -->
     <div class="sections-grid">
       <!-- Currently Airing -->
       <div class="section-cell" id="airingSection">
@@ -193,6 +227,11 @@
             <small id="collectionCount"></small>
           </div>
           <div class="grid" id="collectionGrid"></div>
+          <div class="pagination" id="paginationControls" style="display:none;">
+            <button id="prevPageBtn">← Previous</button>
+            <span class="page-indicator" id="pageIndicator">1 / 1</span>
+            <button id="nextPageBtn">Next →</button>
+          </div>
         </section>
       </div>
     </div>
@@ -225,8 +264,11 @@
   );
   const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
 
+  const ITEMS_PER_PAGE = 26;
   let library = [];
   let currentSession = null;
+  let currentPage = 1;
+  let currentSearch = "";
 
   // Smart back-to-top
   const toTopBtn = $("toTop");
@@ -249,7 +291,7 @@
   function syncOffline(){ $("offline").classList.toggle("show", !navigator.onLine); }
   window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
 
-  // Logo loader
+  // Logo loader (with cache buster)
   async function loadSiteLogo() {
     try {
       const { data, error } = await sb
@@ -261,7 +303,7 @@
       const url = data?.value || "";
       const img = $("siteLogo");
       if (url) {
-        img.src = url;
+        img.src = url + '?t=' + Date.now();   // cache buster
         img.style.display = "inline-block";
       } else {
         img.style.display = "none";
@@ -316,35 +358,62 @@
     }
   }
 
-  function renderCollection(filter = ""){
+  function renderCollection(){
     const grid = $("collectionGrid");
-    const q = filter.trim().toLowerCase();
+    const q = currentSearch.trim().toLowerCase();
     const items = q ? library.filter(a => (a.title || "").toLowerCase().includes(q)) : library;
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    // Clamp current page to valid range
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
+
     grid.innerHTML = "";
     $("collectionCount").textContent = library.length ? library.length + " saved" : "";
-    if (!items.length) {
+
+    if (!pageItems.length) {
       const e = document.createElement("div");
       e.className = "empty";
       e.style.gridColumn = "span 2";
-      e.textContent = library.length ? "No matches for your search." : "The library is empty — add anime from the Admin dashboard.";
+      e.textContent = library.length ? (q ? "No matches for your search." : "No items on this page.") : "The library is empty — add anime from the Admin dashboard.";
       grid.appendChild(e);
-      return;
+    } else {
+      for (const a of pageItems) {
+        const card = document.createElement("div"); card.className = "card";
+        const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
+        img.src = a.image_url || PLACEHOLDER; img.onerror = () => { img.src = PLACEHOLDER; }; img.alt = a.title || "Untitled";
+        const meta = document.createElement("div"); meta.className = "meta";
+        const t = document.createElement("div"); t.className = "title"; t.textContent = a.title || "Untitled";
+        meta.appendChild(t); card.appendChild(img); card.appendChild(meta);
+        grid.appendChild(card);
+      }
     }
-    for (const a of items) {
-      const card = document.createElement("div"); card.className = "card";
-      const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
-      img.src = a.image_url || PLACEHOLDER; img.onerror = () => { img.src = PLACEHOLDER; }; img.alt = a.title || "Untitled";
-      const meta = document.createElement("div"); meta.className = "meta";
-      const t = document.createElement("div"); t.className = "title"; t.textContent = a.title || "Untitled";
-      meta.appendChild(t); card.appendChild(img); card.appendChild(meta);
-      grid.appendChild(card);
+
+    // Update pagination controls
+    const pagination = $("paginationControls");
+    const prevBtn = $("prevPageBtn");
+    const nextBtn = $("nextPageBtn");
+    const indicator = $("pageIndicator");
+
+    if (totalPages <= 1) {
+      pagination.style.display = "none";
+    } else {
+      pagination.style.display = "flex";
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+      indicator.textContent = `${currentPage} / ${totalPages}`;
     }
   }
 
   async function loadLibrary(){
     const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
     if (error) { library = []; } else { library = data || []; }
-    renderCollection($("searchInput").value);
+    // Reset to page 1 when data reloads
+    currentPage = 1;
+    renderCollection();
   }
 
   async function loadAiring(){
@@ -365,6 +434,32 @@
       });
     } catch { shelf.innerHTML = '<div class="empty" style="flex:1">Could not load</div>'; }
   }
+
+  // Pagination event listeners
+  $("prevPageBtn").addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderCollection();
+      window.scrollTo({ top: $("collectionSection").offsetTop - 80, behavior: "smooth" });
+    }
+  });
+  $("nextPageBtn").addEventListener("click", () => {
+    const q = currentSearch.trim().toLowerCase();
+    const items = q ? library.filter(a => (a.title || "").toLowerCase().includes(q)) : library;
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderCollection();
+      window.scrollTo({ top: $("collectionSection").offsetTop - 80, behavior: "smooth" });
+    }
+  });
+
+  // Search input updates the filter and resets to page 1
+  $("searchInput").addEventListener("input", (e) => {
+    currentSearch = e.target.value;
+    currentPage = 1;
+    renderCollection();
+  });
 
   // All Members modal
   function openMembersModal() {
@@ -418,7 +513,6 @@
     loadLibrary();
     loadAiring();
 
-    $("searchInput").addEventListener("input", (e) => renderCollection(e.target.value));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMembersModal(); });
 
     sb.channel("public-anichan")
