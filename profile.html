@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Profile</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0d0d0d; --card:#161616; --panel:#1a1a1a;
+    --accent:#1db9b2; --danger:#ff4757;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#222;
+    --success:#2ed573; --offline:#555;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  header.app{
+    background:var(--card);border-bottom:1px solid var(--border);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+    gap:12px;
+  }
+  .brand{font-weight:800;font-size:20px;white-space:nowrap}
+  .brand span{color:var(--accent)}
+  .header-actions{display:flex;gap:8px;align-items:center}
+  .btn{
+    padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:background .15s, border-color .15s;
+  }
+  .btn:hover{border-color:#333}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#062525}
+  .btn.danger{background:transparent;border-color:#3a1f24;color:var(--danger)}
+  .btn.danger:hover{background:#2a1218}
+
+  .container{
+    max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1;
+  }
+  .profile-header{
+    display:flex;align-items:center;gap:20px;
+    background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:24px;margin-bottom:20px;
+  }
+  .avatar-section{position:relative;flex-shrink:0;width:90px;height:90px}
+  .avatar-img{
+    width:100%;height:100%;border-radius:50%;object-fit:cover;
+    border:2px solid var(--border);background:var(--panel);
+  }
+  .online-dot{
+    position:absolute;top:-2px;right:-2px;width:18px;height:18px;
+    border-radius:50%;background:var(--offline);border:2px solid var(--card);
+  }
+  .online-dot.online{background:var(--success)}
+  .pencil-btn{
+    position:absolute;bottom:2px;right:2px;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--accent);color:#062525;border:none;
+    font-size:14px;line-height:1;display:flex;
+    align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.5);
+    transition:transform .1s;
+  }
+  .pencil-btn:active{transform:scale(0.95)}
+  .user-info{flex:1}
+  .user-info h2{font-size:22px;margin-bottom:4px}
+  .user-info .username{color:var(--muted);font-size:14px}
+  .last-seen{color:var(--muted);font-size:12px;margin-top:8px}
+
+  .profile-card{
+    background:var(--card);border:1px solid var(--border);border-radius:20px;
+    padding:24px;margin-bottom:20px;
+  }
+  .field-group{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px}
+  .field{flex:1 1 calc(50% - 8px);min-width:200px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .field input,.field select{
+    width:100%;padding:12px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .field input[readonly]{opacity:0.8;cursor:default}
+  .err-msg,.success-msg{font-size:13px;margin-top:12px;display:none}
+  .err-msg{color:var(--danger)}.success-msg{color:var(--accent)}
+  .err-msg.show,.success-msg.show{display:block}
+
+  .bottom-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+  .btn-red{background:var(--danger);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer}
+  .avatar-upload-input{display:none}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+
+  @media(max-width:500px){
+    .profile-header{flex-direction:column;align-items:center;text-align:center}
+    .user-info{text-align:center}
+  }
+</style>
+</head>
+<body>
+  <header class="app">
+    <div class="brand">Ani<span>Chan</span></div>
+    <div class="header-actions" id="headerActions">
+      <!-- dynamic buttons -->
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="profile-header">
+      <div class="avatar-section" id="avatarSection">
+        <img class="avatar-img" id="avatarImg" src="" alt="Profile picture" />
+        <div class="online-dot" id="onlineDot"></div>
+        <button class="pencil-btn" id="pencilBtn" title="Change photo">✏️</button>
+        <input type="file" class="avatar-upload-input" id="avatarInput" accept="image/*" />
+      </div>
+      <div class="user-info">
+        <h2 id="displayFullName">—</h2>
+        <div class="username" id="displayUsername">@—</div>
+        <div class="last-seen" id="displayLastSeen">Last seen: —</div>
+      </div>
+    </div>
+
+    <div class="profile-card">
+      <div class="field-group">
+        <div class="field"><label for="fullNameInput">Full name</label><input id="fullNameInput" type="text" readonly /></div>
+        <div class="field"><label for="usernameInput">Username</label><input id="usernameInput" type="text" readonly /></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label for="emailInput">Email</label><input id="emailInput" type="email" readonly /></div>
+        <div class="field"><label for="ageInput">Age</label><input id="ageInput" type="number" readonly /></div>
+      </div>
+      <div class="field-group">
+        <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
+        <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
+      </div>
+      <div class="err-msg" id="updateErr"></div>
+      <div class="success-msg" id="updateSuccess"></div>
+    </div>
+
+    <div class="bottom-actions" id="bottomActions">
+      <!-- dynamic red buttons -->
+    </div>
+  </main>
+
+  <footer>AniChan · powered by Supabase</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = id => document.getElementById(id);
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
+  );
+
+  let currentUserId = null;
+  let isOwner = false; // whether viewing own profile
+  let originalProfile = null;
+  let isEditing = false;
+
+  // Helpers
+  function resolvePath(filename) {
+    const base = window.location.href.replace(/[^/]*$/, '');
+    return base + filename;
+  }
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+  }
+
+  // Inactivity auto-logout
+  let inactivityTimer;
+  const INACTIVITY_LIMIT = 15 * 60 * 1000;
+  function resetInactivity() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(handleLogout, INACTIVITY_LIMIT);
+  }
+  function setupInactivity() {
+    ['mousemove','keydown','mousedown','touchstart','scroll'].forEach(evt =>
+      document.addEventListener(evt, resetInactivity, { passive: true }));
+    resetInactivity();
+  }
+
+  // Online status
+  async function setOnlineStatus(online) {
+    if (!currentUserId) return;
+    await supabase.from('profiles').update({ is_online: online, last_seen: new Date().toISOString() }).eq('id', currentUserId);
+  }
+  async function handleLogout() {
+    if (currentUserId) await setOnlineStatus(false);
+    await supabase.auth.signOut();
+    clearTimeout(inactivityTimer);
+    window.location.href = resolvePath('index.html');
+  }
+
+  // Render profile data into UI
+  function renderProfile(profile) {
+    originalProfile = { ...profile };
+    $('avatarImg').src = profile?.avatar_url || DEFAULT_AVATAR;
+    $('avatarImg').onerror = () => { $('avatarImg').src = DEFAULT_AVATAR; };
+    const dot = $('onlineDot');
+    dot.classList.toggle('online', profile?.is_online);
+    $('displayFullName').textContent = profile?.full_name || '—';
+    $('displayUsername').textContent = profile?.username ? '@'+profile.username : '@—';
+    $('displayLastSeen').textContent = profile?.last_seen ? 'Last seen: '+new Date(profile.last_seen).toLocaleString() : 'Last seen: —';
+    $('fullNameInput').value = profile?.full_name || '';
+    $('usernameInput').value = profile?.username || '';
+    $('emailInput').value = profile?.email || '';
+    $('ageInput').value = profile?.age != null ? profile.age : '';
+    $('dobInput').value = profile?.dob || '';
+    $('countryInput').value = profile?.country || '';
+  }
+
+  // Edit mode toggle
+  function setEditMode(enabled) {
+    isEditing = enabled;
+    ['fullNameInput','usernameInput','emailInput','ageInput','dobInput','countryInput'].forEach(id => {
+      $(id)[enabled ? 'removeAttribute' : 'setAttribute']('readonly', true);
+    });
+    updateHeaderButtons();
+  }
+
+  function updateHeaderButtons() {
+    const container = $('headerActions');
+    container.innerHTML = '';
+    if (!isOwner) {
+      // Viewing another user's profile
+      const msgBtn = document.createElement('button');
+      msgBtn.className = 'btn primary';
+      msgBtn.textContent = '💬 Message';
+      msgBtn.addEventListener('click', startChat);
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn';
+      backBtn.textContent = '← Back';
+      backBtn.addEventListener('click', () => history.back());
+      container.appendChild(msgBtn);
+      container.appendChild(backBtn);
+      return;
+    }
+    // Own profile
+    if (isEditing) {
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save'; saveBtn.addEventListener('click', saveProfile);
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn'; cancelBtn.textContent = 'Cancel'; cancelBtn.addEventListener('click', cancelEdit);
+      container.appendChild(saveBtn);
+      container.appendChild(cancelBtn);
+    } else {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn primary'; editBtn.textContent = 'Edit Profile'; editBtn.addEventListener('click', () => setEditMode(true));
+      container.appendChild(editBtn);
+    }
+  }
+
+  function cancelEdit() {
+    if (originalProfile) renderProfile(originalProfile);
+    setEditMode(false);
+    $('updateErr').classList.remove('show');
+    $('updateSuccess').classList.remove('show');
+  }
+
+  async function saveProfile() {
+    const fullName = $('fullNameInput').value.trim();
+    const username = $('usernameInput').value.trim();
+    const email = $('emailInput').value.trim();
+    const age = parseInt($('ageInput').value) || null;
+    const dob = $('dobInput').value;
+    const country = $('countryInput').value.trim();
+    const errEl = $('updateErr'); const successEl = $('updateSuccess');
+    errEl.classList.remove('show'); successEl.classList.remove('show');
+    if (!fullName || !username || !email) {
+      errEl.textContent = "Full name, username, email required."; errEl.classList.add('show'); return;
+    }
+    if (age && age < 14) {
+      errEl.textContent = "Age must be at least 14."; errEl.classList.add('show'); return;
+    }
+    try {
+      const { data: exist } = await supabase.from('profiles').select('id').eq('username', username).neq('id', currentUserId).maybeSingle();
+      if (exist) { errEl.textContent = 'Username already taken.'; errEl.classList.add('show'); return; }
+      const updates = { full_name: fullName, username, email, age: age || null, dob: dob || null, country: country || null };
+      const { error } = await supabase.from('profiles').update(updates).eq('id', currentUserId);
+      if (error) throw error;
+      $('displayFullName').textContent = fullName;
+      $('displayUsername').textContent = '@'+username;
+      successEl.textContent = 'Profile updated.'; successEl.classList.add('show');
+      setEditMode(false);
+    } catch(e) {
+      errEl.textContent = e.message; errEl.classList.add('show');
+    }
+  }
+
+  async function uploadAvatar(file) {
+    const ext = file.name.split('.').pop();
+    const path = `${currentUserId}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (upErr) throw new Error('Upload failed: '+upErr.message);
+    const { data: url } = supabase.storage.from('avatars').getPublicUrl(path);
+    if (!url?.publicUrl) throw new Error('Could not get URL');
+    const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url.publicUrl }).eq('id', currentUserId);
+    if (updateErr) throw new Error('Update failed: '+updateErr.message);
+    $('avatarImg').src = url.publicUrl;
+    return url.publicUrl;
+  }
+
+  async function startChat() {
+    const otherUserId = new URLSearchParams(window.location.search).get('user');
+    if (!otherUserId || otherUserId === currentUserId) return;
+    const { data: room } = await supabase.from('chat_rooms')
+      .select('id').or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`).maybeSingle();
+    if (room) {
+      location.href = resolvePath('chat.html?room=' + room.id);
+    } else {
+      const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUserId, user_two_id: otherUserId }).select('id').single();
+      if (error) { alert('Could not create room.'); return; }
+      location.href = resolvePath('chat.html?room=' + newRoom.id);
+    }
+  }
+
+  // Init
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = resolvePath('user_login.html');
+      return;
+    }
+    currentUserId = session.user.id;
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewUserId = urlParams.get('user');
+
+    if (viewUserId && viewUserId !== currentUserId) {
+      // Viewing another user's profile
+      isOwner = false;
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', viewUserId).single();
+      if (!profile) { alert('User not found'); history.back(); return; }
+      renderProfile(profile);
+      // Hide avatar editing pencil & bottom red buttons
+      $('pencilBtn').style.display = 'none';
+      $('bottomActions').innerHTML = '';
+      updateHeaderButtons();
+      return;
+    }
+
+    // Own profile
+    isOwner = true;
+    await setOnlineStatus(true);
+    setupInactivity();
+    const profile = await loadProfile();
+    if (profile) renderProfile(profile);
+    else renderProfile({});
+    updateHeaderButtons();
+
+    // Avatar upload
+    $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
+    $('avatarInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        await uploadAvatar(file);
+        $('updateSuccess').textContent = 'Avatar updated.'; $('updateSuccess').classList.add('show');
+      } catch(err) {
+        $('updateErr').textContent = err.message; $('updateErr').classList.add('show');
+      } finally { e.target.value = ''; }
+    });
+
+    // Red buttons
+    const bottom = $('bottomActions');
+    const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = 'Logout'; logoutBtn.addEventListener('click', handleLogout);
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.textContent = 'Delete account';
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure? Your account will be permanently deleted.')) return;
+      if (!confirm('Final warning: There is no going back.')) return;
+      await supabase.from('profiles').delete().eq('id', currentUserId);
+      await supabase.auth.signOut();
+      clearTimeout(inactivityTimer);
+      location.href = resolvePath('user_login.html');
+    });
+    bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
+
+    // Visibility presence
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) setOnlineStatus(false);
+      else { setOnlineStatus(true); resetInactivity(); }
+    });
+  }
+
+  async function loadProfile() {
+    const { data } = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
+    return data;
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>

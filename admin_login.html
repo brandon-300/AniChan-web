@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan Admin · Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 36px 28px 28px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+  .login-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .login-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: -0.3px;
+  }
+  .accent-line {
+    width: 42px;
+    height: 3px;
+    background: #1e5fbb;  /* dark blue accent */
+    margin: 8px auto 0;
+    border-radius: 2px;
+  }
+  .field {
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .field .icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #888;
+    pointer-events: none;
+  }
+  .field input {
+    width: 100%;
+    padding: 14px 14px 14px 44px;
+    border: 1px solid #dadada;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #1a1a1a;
+    background: #fafafa;
+    transition: border-color 0.2s, background 0.2s;
+    outline: none;
+  }
+  .field input:focus {
+    border-color: #1e5fbb;
+    background: #ffffff;
+  }
+  .signin-btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: #1e5fbb;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    margin-top: 8px;
+  }
+  .signin-btn:hover {
+    background: #174a96;
+    box-shadow: 0 4px 12px rgba(30, 95, 187, 0.3);
+  }
+  .err-msg {
+    font-size: 13px;
+    color: #cc3333;
+    margin-top: 10px;
+    text-align: center;
+    display: none;
+  }
+  .err-msg.show {
+    display: block;
+  }
+  .back-link {
+    display: block;
+    text-align: center;
+    margin-top: 22px;
+    font-size: 14px;
+    color: #555;
+    text-decoration: none;
+  }
+  .back-link:hover {
+    color: #1e5fbb;
+  }
+  @media (max-width: 450px) {
+    .login-card {
+      padding: 28px 20px 22px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Admin Login</h1>
+      <div class="accent-line"></div>
+    </div>
+    <div class="field">
+      <span class="icon">👤</span>
+      <input type="email" id="adminEmail" placeholder="Admin email" autocomplete="email" />
+    </div>
+    <div class="field">
+      <span class="icon">🔒</span>
+      <input type="password" id="adminPassword" placeholder="Password" autocomplete="current-password" />
+    </div>
+    <div class="err-msg" id="loginErr"></div>
+    <button class="signin-btn" id="signinBtn">Sign In</button>
+    <a href="index.html" class="back-link">← Back to Home</a>
+  </div>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const ADMIN_EMAIL = "g09649009@gmail.com";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = id => document.getElementById(id);
+
+  // Build absolute path to handle TrebEdit file:// URIs
+  function resolvePath(filename) {
+    const base = window.location.href.replace(/[^/]*$/, '');
+    return base + filename;
+  }
+
+  $("signinBtn").addEventListener("click", async () => {
+    const email = $("adminEmail").value.trim();
+    const password = $("adminPassword").value;
+    const err = $("loginErr");
+    err.classList.remove("show");
+
+    if (!email || !password) {
+      err.textContent = "Please enter both email and password.";
+      err.classList.add("show");
+      return;
+    }
+
+    // Pre-check: only the admin email is allowed to proceed
+    if (email.toLowerCase() !== ADMIN_EMAIL) {
+      err.textContent = "This email is not authorized for admin access.";
+      err.classList.add("show");
+      return;
+    }
+
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Redirect to admin dashboard
+      window.location.href = resolvePath("admin.html");
+    } catch (e) {
+      err.textContent = e.message || "Login failed.";
+      err.classList.add("show");
+    }
+  });
+
+  // Submit on Enter
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("signinBtn").click();
+  });
+})();
+</script>
+</body>
+</html>

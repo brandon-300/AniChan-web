@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0d0d0d; --card:#161616; --panel:#1a1a1a;
+    --accent:#1db9b2; --danger:#ff4757;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#222;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:16px;
+  }
+  .container{
+    width:100%;max-width:420px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:20px;padding:28px 24px;
+    box-shadow:0 20px 40px rgba(0,0,0,.5);
+  }
+  .tabs{
+    display:flex;gap:0;margin-bottom:28px;
+    background:var(--panel);border-radius:12px;padding:4px;
+  }
+  .tab-btn{
+    flex:1;padding:10px;border:none;background:transparent;
+    color:var(--muted);font-size:15px;font-weight:600;
+    border-radius:10px;cursor:pointer;transition:all .25s ease;
+  }
+  .tab-btn.active{
+    background:var(--accent);color:#062525;
+    box-shadow:0 4px 12px rgba(29,185,178,.3);
+  }
+  .forms-wrapper{
+    overflow:hidden;position:relative;
+  }
+  .forms-slider{
+    display:flex;transition:transform .35s cubic-bezier(.4,0,.2,1);
+  }
+  .form-panel{
+    min-width:100%;padding:0 2px;
+  }
+  .form-panel h2{
+    font-size:20px;margin-bottom:20px;text-align:center;
+    color:var(--text);
+  }
+  .field{
+    margin-bottom:16px;
+  }
+  .field label{
+    display:block;font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .field input{
+    width:100%;padding:12px 14px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .field input:focus{border-color:var(--accent)}
+  .field input.invalid-age{
+    border-color:var(--danger) !important;
+    color:var(--danger) !important;
+  }
+  .pwd-wrap{position:relative}
+  .pwd-wrap input{padding-right:44px}
+  .pwd-wrap .reveal{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:transparent;border:none;color:var(--muted);font-size:18px;
+    cursor:pointer;padding:4px;line-height:1;
+  }
+  .pwd-wrap .reveal:hover{color:var(--text)}
+  .submit-btn{
+    width:100%;padding:12px;border:none;border-radius:10px;
+    background:var(--accent);color:#062525;font-size:15px;font-weight:700;
+    margin-top:8px;cursor:pointer;transition:filter .15s ease;
+  }
+  .submit-btn:hover{filter:brightness(1.05)}
+  .err-msg{
+    font-size:12px;color:var(--danger);margin-top:8px;display:none;
+  }
+  .err-msg.show{display:block}
+  .success-msg{
+    font-size:12px;color:var(--accent);margin-top:8px;display:none;
+  }
+  .success-msg.show{display:block}
+  .age-error-text{
+    font-size:11px;color:var(--danger);margin-top:4px;display:none;
+  }
+  .age-error-text.show{display:block}
+  .switch-link{
+    display:block;text-align:center;margin-top:16px;
+    font-size:13px;color:var(--muted);
+  }
+  .switch-link button{
+    background:none;border:none;color:var(--accent);
+    font-weight:600;cursor:pointer;font:inherit;
+  }
+  .back-link{
+    display:block;text-align:center;margin-top:20px;
+    font-size:13px;color:var(--muted);text-decoration:none;
+  }
+  .back-link:hover{color:var(--text)}
+  .dob-row{
+    display:flex;gap:8px;
+  }
+  .dob-row select{
+    flex:1;padding:12px 8px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239aa0a6'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center;
+    padding-right:30px;
+  }
+  .dob-row select:focus{border-color:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabLogin">Login</button>
+      <button class="tab-btn" id="tabSignup">Sign up</button>
+    </div>
+    <div class="forms-wrapper">
+      <div class="forms-slider" id="slider">
+        <!-- Login panel (username only) -->
+        <div class="form-panel" id="loginPanel">
+          <h2>Welcome back</h2>
+          <div class="field">
+            <label for="loginUsername">Username</label>
+            <input id="loginUsername" type="text" autocomplete="username" placeholder="Your username" />
+          </div>
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <div class="pwd-wrap">
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+              <button type="button" class="reveal" data-target="loginPassword">👁️</button>
+            </div>
+          </div>
+          <div class="err-msg" id="loginErr"></div>
+          <button class="submit-btn" id="loginSubmit">Log in</button>
+          <div class="switch-link">
+            Don't have an account? <button id="switchToSignup">Sign up</button>
+          </div>
+        </div>
+        <!-- Signup panel (extended fields) -->
+        <div class="form-panel" id="signupPanel">
+          <h2>Create account</h2>
+          <div class="field">
+            <label for="signupName">Full name</label>
+            <input id="signupName" type="text" autocomplete="name" placeholder="Your full name" />
+          </div>
+          <div class="field">
+            <label>Date of birth</label>
+            <div class="dob-row">
+              <select id="dobDay"><option value="">Day</option></select>
+              <select id="dobMonth"><option value="">Month</option></select>
+              <select id="dobYear"><option value="">Year</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="signupAge">Age (auto‑calculated)</label>
+            <input id="signupAge" type="text" readonly placeholder="From date of birth" />
+            <div class="age-error-text" id="ageError"></div>
+          </div>
+          <div class="field">
+            <label for="signupCountry">Country</label>
+            <input id="signupCountry" type="text" placeholder="Your country" />
+          </div>
+          <div class="field">
+            <label for="signupUsername">Username</label>
+            <input id="signupUsername" type="text" autocomplete="username" placeholder="Choose a username" />
+          </div>
+          <div class="field">
+            <label for="signupEmail">Email</label>
+            <input id="signupEmail" type="email" autocomplete="email" placeholder="your@email.com" />
+          </div>
+          <div class="field">
+            <label for="signupPassword">Password</label>
+            <div class="pwd-wrap">
+              <input id="signupPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+              <button type="button" class="reveal" data-target="signupPassword">👁️</button>
+            </div>
+          </div>
+          <div class="err-msg" id="signupErr"></div>
+          <div class="success-msg" id="signupSuccess"></div>
+          <button class="submit-btn" id="signupSubmit">Sign up</button>
+          <div class="switch-link">
+            Already have an account? <button id="switchToLogin">Log in</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <a href="index.html" class="back-link">← Back to Home</a>
+  </div>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = id => document.getElementById(id);
+  const slider = $("slider");
+  const tabLogin = $("tabLogin");
+  const tabSignup = $("tabSignup");
+
+  // ---------- Date of birth dropdowns ----------
+  const dobDay = $("dobDay");
+  const dobMonth = $("dobMonth");
+  const dobYear = $("dobYear");
+  const signupAge = $("signupAge");
+  const ageError = $("ageError");
+
+  const currentYear = new Date().getFullYear();
+
+  // Populate months
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  for (let i = 1; i <= 12; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = monthNames[i-1];
+    dobMonth.appendChild(option);
+  }
+
+  // Populate years (1900 - currentYear)
+  for (let y = currentYear; y >= 1900; y--) {
+    const option = document.createElement("option");
+    option.value = y;
+    option.textContent = y;
+    dobYear.appendChild(option);
+  }
+
+  // Update day options based on selected month & year
+  function getDaysInMonth(month, year) {
+    if (!month || !year) return 31; // default max
+    return new Date(year, month, 0).getDate(); // month is 1-indexed, so 0 gives last day of previous month
+  }
+
+  function populateDays() {
+    const month = parseInt(dobMonth.value);
+    const year = parseInt(dobYear.value);
+    const days = getDaysInMonth(month || 1, year || 2000);
+    const currentDay = dobDay.value ? parseInt(dobDay.value) : 0;
+    dobDay.innerHTML = '<option value="">Day</option>';
+    for (let d = 1; d <= days; d++) {
+      const option = document.createElement("option");
+      option.value = d;
+      option.textContent = d;
+      dobDay.appendChild(option);
+    }
+    // Restore selected day if within range
+    if (currentDay > 0 && currentDay <= days) {
+      dobDay.value = currentDay;
+    } else {
+      dobDay.value = "";
+    }
+  }
+
+  dobMonth.addEventListener("change", populateDays);
+  dobYear.addEventListener("change", populateDays);
+
+  // Initial population
+  populateDays();
+
+  // ---------- Age calculation & validation ----------
+  function updateAgeField() {
+    const day = parseInt(dobDay.value);
+    const month = parseInt(dobMonth.value);
+    const year = parseInt(dobYear.value);
+    const ageInput = signupAge;
+    const errorEl = ageError;
+
+    if (!day || !month || !year) {
+      ageInput.value = "";
+      ageInput.classList.remove("invalid-age");
+      errorEl.classList.remove("show");
+      return;
+    }
+
+    const dobDate = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - dobDate.getFullYear();
+    const monthDiff = today.getMonth() - dobDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+      age--;
+    }
+
+    ageInput.value = age;
+
+    if (age < 14) {
+      ageInput.classList.add("invalid-age");
+      errorEl.textContent = "You must be at least 14 years old. Please select a different date of birth.";
+      errorEl.classList.add("show");
+    } else {
+      ageInput.classList.remove("invalid-age");
+      errorEl.classList.remove("show");
+    }
+  }
+
+  dobDay.addEventListener("change", updateAgeField);
+  dobMonth.addEventListener("change", updateAgeField);
+  dobYear.addEventListener("change", updateAgeField);
+
+  function switchToLogin() {
+    slider.style.transform = "translateX(0)";
+    tabLogin.classList.add("active");
+    tabSignup.classList.remove("active");
+    clearMessages();
+  }
+
+  function switchToSignup() {
+    slider.style.transform = "translateX(-100%)";
+    tabSignup.classList.add("active");
+    tabLogin.classList.remove("active");
+    clearMessages();
+  }
+
+  tabLogin.addEventListener("click", switchToLogin);
+  tabSignup.addEventListener("click", switchToSignup);
+  $("switchToSignup").addEventListener("click", switchToSignup);
+  $("switchToLogin").addEventListener("click", switchToLogin);
+
+  // Password reveal toggles
+  document.querySelectorAll(".reveal").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (input) {
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        btn.textContent = isPassword ? "🙈" : "👁️";
+      }
+    });
+  });
+
+  function resolvePath(filename) {
+    const base = window.location.href.replace(/[^/]*$/, '');
+    return base + filename;
+  }
+
+  function clearMessages() {
+    $("loginErr").classList.remove("show");
+    $("signupErr").classList.remove("show");
+    $("signupSuccess").classList.remove("show");
+    // Reset age error display
+    signupAge.classList.remove("invalid-age");
+    ageError.classList.remove("show");
+  }
+
+  // ---------- Login via username ----------
+  $("loginSubmit").addEventListener("click", async () => {
+    const username = $("loginUsername").value.trim();
+    const password = $("loginPassword").value;
+    const err = $("loginErr");
+    err.classList.remove("show");
+
+    if (!username || !password) {
+      err.textContent = "Please enter both username and password.";
+      err.classList.add("show");
+      return;
+    }
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile) {
+        err.textContent = "Username does not exist.";
+        err.classList.add("show");
+        return;
+      }
+
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: password,
+      });
+
+      if (authError) throw authError;
+      window.location.href = resolvePath("index.html");
+    } catch (e) {
+      err.textContent = e.message || "Login failed.";
+      err.classList.add("show");
+    }
+  });
+
+  // ---------- Signup with extended profile (age >= 14 enforced) ----------
+  $("signupSubmit").addEventListener("click", async () => {
+    const fullName = $("signupName").value.trim();
+    const country = $("signupCountry").value.trim();
+    const username = $("signupUsername").value.trim();
+    const email = $("signupEmail").value.trim();
+    const password = $("signupPassword").value;
+    const day = parseInt(dobDay.value);
+    const month = parseInt(dobMonth.value);
+    const year = parseInt(dobYear.value);
+
+    const err = $("signupErr");
+    const success = $("signupSuccess");
+    err.classList.remove("show");
+    success.classList.remove("show");
+
+    // Validation: all fields required
+    if (!fullName || !country || !username || !email || !password || !day || !month || !year) {
+      err.textContent = "All fields are required.";
+      err.classList.add("show");
+      return;
+    }
+
+    // Age validation from auto-calculated field
+    const age = parseInt(signupAge.value, 10);
+    if (isNaN(age) || age < 14) {
+      err.textContent = "You must be at least 14 years old to create an account.";
+      err.classList.add("show");
+      return;
+    }
+
+    if (password.length < 6) {
+      err.textContent = "Password must be at least 6 characters.";
+      err.classList.add("show");
+      return;
+    }
+
+    // Format DOB as YYYY-MM-DD
+    const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+    try {
+      // Check if username already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (existingUser) {
+        err.textContent = "Username is already taken.";
+        err.classList.add("show");
+        return;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username,
+            full_name: fullName,
+          },
+          emailRedirectTo: resolvePath("index.html"),
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Signup failed: no user returned.");
+
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: authData.user.id,
+        username: username,
+        full_name: fullName,
+        age: age,
+        dob: dob,
+        country: country,
+        email: email,
+      });
+
+      if (insertError) throw new Error("Profile creation failed: " + insertError.message);
+
+      success.textContent = "Check your email to confirm your account.";
+      success.classList.add("show");
+      // Clear form
+      $("signupName").value = "";
+      $("signupCountry").value = "";
+      $("signupUsername").value = "";
+      $("signupEmail").value = "";
+      $("signupPassword").value = "";
+      dobDay.value = "";
+      dobMonth.value = "";
+      dobYear.value = "";
+      // Reset days after clearing year/month (populateDays will handle)
+      populateDays();
+      signupAge.value = "";
+      signupAge.classList.remove("invalid-age");
+      ageError.classList.remove("show");
+    } catch (e) {
+      err.textContent = e.message || "Registration failed.";
+      err.classList.add("show");
+    }
+  });
+
+  // Enter key submission
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const loginActive = tabLogin.classList.contains("active");
+      if (loginActive) $("loginSubmit").click();
+      else $("signupSubmit").click();
+    }
+  });
+})();
+</script>
+</body>
+</html>

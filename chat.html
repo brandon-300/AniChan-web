@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Chat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0d0d0d; --card: #161616; --panel: #1a1a1a;
+    --accent: #1db9b2; --danger: #ff4757;
+    --text: #f1f1f1; --muted: #9aa0a6; --border: #222;
+    --success: #2ed573; --offline: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    height: 100vh; overflow: hidden; display: flex;
+  }
+  /* === SIDEBAR === */
+  .sidebar {
+    width: 320px; background: var(--card); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 10;
+    transition: transform 0.25s ease;
+  }
+  .sidebar-header {
+    padding: 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-header h2 { font-size: 16px; flex: 1; }
+  .back-btn {
+    display: none; background: none; border: none; color: var(--accent);
+    font-size: 20px; cursor: pointer;
+  }
+  .new-chat { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .new-chat input {
+    width: 100%; padding: 10px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px; outline: none;
+  }
+  .new-chat input:focus { border-color: var(--accent); }
+  .room-list {
+    flex: 1; overflow-y: auto; padding: 0 0 16px;
+  }
+  .room {
+    display: flex; align-items: center; padding: 12px 16px;
+    cursor: pointer; transition: background 0.15s; gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .room:hover, .room.active { background: var(--panel); }
+  .room .avatar {
+    width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+    background: var(--panel); border: 2px solid var(--border); flex-shrink: 0;
+  }
+  .room .info { flex: 1; min-width: 0; }
+  .room .name {
+    font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;
+  }
+  .online-badge {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--offline);
+  }
+  .online-badge.online { background: var(--success); }
+  .room .preview { font-size: 12px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room .meta { text-align: right; flex-shrink: 0; }
+  .room .time { font-size: 11px; color: var(--muted); }
+  .room .unread {
+    display: inline-block; background: var(--accent); color: #062525;
+    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px;
+    margin-top: 4px;
+  }
+  /* === CHAT AREA === */
+  .chat-area {
+    flex: 1; display: flex; flex-direction: column;
+  }
+  .chat-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; background: var(--card);
+  }
+  .chat-header .avatar {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border);
+  }
+  .chat-header .name { font-weight: 600; }
+  .chat-header .status { font-size: 12px; color: var(--muted); }
+  .chat-box {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .message {
+    display: flex; gap: 8px; max-width: 80%;
+  }
+  .message.sent { align-self: flex-end; flex-direction: row-reverse; }
+  .message .bubble {
+    padding: 10px 14px; border-radius: 16px; background: var(--panel);
+    font-size: 14px; line-height: 1.4;
+  }
+  .message.sent .bubble { background: var(--accent); color: #062525; }
+  .message .time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .typing-indicator {
+    padding: 4px 16px; color: var(--muted); font-size: 13px;
+    min-height: 22px;
+  }
+  .input-area {
+    padding: 12px 16px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; background: var(--card);
+  }
+  .input-area input {
+    flex: 1; padding: 12px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px; outline: none;
+  }
+  .input-area button {
+    padding: 12px 18px; border: none; border-radius: 8px;
+    background: var(--accent); color: #062525; font-weight: 700;
+    cursor: pointer; transition: filter 0.15s;
+  }
+  .input-area button:hover { filter: brightness(1.05); }
+  .empty-chat {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 14px;
+  }
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .back-btn { display: block; }
+  }
+</style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <button class="back-btn" id="sidebarBackBtn">←</button>
+      <h2>Messages</h2>
+    </div>
+    <div class="new-chat">
+      <input type="text" id="newChatUsername" placeholder="Start a chat by username..." />
+    </div>
+    <div class="room-list" id="roomList"></div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-area" id="chatArea">
+    <div class="chat-header" id="chatHeader" style="display: none;">
+      <img class="avatar" id="chatPartnerAvatar" src="" alt="" />
+      <div>
+        <div class="name" id="chatPartnerName"></div>
+        <div class="status" id="chatPartnerStatus"></div>
+      </div>
+    </div>
+    <div class="typing-indicator" id="typingIndicator"></div>
+    <div class="chat-box" id="chatBox">
+      <div class="empty-chat" id="emptyChatPlaceholder">Select a conversation to start chatting</div>
+    </div>
+    <div class="input-area" id="inputArea" style="display: none;">
+      <input type="text" id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+<script>
+/*
+  ══════════════════════════════════════════════════════
+  Supabase v2 Realtime Chat — AniChan (Modular)
+  Tables (SQL):
+  - chat_rooms (id, user_one_id, user_two_id, last_message, last_message_time, created_at)
+  - messages (id, room_id, sender_id, receiver_id, content, msg_type, is_read, created_at)
+  - user_presence (id, user_id, status, last_active, typing_in_room_id)
+  ══════════════════════════════════════════════════════
+*/
+
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
+  );
+
+  let currentUser = null;
+  let activeRoom = null;        // currently open room id
+  let partnerId = null;        // the other user in the active room
+  let rooms = [];
+  let messageSub = null;       // realtime message channel
+
+  // ─── Helpers ────────────────────────────────────
+  function resolvePath(filename) {
+    const base = window.location.href.replace(/[^/]*$/, '');
+    return base + filename;
+  }
+  function formatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 86400000 && d.getDate() === now.getDate()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return d.toLocaleDateString();
+  }
+
+  // ─── Presence & Typing ──────────────────────────
+  async function updatePresence(status = 'online') {
+    if (!currentUser) return;
+    await supabase.from('user_presence').upsert({
+      user_id: currentUser.id,
+      status,
+      last_active: new Date().toISOString()
+    });
+  }
+  async function setTyping(roomId, typing) {
+    if (!currentUser) return;
+    await supabase.from('user_presence').upsert({
+      user_id: currentUser.id,
+      typing_in_room_id: typing ? roomId : null
+    });
+  }
+
+  // ─── Render Sidebar Room List ────────────────────
+  function renderRoomList(roomsData) {
+    const list = $('roomList');
+    list.innerHTML = '';
+    if (!roomsData.length) {
+      list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>';
+      return;
+    }
+    roomsData.forEach(room => {
+      const otherUser = room.other_user;
+      const div = document.createElement('div');
+      div.className = 'room' + (activeRoom === room.id ? ' active' : '');
+      div.innerHTML = `
+        <img class="avatar" src="${otherUser.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div class="info">
+          <div class="name">
+            ${otherUser.full_name || otherUser.username}
+            <span class="online-badge ${otherUser.is_online ? 'online' : ''}"></span>
+          </div>
+          <div class="preview">${room.last_message || 'Start a conversation'}</div>
+        </div>
+        <div class="meta">
+          <div class="time">${formatTime(room.last_message_time)}</div>
+          ${room.unread_count ? `<span class="unread">${room.unread_count}</span>` : ''}
+        </div>`;
+      div.addEventListener('click', () => openRoom(room.id, otherUser.id));
+      list.appendChild(div);
+    });
+  }
+
+  // ─── Load Rooms (sidebar) ────────────────────────
+  async function loadRooms() {
+    if (!currentUser) return;
+    const { data, error } = await supabase
+      .from('chat_rooms')
+      .select(`
+        id, last_message, last_message_time,
+        user_one_id, user_two_id,
+        user_one:profiles!chat_rooms_user_one_id_fkey(id, username, full_name, avatar_url, is_online),
+        user_two:profiles!chat_rooms_user_two_id_fkey(id, username, full_name, avatar_url, is_online)
+      `)
+      .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
+      .order('last_message_time', { ascending: false });
+
+    if (error) { console.error('Failed to load rooms:', error); return; }
+
+    // Enrich with unread count and extract partner info
+    const enriched = [];
+    for (const room of data) {
+      const isUserOne = room.user_one_id === currentUser.id;
+      const partner = isUserOne ? room.user_two : room.user_one;
+      // Fetch unread messages count
+      const { count, error: countErr } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('room_id', room.id)
+        .eq('receiver_id', currentUser.id)
+        .eq('is_read', false);
+      if (countErr) console.warn('unread count error', countErr);
+      enriched.push({
+        id: room.id,
+        last_message: room.last_message,
+        last_message_time: room.last_message_time,
+        other_user: partner,
+        unread_count: count || 0
+      });
+    }
+    rooms = enriched;
+    renderRoomList(enriched);
+  }
+
+  // ─── Open a Room ──────────────────────────────────
+  async function openRoom(roomId, otherUserId) {
+    activeRoom = roomId;
+    partnerId = otherUserId;
+    // UI: show chat, hide placeholder
+    $('emptyChatPlaceholder').style.display = 'none';
+    $('chatHeader').style.display = 'flex';
+    $('inputArea').style.display = 'flex';
+    // Update header with partner info
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, full_name, avatar_url, is_online')
+      .eq('id', otherUserId)
+      .single();
+    if (profile) {
+      $('chatPartnerAvatar').src = profile.avatar_url || DEFAULT_AVATAR;
+      $('chatPartnerName').textContent = profile.full_name || profile.username;
+      $('chatPartnerStatus').textContent = profile.is_online ? 'Online' : 'Offline';
+    }
+    // Update active class in sidebar
+    document.querySelectorAll('.room').forEach(el => el.classList.remove('active'));
+    // Mark room active
+    renderRoomList(rooms); // re-render to update active class
+    // Load message history
+    await loadMessages(roomId);
+    // Subscribe to realtime for this room
+    subscribeToMessages(roomId);
+    // Reset typing indicator
+    $('typingIndicator').textContent = '';
+    // On mobile, close sidebar
+    if (window.innerWidth <= 640) {
+      $('sidebar').classList.remove('open');
+    }
+  }
+
+  // ─── Load Messages ────────────────────────────────
+  async function loadMessages(roomId) {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true });
+    if (error) { console.error('Load messages error:', error); return; }
+    renderMessages(data, roomId);
+    // Mark unread messages as read
+    const unreadIds = data.filter(m => m.receiver_id === currentUser.id && !m.is_read).map(m => m.id);
+    if (unreadIds.length) {
+      await supabase.from('messages').update({ is_read: true }).in('id', unreadIds);
+      // Refresh rooms to update unread badge
+      loadRooms();
+    }
+  }
+
+  function renderMessages(messages, roomId) {
+    const box = $('chatBox');
+    box.innerHTML = '';
+    messages.forEach(msg => {
+      const isSent = msg.sender_id === currentUser.id;
+      const div = document.createElement('div');
+      div.className = `message ${isSent ? 'sent' : 'received'}`;
+      div.innerHTML = `
+        <div class="bubble">${escapeHtml(msg.content)}</div>
+        <div class="time">${formatTime(msg.created_at)}</div>`;
+      box.appendChild(div);
+    });
+    scrollToBottom();
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'
+    })[m]);
+  }
+
+  function scrollToBottom() {
+    const box = $('chatBox');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ─── Send Message ──────────────────────────────────
+  async function sendMessage() {
+    const input = $('messageInput');
+    const text = input.value.trim();
+    if (!text || !activeRoom || !partnerId) return;
+    input.value = '';
+    const payload = {
+      room_id: activeRoom,
+      sender_id: currentUser.id,
+      receiver_id: partnerId,
+      content: text,
+      msg_type: 'text'
+    };
+    const { error } = await supabase.from('messages').insert(payload);
+    if (error) { alert('Send failed: ' + error.message); return; }
+    // Update room preview
+    await supabase.from('chat_rooms').update({
+      last_message: text,
+      last_message_time: new Date().toISOString()
+    }).eq('id', activeRoom);
+    // Reload sidebar to reflect preview
+    loadRooms();
+    // The message will appear via realtime subscription,
+    // but we could also prepend instantly; for consistency rely on subscription.
+  }
+
+  // ─── Realtime Message Listener ─────────────────────
+  function subscribeToMessages(roomId) {
+    if (messageSub) { supabase.removeChannel(messageSub); }
+    messageSub = supabase
+      .channel(`room:${roomId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `room_id=eq.${roomId}`
+      }, (payload) => {
+        const newMsg = payload.new;
+        // Avoid duplicate if it's our own sent message (already handled? we rely on realtime only)
+        if (newMsg.sender_id === currentUser.id && newMsg.content === $('messageInput').value) return; // approximate
+        // Append message
+        const box = $('chatBox');
+        const isSent = newMsg.sender_id === currentUser.id;
+        const div = document.createElement('div');
+        div.className = `message ${isSent ? 'sent' : 'received'}`;
+        div.innerHTML = `
+          <div class="bubble">${escapeHtml(newMsg.content)}</div>
+          <div class="time">${formatTime(newMsg.created_at)}</div>`;
+        box.appendChild(div);
+        scrollToBottom();
+        // Mark as read if received
+        if (newMsg.receiver_id === currentUser.id) {
+          supabase.from('messages').update({ is_read: true }).eq('id', newMsg.id).then();
+        }
+      })
+      .subscribe();
+  }
+
+  // ─── Typing Indicator via Presence ──────────────────
+  let typingTimeout;
+  $('messageInput').addEventListener('input', () => {
+    if (!activeRoom) return;
+    setTyping(activeRoom, true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => setTyping(activeRoom, false), 3000);
+  });
+  // Listen for partner typing changes
+  supabase.channel('presence-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, (payload) => {
+      if (partnerId && payload.new && payload.new.user_id === partnerId) {
+        const typingRoom = payload.new.typing_in_room_id;
+        $('typingIndicator').textContent = (typingRoom === activeRoom) ? 'Typing...' : '';
+      }
+    }).subscribe();
+
+  // ─── Start a New Chat by Username ────────────────────
+  $('newChatUsername').addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const username = e.target.value.trim();
+      if (!username) return;
+      e.target.value = '';
+      await createRoom(username);
+    }
+  });
+
+  async function createRoom(username) {
+    if (!currentUser) return;
+    // Look up user
+    const { data: user, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('username', username)
+      .maybeSingle();
+    if (error || !user) { alert('User not found'); return; }
+    if (user.id === currentUser.id) { alert('Cannot message yourself'); return; }
+    // Check if room already exists (bidirectional)
+    const { data: existing } = await supabase
+      .from('chat_rooms')
+      .select('id')
+      .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${user.id}),and(user_one_id.eq.${user.id},user_two_id.eq.${currentUser.id})`)
+      .maybeSingle();
+    if (existing) {
+      openRoom(existing.id, user.id);
+      return;
+    }
+    // Create room
+    const { data: newRoom, error: createErr } = await supabase
+      .from('chat_rooms')
+      .insert({ user_one_id: currentUser.id, user_two_id: user.id })
+      .select('id')
+      .single();
+    if (createErr) { alert('Room creation failed: ' + createErr.message); return; }
+    loadRooms();
+    openRoom(newRoom.id, user.id);
+  }
+
+  // ─── Presence Management ──────────────────────────
+  window.addEventListener('beforeunload', () => {
+    updatePresence('offline');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      updatePresence('idle');
+    } else {
+      updatePresence('online');
+      loadRooms(); // refresh online statuses
+    }
+  });
+  // Periodic refresh to show updated last seen
+  setInterval(loadRooms, 30000);
+
+  // ─── Mobile Sidebar Toggle ────────────────────────
+  $('sidebarBackBtn').addEventListener('click', () => {
+    $('sidebar').classList.remove('open');
+  });
+  // Open sidebar by clicking on empty area? We'll rely on a button in header (not in scope), but for mobile we can auto-open when no room selected.
+  // Better: provide a toggle button in chat header. We'll add a simple approach: clicking on chat area when no room? Not needed now.
+
+  // ─── Logout ──────────────────────────────────────────
+  async function logout() {
+    await updatePresence('offline');
+    await supabase.auth.signOut();
+    window.location.href = resolvePath('index.html');
+  }
+
+  // ─── Init ────────────────────────────────────────────
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = resolvePath('user_login.html');
+      return;
+    }
+    currentUser = session.user;
+    await updatePresence('online');
+    await loadRooms();
+
+    // Realtime subscription for room updates (sidebar)
+    supabase.channel('public:chat_rooms')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => loadRooms())
+      .subscribe();
+
+    // Global send button
+    $('sendBtn').addEventListener('click', sendMessage);
+    $('messageInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Logout option (add a small button to sidebar header)
+    const logoutBtn = document.createElement('button');
+    logoutBtn.textContent = 'Logout';
+    logoutBtn.style.cssText = 'background:transparent;border:1px solid var(--border);color:var(--danger);padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:auto;';
+    logoutBtn.addEventListener('click', logout);
+    document.querySelector('.sidebar-header').appendChild(logoutBtn);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
