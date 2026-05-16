@@ -311,7 +311,7 @@
       const url = data?.value || "";
       const img = $("siteLogo");
       if (url) {
-        img.src = url + '?t=' + Date.now();   // cache buster
+        img.src = url + '?t=' + Date.now();
         img.style.display = "inline-block";
       } else {
         img.style.display = "none";
@@ -333,13 +333,12 @@
     return data.avatar_url || null;
   }
 
-  // Header buttons
+  // Header buttons – NO logout button
   async function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
 
     if (currentSession) {
-      const email = currentSession.user.email || "user";
       const avatarUrl = await getUserAvatar();
 
       const avatarHtml = avatarUrl
@@ -350,10 +349,8 @@
         <button class="btn" id="allMembersBtn">All Members</button>
         <button class="btn" id="chatBtn">💬 Chat</button>
         ${avatarHtml}
-        <button class="btn btn-danger" id="logoutBtn">Logout (${email.split("@")[0]})</button>
       `;
 
-      // Attach events
       $("allMembersBtn").addEventListener("click", showAllMembers);
       $("chatBtn").addEventListener("click", () => location.href = "chat.html");
 
@@ -361,12 +358,6 @@
       if (avatarElement) {
         avatarElement.addEventListener("click", () => location.href = "profile.html");
       }
-
-      $("logoutBtn").addEventListener("click", async () => {
-        if (confirm("Log out?")) {
-          await sb.auth.signOut();
-        }
-      });
     } else {
       container.innerHTML = `
         <button class="btn" id="adminBtn">Admin</button>
@@ -424,7 +415,6 @@
       }
     }
 
-    // Update pagination controls
     const pagination = $("paginationControls");
     const prevBtn = $("prevPageBtn");
     const nextBtn = $("nextPageBtn");
