@@ -120,7 +120,7 @@
       <div class="user-info">
         <h2 id="displayFullName">—</h2>
         <div class="username" id="displayUsername">@—</div>
-        <div class="last-seen" id="displayLastSeen">Last seen: —</div>
+        <div class="last-seen" id="displayLastSeen">—</div>
       </div>
     </div>
 
@@ -142,7 +142,7 @@
     </div>
 
     <div class="bottom-actions" id="bottomActions">
-      <!-- dynamic red buttons -->
+      <!-- red buttons -->
     </div>
   </main>
 
@@ -177,15 +177,35 @@
     resetInactivity();
   }
 
-  // Online status
+  // Heartbeat: update last_seen every 30 seconds while active
+  let heartbeatInterval;
+  function startHeartbeat() {
+    heartbeatInterval = setInterval(async () => {
+      if (!currentUserId || document.hidden) return;
+      await supabase.from('profiles').update({
+        last_seen: new Date().toISOString(),
+        is_online: true
+      }).eq('id', currentUserId);
+    }, 30000);
+  }
+  function stopHeartbeat() {
+    clearInterval(heartbeatInterval);
+  }
+
+  // Online/offline helpers
   async function setOnlineStatus(online) {
     if (!currentUserId) return;
-    await supabase.from('profiles').update({ is_online: online, last_seen: new Date().toISOString() }).eq('id', currentUserId);
+    await supabase.from('profiles').update({
+      is_online: online,
+      last_seen: new Date().toISOString()
+    }).eq('id', currentUserId);
   }
+
   async function handleLogout() {
     if (currentUserId) await setOnlineStatus(false);
-    await supabase.auth.signOut();
+    stopHeartbeat();
     clearTimeout(inactivityTimer);
+    await supabase.auth.signOut();
     window.location.href = "index.html";
   }
 
@@ -194,11 +214,21 @@
     originalProfile = { ...profile };
     $('avatarImg').src = profile?.avatar_url || DEFAULT_AVATAR;
     $('avatarImg').onerror = () => { $('avatarImg').src = DEFAULT_AVATAR; };
+
     const dot = $('onlineDot');
-    dot.classList.toggle('online', profile?.is_online);
+    const lastSeenEl = $('displayLastSeen');
+    if (profile?.is_online) {
+      dot.classList.add('online');
+      lastSeenEl.textContent = 'Online';
+    } else {
+      dot.classList.remove('online');
+      lastSeenEl.textContent = profile?.last_seen
+        ? 'Last seen: ' + new Date(profile.last_seen).toLocaleString()
+        : 'Last seen: —';
+    }
+
     $('displayFullName').textContent = profile?.full_name || '—';
     $('displayUsername').textContent = profile?.username ? '@'+profile.username : '@—';
-    $('displayLastSeen').textContent = profile?.last_seen ? 'Last seen: '+new Date(profile.last_seen).toLocaleString() : 'Last seen: —';
     $('fullNameInput').value = profile?.full_name || '';
     $('usernameInput').value = profile?.username || '';
     $('emailInput').value = profile?.email || '';
@@ -220,7 +250,6 @@
     const container = $('headerActions');
     container.innerHTML = '';
 
-    // Always show a "Back to Home" button
     const homeBtn = document.createElement('a');
     homeBtn.href = 'index.html';
     homeBtn.className = 'btn';
@@ -228,7 +257,6 @@
     container.appendChild(homeBtn);
 
     if (!isOwner) {
-      // Viewing another user's profile
       const msgBtn = document.createElement('button');
       msgBtn.className = 'btn primary';
       msgBtn.textContent = '💬 Message';
@@ -236,7 +264,6 @@
       container.appendChild(msgBtn);
       return;
     }
-    // Own profile
     if (isEditing) {
       const saveBtn = document.createElement('button');
       saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save'; saveBtn.addEventListener('click', saveProfile);
@@ -327,7 +354,6 @@
     const viewUserId = urlParams.get('user');
 
     if (viewUserId && viewUserId !== currentUserId) {
-      // Viewing another user's profile
       isOwner = false;
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', viewUserId).single();
       if (!profile) { alert('User not found'); history.back(); return; }
@@ -338,10 +364,11 @@
       return;
     }
 
-    // Own profile
     isOwner = true;
     await setOnlineStatus(true);
     setupInactivity();
+    startHeartbeat();
+
     const profile = await loadProfile();
     if (profile) renderProfile(profile);
     else renderProfile({});
@@ -366,15 +393,20 @@
       if (!confirm('Are you sure? Your account will be permanently deleted.')) return;
       if (!confirm('Final warning: There is no going back.')) return;
       await supabase.from('profiles').delete().eq('id', currentUserId);
-      await supabase.auth.signOut();
+      stopHeartbeat();
       clearTimeout(inactivityTimer);
+      await supabase.auth.signOut();
       location.href = "user_login.html";
     });
     bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
 
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) setOnlineStatus(false);
-      else { setOnlineStatus(true); resetInactivity(); }
+      if (document.hidden) {
+        setOnlineStatus(false);
+      } else {
+        setOnlineStatus(true);
+        resetInactivity();
+      }
     });
   }
 
