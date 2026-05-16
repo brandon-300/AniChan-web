@@ -89,7 +89,7 @@
   #toTop.visible{opacity:1;pointer-events:auto}
   #toTop:active{transform:scale(.94)}
 
-  /* Modal (used for login & All Members) */
+  /* Members modal */
   .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;
     justify-content:center;padding:18px;background:rgba(0,0,0,.6);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -98,35 +98,16 @@
     border:1px solid var(--border);border-radius:18px;padding:22px;
     box-shadow:0 30px 60px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
   .modal h3{margin:0 0 4px;font-size:18px}
-  .modal p{margin:0 0 16px;color:var(--muted);font-size:13px}
-  .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
-  .modal input{width:100%;padding:12px 12px;border-radius:10px;background:var(--panel);
-    border:1px solid var(--border);color:var(--text);font-size:14px;outline:none}
-  .modal input:focus{border-color:var(--accent)}
-  .modal .row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
-  .modal .err{display:none;margin-top:10px;color:var(--danger);font-size:12px}
-  .modal .err.show{display:block}
   .modal .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
   .modal .close{color:var(--muted);font-size:20px;line-height:1}
-  .modal .mode-toggle{margin-top:10px;text-align:center;font-size:12px;color:var(--muted)}
-  .modal .mode-toggle button{color:var(--accent);font-weight:600}
-  /* Password wrapper */
-  .pwd-wrap{position:relative}
-  .pwd-wrap input{padding-right:40px}
-  .pwd-wrap .reveal{position:absolute;right:8px;top:50%;transform:translateY(-50%);
-    background:transparent;border:none;color:var(--muted);font-size:16px;
-    cursor:pointer;padding:4px;line-height:1}
-  .pwd-wrap .reveal:hover{color:var(--text)}
-
-  footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
-
-  /* Members list inside modal */
   .member-item{
     display:flex;align-items:center;gap:10px;padding:8px 0;
     border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s
   }
   .member-item:hover{background:var(--panel)}
   .member-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover}
+
+  footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
@@ -173,35 +154,6 @@
 
   <button id="toTop" aria-label="Scroll to top">↑</button>
 
-  <!-- Login modal -->
-  <div class="modal" id="modal" aria-hidden="true">
-    <div class="panel" role="dialog" aria-modal="true">
-      <div class="head">
-        <div>
-          <h3 id="modalTitle">Sign in</h3>
-          <p id="modalSub">Sign in with your email and password.</p>
-        </div>
-        <button class="close" id="modalClose" aria-label="Close">×</button>
-      </div>
-      <label for="emailInput">Email</label>
-      <input id="emailInput" type="email" autocomplete="email" />
-      <label for="passwordInput">Password</label>
-      <div class="pwd-wrap">
-        <input id="passwordInput" type="password" autocomplete="current-password" />
-        <button type="button" class="reveal" id="revealBtn" aria-label="Show password">👁️</button>
-      </div>
-      <div class="err" id="modalErr"></div>
-      <div class="row">
-        <button class="btn" id="modalCancel">Cancel</button>
-        <button class="btn btn-primary" id="modalSubmit">Sign in</button>
-      </div>
-      <div class="mode-toggle">
-        <span id="modeText">New here?</span>
-        <button id="modeToggle" type="button">Create an account</button>
-      </div>
-    </div>
-  </div>
-
   <!-- All Members Modal -->
   <div class="modal" id="membersModal" aria-hidden="true">
     <div class="panel" role="dialog" aria-modal="true">
@@ -225,21 +177,10 @@
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
-
-  // Helpers
-  function resolvePath(filename) {
-    const base = window.location.href.replace(/[^/]*$/, '');
-    return base + filename;
-  }
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, (m) => ({
-      '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'
-    })[m]);
-  }
+  const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
 
   let library = [];
   let currentSession = null;
-  let authMode = "signin";
 
   function syncOffline(){ $("offline").classList.toggle("show", !navigator.onLine); }
 
@@ -255,10 +196,9 @@
         <button class="btn" id="profileBtn">👤 Profile</button>
         <button class="btn btn-danger" id="logoutBtn">Logout (${email.split("@")[0]})</button>
       `;
-
       $("allMembersBtn").addEventListener("click", showAllMembers);
-      $("chatBtn").addEventListener("click", () => location.href = resolvePath("chat.html"));
-      $("profileBtn").addEventListener("click", () => location.href = resolvePath("profile.html"));
+      $("chatBtn").addEventListener("click", () => location.href = "chat.html");
+      $("profileBtn").addEventListener("click", () => location.href = "profile.html");
       $("logoutBtn").addEventListener("click", async () => {
         if (confirm("Log out?")) {
           await sb.auth.signOut();
@@ -269,8 +209,8 @@
         <button class="btn" id="adminBtn">Admin</button>
         <button class="btn btn-primary" id="loginBtn">Login</button>
       `;
-      $("adminBtn").onclick = () => location.href = resolvePath("admin_login.html");
-      $("loginBtn").onclick = () => openModal();
+      $("adminBtn").onclick = () => location.href = "admin_login.html";
+      $("loginBtn").onclick = () => location.href = "user_login.html";
     }
   }
 
@@ -287,7 +227,6 @@
     }
   }
 
-  // Collection rendering (unchanged)
   function renderCollection(filter = ""){
     const grid = $("collectionGrid");
     const q = filter.trim().toLowerCase();
@@ -312,12 +251,33 @@
       grid.appendChild(card);
     }
   }
-  const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
 
-  async function loadLibrary(){ /* unchanged */ }
-  async function loadAiring(){ /* unchanged */ }
+  async function loadLibrary(){
+    const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
+    if (error) { library = []; } else { library = data || []; }
+    renderCollection($("searchInput").value);
+  }
 
-  // --- All Members Modal ---
+  async function loadAiring(){
+    const shelf = $("airingShelf");
+    if (!navigator.onLine) { shelf.innerHTML = '<div class="empty" style="flex:1">Offline</div>'; return; }
+    try {
+      const res = await fetch("https://api.jikan.moe/v4/seasons/now?limit=8");
+      const data = await res.json();
+      shelf.innerHTML = "";
+      (data.data || []).slice(0,8).forEach(a => {
+        const card = document.createElement("div"); card.className = "card";
+        const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
+        img.src = (a.images?.jpg?.image_url) || PLACEHOLDER; img.alt = a.title;
+        const meta = document.createElement("div"); meta.className = "meta";
+        const t = document.createElement("div"); t.className = "title"; t.textContent = a.title;
+        meta.appendChild(t); card.appendChild(img); card.appendChild(meta);
+        shelf.appendChild(card);
+      });
+    } catch { shelf.innerHTML = '<div class="empty" style="flex:1">Could not load</div>'; }
+  }
+
+  // --- All Members modal ---
   function openMembersModal() {
     $("membersModal").classList.add("show");
     $("membersModal").setAttribute("aria-hidden", "false");
@@ -338,10 +298,10 @@
       div.className = "member-item";
       div.innerHTML = `
         <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <span style="flex:1">${escapeHtml(user.username)}</span>`;
+        <span style="flex:1">${user.username.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m])}</span>`;
       div.addEventListener("click", () => {
         closeMembersModal();
-        location.href = resolvePath("profile.html?user=" + user.id);
+        location.href = "profile.html?user=" + user.id;
       });
       list.appendChild(div);
     });
@@ -349,56 +309,7 @@
   $("membersModalClose").addEventListener("click", closeMembersModal);
   $("membersModal").addEventListener("click", (e) => { if (e.target.id === "membersModal") closeMembersModal(); });
 
-  // --- Login/Logout Flow ---
-  function setAuthMode(mode){ /* unchanged */ }
-  function openModal(){
-    setAuthMode("signin");
-    $("modalErr").classList.remove("show");
-    $("emailInput").value = ""; $("passwordInput").value = "";
-    $("modal").classList.add("show");
-    $("modal").setAttribute("aria-hidden", "false");
-    setTimeout(() => $("emailInput").focus(), 30);
-  }
-  function closeModal(){
-    $("loginBtn")?.focus();
-    $("modal").classList.remove("show");
-    $("modal").setAttribute("aria-hidden", "true");
-  }
-  function initReveal(){
-    const btn = $("revealBtn");
-    const input = $("passwordInput");
-    btn.addEventListener("click", () => {
-      const isPassword = input.type === "password";
-      input.type = isPassword ? "text" : "password";
-      btn.textContent = isPassword ? "🙈" : "👁️";
-    });
-  }
-  async function submitModal(){
-    const email = $("emailInput").value.trim();
-    const password = $("passwordInput").value;
-    const err = $("modalErr");
-    err.classList.remove("show");
-    if (!email || !password) { err.textContent = "Email and password are required."; err.classList.add("show"); return; }
-    try {
-      if (authMode === "signup") {
-        const { error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: resolvePath("index.html") } });
-        if (error) throw error;
-        err.textContent = "Check your email to confirm your account.";
-        err.style.color = "var(--accent)";
-        err.classList.add("show");
-      } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        closeModal();
-      }
-    } catch (e) {
-      err.style.color = "var(--danger)";
-      err.textContent = e.message || "Authentication failed.";
-      err.classList.add("show");
-    }
-  }
-
-  // Init
+  // --- Init ---
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
     window.addEventListener("online", syncOffline);
@@ -416,48 +327,15 @@
     renderBroadcast();
     loadLibrary();
     loadAiring();
-    initReveal();
 
     $("searchInput").addEventListener("input", (e) => renderCollection(e.target.value));
-    $("modalClose").addEventListener("click", closeModal);
-    $("modalCancel").addEventListener("click", closeModal);
-    $("modalSubmit").addEventListener("click", submitModal);
-    $("modeToggle").addEventListener("click", () => setAuthMode(authMode === "signin" ? "signup" : "signin"));
-    $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
-    $("passwordInput").addEventListener("keydown", (e) => { if (e.key === "Enter") submitModal(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMembersModal(); });
 
-    // Realtime for anime & settings
     sb.channel("public-anichan")
       .on("postgres_changes", { event: "*", schema: "public", table: "anime" }, () => loadLibrary())
       .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => renderBroadcast())
       .subscribe();
   });
-
-  // Placeholder functions for loadLibrary/loadAiring (keep your existing ones)
-  async function loadLibrary(){
-    const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
-    if (error) { library = []; } else { library = data || []; }
-    renderCollection($("searchInput").value);
-  }
-  async function loadAiring(){
-    const shelf = $("airingShelf");
-    if (!navigator.onLine) { shelf.innerHTML = '<div class="empty" style="flex:1">Offline</div>'; return; }
-    try {
-      const res = await fetch("https://api.jikan.moe/v4/seasons/now?limit=8");
-      const data = await res.json();
-      shelf.innerHTML = "";
-      (data.data || []).slice(0,8).forEach(a => {
-        const card = document.createElement("div"); card.className = "card";
-        const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
-        img.src = (a.images?.jpg?.image_url) || PLACEHOLDER; img.alt = a.title;
-        const meta = document.createElement("div"); meta.className = "meta";
-        const t = document.createElement("div"); t.className = "title"; t.textContent = a.title;
-        meta.appendChild(t); card.appendChild(img); card.appendChild(meta);
-        shelf.appendChild(card);
-      });
-    } catch { shelf.innerHTML = '<div class="empty" style="flex:1">Could not load</div>'; }
-  }
 })();
 </script>
 </body>

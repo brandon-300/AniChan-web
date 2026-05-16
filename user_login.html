@@ -220,7 +220,6 @@
 
   const currentYear = new Date().getFullYear();
 
-  // Populate months
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   for (let i = 1; i <= 12; i++) {
     const option = document.createElement("option");
@@ -228,8 +227,6 @@
     option.textContent = monthNames[i-1];
     dobMonth.appendChild(option);
   }
-
-  // Populate years (1900 - currentYear)
   for (let y = currentYear; y >= 1900; y--) {
     const option = document.createElement("option");
     option.value = y;
@@ -237,12 +234,10 @@
     dobYear.appendChild(option);
   }
 
-  // Update day options based on selected month & year
   function getDaysInMonth(month, year) {
-    if (!month || !year) return 31; // default max
-    return new Date(year, month, 0).getDate(); // month is 1-indexed, so 0 gives last day of previous month
+    if (!month || !year) return 31;
+    return new Date(year, month, 0).getDate();
   }
-
   function populateDays() {
     const month = parseInt(dobMonth.value);
     const year = parseInt(dobYear.value);
@@ -255,55 +250,38 @@
       option.textContent = d;
       dobDay.appendChild(option);
     }
-    // Restore selected day if within range
-    if (currentDay > 0 && currentDay <= days) {
-      dobDay.value = currentDay;
-    } else {
-      dobDay.value = "";
-    }
+    if (currentDay > 0 && currentDay <= days) dobDay.value = currentDay;
+    else dobDay.value = "";
   }
-
   dobMonth.addEventListener("change", populateDays);
   dobYear.addEventListener("change", populateDays);
-
-  // Initial population
   populateDays();
 
-  // ---------- Age calculation & validation ----------
   function updateAgeField() {
     const day = parseInt(dobDay.value);
     const month = parseInt(dobMonth.value);
     const year = parseInt(dobYear.value);
-    const ageInput = signupAge;
-    const errorEl = ageError;
-
     if (!day || !month || !year) {
-      ageInput.value = "";
-      ageInput.classList.remove("invalid-age");
-      errorEl.classList.remove("show");
+      signupAge.value = "";
+      signupAge.classList.remove("invalid-age");
+      ageError.classList.remove("show");
       return;
     }
-
     const dobDate = new Date(year, month - 1, day);
     const today = new Date();
     let age = today.getFullYear() - dobDate.getFullYear();
     const monthDiff = today.getMonth() - dobDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
-      age--;
-    }
-
-    ageInput.value = age;
-
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) age--;
+    signupAge.value = age;
     if (age < 14) {
-      ageInput.classList.add("invalid-age");
-      errorEl.textContent = "You must be at least 14 years old. Please select a different date of birth.";
-      errorEl.classList.add("show");
+      signupAge.classList.add("invalid-age");
+      ageError.textContent = "You must be at least 14 years old. Please select a different date of birth.";
+      ageError.classList.add("show");
     } else {
-      ageInput.classList.remove("invalid-age");
-      errorEl.classList.remove("show");
+      signupAge.classList.remove("invalid-age");
+      ageError.classList.remove("show");
     }
   }
-
   dobDay.addEventListener("change", updateAgeField);
   dobMonth.addEventListener("change", updateAgeField);
   dobYear.addEventListener("change", updateAgeField);
@@ -314,7 +292,6 @@
     tabSignup.classList.remove("active");
     clearMessages();
   }
-
   function switchToSignup() {
     slider.style.transform = "translateX(-100%)";
     tabSignup.classList.add("active");
@@ -339,61 +316,47 @@
     });
   });
 
-  function resolvePath(filename) {
-    const base = window.location.href.replace(/[^/]*$/, '');
-    return base + filename;
-  }
-
   function clearMessages() {
     $("loginErr").classList.remove("show");
     $("signupErr").classList.remove("show");
     $("signupSuccess").classList.remove("show");
-    // Reset age error display
     signupAge.classList.remove("invalid-age");
     ageError.classList.remove("show");
   }
 
-  // ---------- Login via username ----------
+  // --- Login via username ---
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim();
     const password = $("loginPassword").value;
     const err = $("loginErr");
     err.classList.remove("show");
-
     if (!username || !password) {
       err.textContent = "Please enter both username and password.";
       err.classList.add("show");
       return;
     }
-
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("email")
         .eq("username", username)
         .maybeSingle();
-
       if (profileError) throw profileError;
       if (!profile) {
         err.textContent = "Username does not exist.";
         err.classList.add("show");
         return;
       }
-
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
-        password: password,
-      });
-
+      const { error: authError } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authError) throw authError;
-      window.location.href = resolvePath("index.html");
+      window.location.href = "index.html";
     } catch (e) {
       err.textContent = e.message || "Login failed.";
       err.classList.add("show");
     }
   });
 
-  // ---------- Signup with extended profile (age >= 14 enforced) ----------
+  // --- Signup with profile insert ---
   $("signupSubmit").addEventListener("click", async () => {
     const fullName = $("signupName").value.trim();
     const country = $("signupCountry").value.trim();
@@ -409,84 +372,66 @@
     err.classList.remove("show");
     success.classList.remove("show");
 
-    // Validation: all fields required
     if (!fullName || !country || !username || !email || !password || !day || !month || !year) {
       err.textContent = "All fields are required.";
       err.classList.add("show");
       return;
     }
-
-    // Age validation from auto-calculated field
     const age = parseInt(signupAge.value, 10);
     if (isNaN(age) || age < 14) {
       err.textContent = "You must be at least 14 years old to create an account.";
       err.classList.add("show");
       return;
     }
-
     if (password.length < 6) {
       err.textContent = "Password must be at least 6 characters.";
       err.classList.add("show");
       return;
     }
-
-    // Format DOB as YYYY-MM-DD
     const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
     try {
-      // Check if username already exists
       const { data: existingUser, error: checkError } = await supabase
         .from("profiles")
         .select("id")
         .eq("username", username)
         .maybeSingle();
-
       if (checkError) throw checkError;
       if (existingUser) {
         err.textContent = "Username is already taken.";
         err.classList.add("show");
         return;
       }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            username: username,
-            full_name: fullName,
-          },
-          emailRedirectTo: resolvePath("index.html"),
+          data: { username, full_name: fullName },
+          emailRedirectTo: window.location.origin + "/index.html"
         },
       });
-
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed: no user returned.");
 
       const { error: insertError } = await supabase.from("profiles").insert({
         id: authData.user.id,
-        username: username,
+        username,
         full_name: fullName,
-        age: age,
-        dob: dob,
-        country: country,
-        email: email,
+        age,
+        dob,
+        country,
+        email,
       });
-
       if (insertError) throw new Error("Profile creation failed: " + insertError.message);
 
       success.textContent = "Check your email to confirm your account.";
       success.classList.add("show");
-      // Clear form
       $("signupName").value = "";
       $("signupCountry").value = "";
       $("signupUsername").value = "";
       $("signupEmail").value = "";
       $("signupPassword").value = "";
-      dobDay.value = "";
-      dobMonth.value = "";
-      dobYear.value = "";
-      // Reset days after clearing year/month (populateDays will handle)
+      dobDay.value = ""; dobMonth.value = ""; dobYear.value = "";
       populateDays();
       signupAge.value = "";
       signupAge.classList.remove("invalid-age");
@@ -497,7 +442,6 @@
     }
   });
 
-  // Enter key submission
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const loginActive = tabLogin.classList.contains("active");
