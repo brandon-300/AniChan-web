@@ -117,6 +117,40 @@
   .modal h3{margin:0 0 4px;font-size:18px}
   .modal p{margin:0 0 16px;color:var(--muted);font-size:13px}
   .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+  /* Pagination controls (same as index) */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .pagination button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .pagination button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .pagination button:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--card);
+  }
+  .page-indicator {
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -244,11 +278,16 @@
         <div id="actionLog"></div>
       </section>
 
-      <!-- Collection List -->
+      <!-- Collection List (paginated) -->
       <section class="panel">
         <h2>Collection <span id="countBadge" class="badge" hidden>0</span></h2>
         <p class="help">All anime currently saved in the AniChan database.</p>
-        <div id="list" class="list"></div>
+        <div class="list" id="list"></div>
+        <div class="pagination" id="paginationControls" style="display:none;">
+          <button id="prevPageBtn">← Previous</button>
+          <span class="page-indicator" id="pageIndicator">1 / 1</span>
+          <button id="nextPageBtn">Next →</button>
+        </div>
       </section>
 
     </main>
@@ -283,6 +322,10 @@
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
+
+  const ADMIN_ITEMS_PER_PAGE = 20;
+  let allAnime = [];                // full collection cache
+  let adminPage = 1;
 
   // ---------- Gate ----------
   async function gate(){
@@ -487,10 +530,89 @@
     if (error) { toast("Save failed: " + error.message); return; }
     toast(id ? "Updated" : "Added to collection");
     clearForm();
-    renderList();
+    await loadAnimeList();     // reload full list and reset page 1
   }
 
-  // ---------- Collection list ----------
+  // ---------- Paginated collection rendering ----------
+  async function loadAnimeList(){
+    const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
+    if (error) {
+      allAnime = [];
+    } else {
+      allAnime = data || [];
+    }
+    adminPage = 1;
+    renderPaginatedList();
+  }
+
+  function renderPaginatedList(){
+    const totalItems = allAnime.length;
+    const totalPages = Math.ceil(totalItems / ADMIN_ITEMS_PER_PAGE);
+    if (adminPage < 1) adminPage = 1;
+    if (adminPage > totalPages) adminPage = totalPages || 1;
+
+    const start = (adminPage - 1) * ADMIN_ITEMS_PER_PAGE;
+    const pageItems = allAnime.slice(start, start + ADMIN_ITEMS_PER_PAGE);
+
+    const list = $("list");
+    const badge = $("countBadge");
+    if (totalItems) { badge.hidden = false; badge.textContent = totalItems; }
+    else badge.hidden = true;
+
+    list.innerHTML = "";
+    if (!pageItems.length) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = totalItems ? "No items on this page." : "No items yet. Add one using the form above.";
+      list.appendChild(e);
+    } else {
+      const editingId = $("editId").value;
+      for (const a of pageItems) {
+        const row = document.createElement("div");
+        row.className = "item" + (a.id === editingId ? " editing" : "");
+        const img = document.createElement("img");
+        img.src = a.image_url || PLACEHOLDER;
+        img.onerror = () => { img.src = PLACEHOLDER; };
+        img.alt = "";
+        const wrap = document.createElement("div"); wrap.className = "t-wrap";
+        const t = document.createElement("div"); t.className = "t"; t.textContent = a.title || "Untitled"; wrap.appendChild(t);
+        const meta = buildMetaLine(a);
+        if (meta) {
+          const m = document.createElement("div"); m.className = "meta-line"; m.textContent = meta;
+          wrap.appendChild(m);
+        }
+        const acts = document.createElement("div"); acts.className = "acts";
+        const editBtn = document.createElement("button"); editBtn.className = "btn"; editBtn.textContent = "Edit"; editBtn.addEventListener("click", () => { setEditMode(a); renderPaginatedList(); });
+        const delBtn = document.createElement("button"); delBtn.className = "btn btn-danger"; delBtn.textContent = "Delete"; delBtn.addEventListener("click", async () => {
+          if (!confirm("Delete \"" + (a.title || "this item") + "\"?")) return;
+          const { error } = await sb.from("anime").delete().eq("id", a.id);
+          if (error) { toast("Delete failed: " + error.message); return; }
+          if ($("editId").value === a.id) clearForm();
+          await loadAnimeList(); // reload
+          toast("Deleted");
+        });
+        acts.appendChild(editBtn); acts.appendChild(delBtn);
+        row.appendChild(img); row.appendChild(wrap); row.appendChild(acts);
+        list.appendChild(row);
+      }
+    }
+
+    // Update pagination controls
+    const pagination = $("paginationControls");
+    const prevBtn = $("prevPageBtn");
+    const nextBtn = $("nextPageBtn");
+    const indicator = $("pageIndicator");
+
+    if (totalPages <= 1) {
+      pagination.style.display = "none";
+    } else {
+      pagination.style.display = "flex";
+      prevBtn.disabled = adminPage <= 1;
+      nextBtn.disabled = adminPage >= totalPages;
+      indicator.textContent = `${adminPage} / ${totalPages}`;
+    }
+  }
+
   function buildMetaLine(a){
     const parts = [];
     if (a.status && STATUS_LABELS[a.status]) parts.push(STATUS_LABELS[a.status]);
@@ -502,55 +624,22 @@
     return parts.join(" · ");
   }
 
-  async function renderList(){
-    const list = $("list");
-    const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
-    if (error) { list.innerHTML = '<div class="empty">Failed to load: ' + error.message + '</div>'; return; }
-    const lib = data || [];
-    const badge = $("countBadge");
-    if (lib.length) { badge.hidden = false; badge.textContent = lib.length; }
-    else badge.hidden = true;
-
-    list.innerHTML = "";
-    if (!lib.length) {
-      const e = document.createElement("div");
-      e.className = "empty";
-      e.textContent = "No items yet.";
-      list.appendChild(e);
-      return;
+  // Pagination event listeners
+  $("prevPageBtn").addEventListener("click", () => {
+    if (adminPage > 1) {
+      adminPage--;
+      renderPaginatedList();
     }
-    const editingId = $("editId").value;
-    for (const a of lib) {
-      const row = document.createElement("div");
-      row.className = "item" + (a.id === editingId ? " editing" : "");
-      const img = document.createElement("img");
-      img.src = a.image_url || PLACEHOLDER;
-      img.onerror = () => { img.src = PLACEHOLDER; };
-      img.alt = "";
-      const wrap = document.createElement("div"); wrap.className = "t-wrap";
-      const t = document.createElement("div"); t.className = "t"; t.textContent = a.title || "Untitled"; wrap.appendChild(t);
-      const meta = buildMetaLine(a);
-      if (meta) {
-        const m = document.createElement("div"); m.className = "meta-line"; m.textContent = meta;
-        wrap.appendChild(m);
-      }
-      const acts = document.createElement("div"); acts.className = "acts";
-      const editBtn = document.createElement("button"); editBtn.className = "btn"; editBtn.textContent = "Edit"; editBtn.addEventListener("click", () => { setEditMode(a); renderList(); });
-      const delBtn = document.createElement("button"); delBtn.className = "btn btn-danger"; delBtn.textContent = "Delete"; delBtn.addEventListener("click", async () => {
-        if (!confirm("Delete \"" + (a.title || "this item") + "\"?")) return;
-        const { error } = await sb.from("anime").delete().eq("id", a.id);
-        if (error) { toast("Delete failed: " + error.message); return; }
-        if ($("editId").value === a.id) clearForm();
-        renderList();
-        toast("Deleted");
-      });
-      acts.appendChild(editBtn); acts.appendChild(delBtn);
-      row.appendChild(img); row.appendChild(wrap); row.appendChild(acts);
-      list.appendChild(row);
+  });
+  $("nextPageBtn").addEventListener("click", () => {
+    const totalPages = Math.ceil(allAnime.length / ADMIN_ITEMS_PER_PAGE);
+    if (adminPage < totalPages) {
+      adminPage++;
+      renderPaginatedList();
     }
-  }
+  });
 
-  // ---------- Bulk Import (with score, ep_total, studio) ----------
+  // ---------- Bulk Import (unchanged, but resets page 1 after) ----------
   let bulkPage = 1;
   async function bulkImport(){
     const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -592,7 +681,7 @@
           if (error) throw error;
           added = inserts.length;
           toast(`Imported ${added} anime.`);
-          renderList();
+          await loadAnimeList();   // refresh and reset to page 1
           status.textContent = `Added ${added} from pages ${p1}‑${p2}.`;
           bulkPage += 2;
           break;
@@ -611,7 +700,7 @@
     }
   }
 
-  // ---------- Fix All (updated status logic) ----------
+  // ---------- Fix All (unchanged, but reloads list after) ----------
   function mapAiringStatus(jikanStatus) {
     if (!jikanStatus) return null;
     const s = jikanStatus.toLowerCase();
@@ -628,7 +717,6 @@
     const { data: all, error } = await sb.from("anime").select("*");
     if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
 
-    // NEW: only consider airing statuses as valid (ignore old watch statuses)
     const validAiringStatuses = ["Aired", "Currently Airing", "Not yet aired"];
     const needFix = all.filter(a => {
       const missingScore = a.score == null;
@@ -669,7 +757,6 @@
           if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
             updates.studio = match.studios.map(s => s.name).join(", ");
           }
-          // Fix status: set to airing status regardless of old status
           const mapped = mapAiringStatus(match.status);
           if (mapped) updates.status = mapped;
           if (Object.keys(updates).length) {
@@ -683,7 +770,7 @@
     }
     if (fixedCount > 0) {
       toast(`Fixed ${fixedCount} titles.`);
-      renderList();
+      await loadAnimeList();
     }
     status.textContent = fixedCount > 0 ? `Fixed ${fixedCount} titles.` : "No fixes applied.";
     btn.disabled = false;
@@ -915,7 +1002,7 @@
 
     bindLogout();
     loadBroadcast();
-    renderList();
+    await loadAnimeList();       // initial load
     renderMemberList();
     renderActionLog();
     loadCurrentLogo();
