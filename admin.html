@@ -102,11 +102,22 @@
     box-shadow:0 0 0 3px rgba(29,185,178,.12)}
   .badge{display:inline-block;font-size:11px;color:#062525;background:var(--accent);
     padding:2px 8px;border-radius:999px;font-weight:700;margin-left:8px;vertical-align:middle}
+  .badge.warn{background:#ff8800;color:#000}
 
   .gate{min-height:60vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
   .gate .box{max-width:380px}
 
+  .member-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .member-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover}
+
   footer{padding:30px 0;text-align:center;color:var(--muted);font-size:12px}
+
+  .modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.6);backdrop-filter:blur(10px)}
+  .modal.show{display:flex}
+  .modal .panel{width:100%;max-width:400px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 30px 60px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
+  .modal h3{margin:0 0 4px;font-size:18px}
+  .modal p{margin:0 0 16px;color:var(--muted);font-size:13px}
+  .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 </style>
 </head>
 <body>
@@ -133,6 +144,7 @@
 
     <main class="wrap">
 
+      <!-- Broadcast -->
       <section class="panel">
         <h2>Broadcast</h2>
         <p class="help">Shown to everyone on the homepage. Leave empty and save to clear.</p>
@@ -144,6 +156,7 @@
         </div>
       </section>
 
+      <!-- Smart Auto-Fetch -->
       <section class="panel">
         <h2>Smart Auto-Fetch</h2>
         <p class="help">Search the Jikan API and click a result to auto-fill the form below.</p>
@@ -153,79 +166,97 @@
         </div>
         <div id="searchResults" class="results" hidden></div>
         <div id="searchStatus" class="empty" hidden></div>
+
+        <!-- Bulk Import -->
+        <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
+          <p class="help" style="margin-bottom:10px;">Import 50 popular anime at once (no duplicates).</p>
+          <button class="btn btn-primary" id="bulkImportBtn">Bulk Import 50 Anime</button>
+          <span id="bulkStatus" style="font-size:12px; color:var(--muted); margin-left:12px;"></span>
+        </div>
       </section>
 
+      <!-- Add/Edit Anime Form -->
       <section class="panel">
         <h2 id="formTitle">Add to Collection</h2>
         <p class="help">Add a new anime or update an existing one. Only the title is required.</p>
         <input type="hidden" id="editId" />
-
         <label for="titleInput">Title</label>
         <input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" />
-
         <label for="imageInput">Image URL</label>
         <input id="imageInput" type="url" placeholder="https://…" />
-
         <div class="form-grid-2" style="margin-top:6px">
-          <div>
-            <label for="statusInput">Status</label>
-            <select id="statusInput">
-              <option value="">— None —</option>
-              <option value="watching">Watching</option>
-              <option value="completed">Completed</option>
-              <option value="planned">Plan to Watch</option>
-              <option value="dropped">Dropped</option>
-            </select>
-          </div>
-          <div>
-            <label for="typeInput">Type</label>
-            <select id="typeInput">
-              <option value="">— None —</option>
-              <option value="TV">TV</option>
-              <option value="Movie">Movie</option>
-              <option value="OVA">OVA</option>
-              <option value="ONA">ONA</option>
-              <option value="Special">Special</option>
-              <option value="Music">Music</option>
-            </select>
-          </div>
+          <div><label for="statusInput">Status</label><select id="statusInput"><option value="">— None —</option><option value="watching">Watching</option><option value="completed">Completed</option><option value="planned">Plan to Watch</option><option value="dropped">Dropped</option></select></div>
+          <div><label for="typeInput">Type</label><select id="typeInput"><option value="">— None —</option><option value="TV">TV</option><option value="Movie">Movie</option><option value="OVA">OVA</option><option value="ONA">ONA</option><option value="Special">Special</option><option value="Music">Music</option></select></div>
         </div>
-
         <div class="form-grid-3" style="margin-top:10px">
-          <div><label for="scoreInput">Score (1–10)</label>
-            <input id="scoreInput" type="number" min="1" max="10" step="0.1" placeholder="—" /></div>
-          <div><label for="epWatchedInput">Eps watched</label>
-            <input id="epWatchedInput" type="number" min="0" step="1" placeholder="—" /></div>
-          <div><label for="epTotalInput">Eps total</label>
-            <input id="epTotalInput" type="number" min="0" step="1" placeholder="—" /></div>
+          <div><label for="scoreInput">Score (1–10)</label><input id="scoreInput" type="number" min="1" max="10" step="0.1" placeholder="—" /></div>
+          <div><label for="epWatchedInput">Eps watched</label><input id="epWatchedInput" type="number" min="0" step="1" placeholder="—" /></div>
+          <div><label for="epTotalInput">Eps total</label><input id="epTotalInput" type="number" min="0" step="1" placeholder="—" /></div>
         </div>
-
         <div class="form-grid-2" style="margin-top:10px">
-          <div><label for="yearInput">Year</label>
-            <input id="yearInput" type="number" min="1900" max="2100" step="1" placeholder="e.g. 2024" /></div>
-          <div>
-            <label for="genresInput">Genres (comma-separated)</label>
-            <input id="genresInput" type="text" placeholder="Action, Fantasy, Adventure" />
-            <div id="genresPreview" class="chip-preview"></div>
-          </div>
+          <div><label for="yearInput">Year</label><input id="yearInput" type="number" min="1900" max="2100" step="1" placeholder="e.g. 2024" /></div>
+          <div><label for="genresInput">Genres (comma-separated)</label><input id="genresInput" type="text" placeholder="Action, Fantasy, Adventure" /><div id="genresPreview" class="chip-preview"></div></div>
         </div>
-
-        <label for="notesInput">Notes</label>
-        <textarea id="notesInput" rows="3" placeholder="Personal thoughts, recs, where you left off…"></textarea>
-
+        <label for="notesInput">Notes</label><textarea id="notesInput" rows="3" placeholder="Personal thoughts..."></textarea>
         <div class="row end">
           <button class="btn" id="cancelEdit" hidden>Cancel Edit</button>
           <button class="btn btn-primary" id="saveItem">Save</button>
         </div>
       </section>
 
+      <!-- Collection List -->
       <section class="panel">
         <h2>Collection <span id="countBadge" class="badge" hidden>0</span></h2>
         <p class="help">All anime currently saved in the AniChan database.</p>
         <div id="list" class="list"></div>
       </section>
 
+      <!-- Member Management -->
+      <section class="panel" id="memberPanel">
+        <h2>Member Management</h2>
+        <p class="help">View, suspend, or delete any registered user.</p>
+        <div id="memberList"></div>
+        <div style="margin-top:16px">
+          <button class="btn" id="refreshMembers">Refresh list</button>
+        </div>
+      </section>
+
+      <!-- Admin Actions Log -->
+      <section class="panel" id="logPanel">
+        <h2>Recent Admin Actions</h2>
+        <div id="actionLog"></div>
+      </section>
+
+      <!-- ───── NEW: Change Site Logo ───── -->
+      <section class="panel">
+        <h2>Site Logo</h2>
+        <p class="help">Change the logo that appears in the homepage header.</p>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+          <img id="currentLogoPreview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
+          <div>
+            <div style="font-size:12px;color:var(--muted)">Current logo</div>
+            <div id="currentLogoUrl" style="font-size:11px;color:var(--muted);word-break:break-all;"></div>
+          </div>
+        </div>
+        <input type="file" id="logoFileInput" accept="image/*" />
+        <div class="row end">
+          <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- Suspend/Delete dialog -->
+  <div class="modal" id="memberModal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true">
+      <h3 id="memberModalTitle">Suspend user</h3>
+      <div id="memberModalContent"></div>
+      <div class="row">
+        <button class="btn" id="memberModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="memberModalConfirm">Confirm</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -233,15 +264,17 @@
 
 <script>
 (() => {
-  // 🔁 Updated Supabase project credentials
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
   const ADMIN_EMAIL = "g09649009@gmail.com";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const $ = (id) => document.getElementById(id);
+  const $ = id => document.getElementById(id);
   const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'
+  );
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
 
   // ---------- Gate ----------
@@ -249,8 +282,8 @@
     $("gate").style.display = "flex";
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
-      $("gateMsg").textContent = "You're not signed in. Redirecting to home…";
-      setTimeout(() => location.replace("index.html"), 800);
+      $("gateMsg").textContent = "You're not signed in. Redirecting to admin login…";
+      setTimeout(() => location.replace("admin_login.html"), 800);
       return false;
     }
     if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) {
@@ -512,14 +545,264 @@
     }
   }
 
+  // ---------- Bulk Import ----------
+  async function bulkImport(){
+    const btn = $("bulkImportBtn");
+    const status = $("bulkStatus");
+    btn.disabled = true;
+    status.textContent = "Fetching top anime…";
+    try {
+      const res = await fetch("https://api.jikan.moe/v4/top/anime?limit=50");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const list = data.data || [];
+      if (!list.length) { status.textContent = "No results."; return; }
+
+      const { data: existing } = await sb.from("anime").select("title");
+      const existingTitles = new Set((existing || []).map(item => item.title.toLowerCase().trim()));
+
+      let added = 0;
+      const inserts = [];
+      for (const a of list) {
+        const title = (a.title || "Untitled").trim();
+        if (existingTitles.has(title.toLowerCase())) continue;
+        const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
+        const type = normalizeType(a.type) || null;
+        const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
+        const genres = (a.genres || []).map(g => g.name).filter(Boolean);
+        inserts.push({ title, image_url, type, year, genres, status: 'planned' });
+        added++;
+        if (added >= 50) break;
+      }
+
+      if (inserts.length) {
+        const { error: insertErr } = await sb.from("anime").insert(inserts);
+        if (insertErr) throw insertErr;
+        toast(`Imported ${inserts.length} anime successfully.`);
+        renderList();
+        status.textContent = `Added ${inserts.length} new entries.`;
+      } else {
+        status.textContent = "No new anime to import (all already exist).";
+      }
+    } catch (e) {
+      console.warn("Bulk import failed:", e);
+      status.textContent = "Import failed.";
+      toast("Bulk import failed: " + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---------- Member Management ----------
+  let memberAction = null;
+  let selectedUserId = null;
+  let currentAdminId = null;
+
+  function openMemberModal(action, userId, username) {
+    memberAction = action;
+    selectedUserId = userId;
+    $("memberModalTitle").textContent = action === 'suspend' ? `Suspend @${username}` : `Delete @${username}`;
+    let content = '';
+    if (action === 'suspend') {
+      content = `
+        <div class="field">
+          <label for="suspendDuration">Duration</label>
+          <input type="number" id="suspendDuration" min="1" max="30" value="1" />
+          <select id="suspendUnit">
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+          </select>
+        </div>`;
+    }
+    content += `
+      <div class="field">
+        <label for="adminNote">Admin note (required)</label>
+        <textarea id="adminNote" rows="3" placeholder="Reason..."></textarea>
+      </div>`;
+    $("memberModalContent").innerHTML = content;
+    $("memberModal").classList.add("show");
+  }
+
+  function closeMemberModal() {
+    $("memberModal").classList.remove("show");
+    memberAction = null;
+    selectedUserId = null;
+  }
+
+  $("memberModalCancel").addEventListener("click", closeMemberModal);
+  $("memberModalConfirm").addEventListener("click", async () => {
+    const note = $("adminNote").value.trim();
+    if (!note) { toast("Admin note is required."); return; }
+
+    if (memberAction === 'suspend') {
+      const duration = parseInt($("suspendDuration").value);
+      const unit = $("suspendUnit").value;
+      if (isNaN(duration) || duration < 1) { toast("Invalid duration."); return; }
+      let suspendedUntil = new Date();
+      if (unit === 'hours') suspendedUntil.setHours(suspendedUntil.getHours() + duration);
+      else suspendedUntil.setDate(suspendedUntil.getDate() + duration);
+      const { error } = await sb.from("profiles").update({
+        is_suspended: true,
+        suspended_until: suspendedUntil.toISOString(),
+        admin_note: note
+      }).eq("id", selectedUserId);
+      if (error) { toast("Failed: " + error.message); closeMemberModal(); return; }
+      await sb.from("admin_actions").insert({
+        admin_id: currentAdminId,
+        target_user_id: selectedUserId,
+        action: 'suspend',
+        admin_note: note
+      });
+      toast("User suspended.");
+      closeMemberModal();
+      renderMemberList();
+      renderActionLog();
+    } else if (memberAction === 'delete') {
+      const { error } = await sb.from("profiles").update({
+        is_pending_delete: true,
+        deleted_at: new Date().toISOString(),
+        admin_note: note
+      }).eq("id", selectedUserId);
+      if (error) { toast("Failed: " + error.message); closeMemberModal(); return; }
+      await sb.from("admin_actions").insert({
+        admin_id: currentAdminId,
+        target_user_id: selectedUserId,
+        action: 'delete',
+        admin_note: note
+      });
+      toast("User marked for deletion (2-hour grace).");
+      closeMemberModal();
+      renderMemberList();
+      renderActionLog();
+    }
+  });
+
+  async function unsuspendUser(userId) {
+    const { error } = await sb.from("profiles").update({
+      is_suspended: false,
+      suspended_until: null,
+      admin_note: null
+    }).eq("id", userId);
+    if (error) { toast("Unsuspend failed."); return; }
+    await sb.from("admin_actions").insert({
+      admin_id: currentAdminId,
+      target_user_id: userId,
+      action: 'unsuspend',
+      admin_note: ''
+    });
+    toast("User unsuspended.");
+    renderMemberList();
+    renderActionLog();
+  }
+
+  async function renderMemberList() {
+    const container = $("memberList");
+    container.innerHTML = "Loading...";
+    const { data: users, error } = await sb.from("profiles").select("*").order("username");
+    if (error) { container.innerHTML = "Error loading members."; return; }
+    container.innerHTML = "";
+    users.forEach(user => {
+      const row = document.createElement("div");
+      row.className = "member-item";
+      let statusBadge = user.is_online ? '<span class="badge">Online</span>' : '<span class="badge" style="background:var(--offline)">Offline</span>';
+      if (user.is_suspended) statusBadge += ' <span class="badge warn">Suspended</span>';
+      if (user.is_pending_delete) statusBadge += ' <span class="badge warn" style="background:var(--danger)">Pending delete</span>';
+      row.innerHTML = `
+        <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div style="flex:1">
+          <strong>@${user.username}</strong> ${statusBadge}
+          <div style="font-size:11px;color:var(--muted)">${user.full_name || ''}</div>
+        </div>
+        <div class="acts">
+          <a class="btn" href="profile.html?user=${user.id}" target="_blank">View</a>
+          ${user.is_suspended ? `<button class="btn" onclick="window.unsuspendUser('${user.id}')">Unsuspend</button>` : `<button class="btn" onclick="window.openMemberModal('suspend','${user.id}','${user.username}')">Suspend</button>`}
+          <button class="btn btn-danger" onclick="window.openMemberModal('delete','${user.id}','${user.username}')">Delete</button>
+        </div>`;
+      container.appendChild(row);
+    });
+  }
+
+  async function renderActionLog() {
+    const container = $("actionLog");
+    const { data, error } = await sb.from("admin_actions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) { container.innerHTML = "Could not load log."; return; }
+    container.innerHTML = "";
+    data.forEach(log => {
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;color:var(--muted);margin-bottom:4px;border-bottom:1px solid var(--border);padding:4px 0";
+      div.innerHTML = `<span style="color:var(--accent)">${log.action}</span> user ${log.target_user_id} by admin ${log.admin_id} — ${log.admin_note} (${new Date(log.created_at).toLocaleString()})`;
+      container.appendChild(div);
+    });
+  }
+
+  // Expose for inline onclick
+  window.unsuspendUser = unsuspendUser;
+  window.openMemberModal = openMemberModal;
+
+  // ---------- Site Logo ----------
+  async function loadCurrentLogo() {
+    const { data, error } = await sb
+      .from("settings")
+      .select("value")
+      .eq("key", "site_logo")
+      .maybeSingle();
+    if (error) return;
+    const url = data && data.value ? data.value : "";
+    const preview = $("currentLogoPreview");
+    const urlDisplay = $("currentLogoUrl");
+    if (url) {
+      preview.src = url;
+      urlDisplay.textContent = url;
+    } else {
+      preview.src = DEFAULT_AVATAR;  // placeholder
+      urlDisplay.textContent = "No logo set";
+    }
+  }
+
+  async function uploadAndSaveLogo(file) {
+    if (!file) { toast("Please select an image file."); return; }
+    // Upload to avatars bucket, path 'site-logo/logo.png' (overwrite)
+    const { error: uploadError } = await sb.storage
+      .from("avatars")
+      .upload("site-logo/logo.png", file, { upsert: true });
+    if (uploadError) { toast("Upload failed: " + uploadError.message); return; }
+
+    // Get public URL
+    const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
+    const newUrl = urlData?.publicUrl;
+    if (!newUrl) { toast("Could not get public URL."); return; }
+
+    // Update settings table
+    const { error: upsertError } = await sb.from("settings").upsert({
+      key: "site_logo",
+      value: newUrl,
+      updated_at: new Date().toISOString()
+    });
+    if (upsertError) { toast("Settings update failed: " + upsertError.message); return; }
+
+    // Update preview
+    $("currentLogoPreview").src = newUrl;
+    $("currentLogoUrl").textContent = newUrl;
+    toast("Logo updated successfully!");
+  }
+
   // ---------- Init ----------
   document.addEventListener("DOMContentLoaded", async () => {
     const ok = await gate();
     if (!ok) return;
 
+    const { data: { session } } = await sb.auth.getSession();
+    currentAdminId = session.user.id;
+
     bindLogout();
     loadBroadcast();
     renderList();
+    renderMemberList();
+    renderActionLog();
+    loadCurrentLogo();
 
     $("broadcastSave").addEventListener("click", () => saveBroadcast($("broadcastInput").value.trim()));
     $("broadcastClear").addEventListener("click", () => { $("broadcastInput").value = ""; saveBroadcast(""); });
@@ -531,8 +814,17 @@
     $("cancelEdit").addEventListener("click", clearForm);
     $("saveItem").addEventListener("click", saveItem);
 
+    $("bulkImportBtn").addEventListener("click", bulkImport);
+    $("refreshMembers").addEventListener("click", renderMemberList);
+
+    // Logo upload
+    $("uploadLogoBtn").addEventListener("click", () => {
+      const file = $("logoFileInput").files[0];
+      uploadAndSaveLogo(file);
+    });
+
     sb.auth.onAuthStateChange((_e, s) => {
-      if (!s || (s.user.email || "").toLowerCase() !== ADMIN_EMAIL) location.replace("index.html");
+      if (!s || (s.user.email || "").toLowerCase() !== ADMIN_EMAIL) location.replace("admin_login.html");
     });
   });
 })();
