@@ -182,7 +182,7 @@
 
         <!-- Bulk Import -->
         <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
-          <p class="help" style="margin-bottom:10px;">Import 50 popular anime at once (no duplicates). Each click loads the next batch.</p>
+          <p class="help" style="margin-bottom:10px;">Import 50 popular anime at once (no duplicates). Automatically fetches next pages until new titles are found.</p>
           <button class="btn btn-primary" id="bulkImportBtn">Bulk Import 50 Anime</button>
           <span id="bulkStatus" style="font-size:12px; color:var(--muted); margin-left:12px;"></span>
         </div>
@@ -217,14 +217,7 @@
         </div>
       </section>
 
-      <!-- Collection List -->
-      <section class="panel">
-        <h2>Collection <span id="countBadge" class="badge" hidden>0</span></h2>
-        <p class="help">All anime currently saved in the AniChan database.</p>
-        <div id="list" class="list"></div>
-      </section>
-
-      <!-- Member Management -->
+      <!-- Member Management (moved up) -->
       <section class="panel" id="memberPanel">
         <h2>Member Management</h2>
         <p class="help">View, suspend, or delete any registered user.</p>
@@ -234,10 +227,17 @@
         </div>
       </section>
 
-      <!-- Admin Actions Log -->
+      <!-- Admin Actions Log (moved up) -->
       <section class="panel" id="logPanel">
         <h2>Recent Admin Actions</h2>
         <div id="actionLog"></div>
+      </section>
+
+      <!-- Collection List (now below) -->
+      <section class="panel">
+        <h2>Collection <span id="countBadge" class="badge" hidden>0</span></h2>
+        <p class="help">All anime currently saved in the AniChan database.</p>
+        <div id="list" class="list"></div>
       </section>
 
     </main>
@@ -540,68 +540,86 @@
     }
   }
 
-  // ---------- Bulk Import (pages auto‑advance) ----------
-  let bulkPage = 1;   // next page pair to fetch (1 => pages 1 & 2)
+  // ---------- Bulk Import (auto-advance until new titles found) ----------
+  let bulkPage = 1;
 
   async function bulkImport(){
     const btn = $("bulkImportBtn");
     const status = $("bulkStatus");
+    const originalText = btn.textContent;
     btn.disabled = true;
-    const p1 = bulkPage;
-    const p2 = bulkPage + 1;
-    status.textContent = `Fetching top anime (pages ${p1}‑${p2})…`;
+    btn.textContent = "Importing…";
+    status.textContent = "Searching for new titles…";
+
+    const existing = (await sb.from("anime").select("title")).data || [];
+    const existingTitles = new Set(existing.map(item => item.title.toLowerCase().trim()));
+
+    const maxAttempts = 50; // safety stop – 50 page pairs = 2500 titles
+    let attempts = 0;
+    let added = 0;
 
     try {
-      const [res1, res2] = await Promise.all([
-        fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p1}`),
-        fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p2}`)
-      ]);
+      while (attempts < maxAttempts) {
+        attempts++;
+        const p1 = bulkPage;
+        const p2 = bulkPage + 1;
+        status.textContent = `Checking pages ${p1}‑${p2}…`;
 
-      if (!res1.ok) throw new Error("Page " + p1 + " failed: HTTP " + res1.status);
-      if (!res2.ok) throw new Error("Page " + p2 + " failed: HTTP " + res2.status);
+        const [res1, res2] = await Promise.all([
+          fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p1}`),
+          fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p2}`)
+        ]);
 
-      const data1 = await res1.json();
-      const data2 = await res2.json();
-      const list = [
-        ...(data1.data || []),
-        ...(data2.data || [])
-      ];
+        if (!res1.ok && !res2.ok) {
+          // both pages failed – probably reached end of list
+          status.textContent = "No more pages available.";
+          break;
+        }
 
-      if (!list.length) {
-        status.textContent = "No more titles available.";
-        btn.disabled = false;
-        return;
-      }
+        const data1 = res1.ok ? (await res1.json()).data || [] : [];
+        const data2 = res2.ok ? (await res2.json()).data || [] : [];
+        const list = [...data1, ...data2];
 
-      const { data: existing } = await sb.from("anime").select("title");
-      const existingTitles = new Set((existing || []).map(item => item.title.toLowerCase().trim()));
+        if (list.length === 0) {
+          status.textContent = "No more titles available.";
+          break;
+        }
 
-      let added = 0;
-      const inserts = [];
-      for (const a of list) {
-        const title = (a.title || "Untitled").trim();
-        if (existingTitles.has(title.toLowerCase())) continue;
-        const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
-        const type = normalizeType(a.type) || null;
-        const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
-        const genres = (a.genres || []).map(g => g.name).filter(Boolean);
-        inserts.push({ title, image_url, type, year, genres, status: 'planned' });
-        added++;
-        if (added >= 50) break;
-      }
+        const newInserts = [];
+        for (const a of list) {
+          const title = (a.title || "").trim();
+          if (!title || existingTitles.has(title.toLowerCase())) continue;
+          const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
+          const type = normalizeType(a.type) || null;
+          const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
+          const genres = (a.genres || []).map(g => g.name).filter(Boolean);
+          newInserts.push({ title, image_url, type, year, genres, status: 'planned' });
+          existingTitles.add(title.toLowerCase());
+          if (newInserts.length >= 50) break;
+        }
 
-      if (inserts.length) {
-        const { error: insertErr } = await sb.from("anime").insert(inserts);
-        if (insertErr) throw insertErr;
-        toast(`Imported ${inserts.length} anime successfully.`);
-        renderList();
-        status.textContent = `Added ${inserts.length} new entries.`;
-        // Advance to next page pair only if we actually added something
+        if (newInserts.length > 0) {
+          const { error: insertErr } = await sb.from("anime").insert(newInserts);
+          if (insertErr) throw insertErr;
+          added = newInserts.length;
+          toast(`Imported ${added} anime successfully.`);
+          renderList();
+          status.textContent = `Added ${added} new entries from pages ${p1}‑${p2}.`;
+          bulkPage += 2; // advance for next click
+          break; // stop after successful import
+        }
+
+        // Nothing new in this batch → advance to next pages
         bulkPage += 2;
-      } else {
-        // Nothing new in this batch – maybe no more titles, but still advance
-        status.textContent = "No new titles in this batch (may already exist).";
-        bulkPage += 2;   // keep advancing to try later pages
+        status.textContent = `No new titles on pages ${p1}‑${p2}, trying next…`;
+      }
+
+      if (added === 0 && attempts >= maxAttempts) {
+        status.textContent = "Reached maximum page limit. Try again later.";
+        toast("No new titles found in available pages.");
+      } else if (added === 0 && attempts < maxAttempts) {
+        status.textContent = "No new titles found in the next pages.";
+        toast("No new titles to import.");
       }
     } catch (e) {
       console.warn("Bulk import failed:", e);
@@ -609,6 +627,7 @@
       toast("Bulk import failed: " + e.message);
     } finally {
       btn.disabled = false;
+      btn.textContent = originalText;
     }
   }
 
@@ -714,6 +733,21 @@
     renderActionLog();
   }
 
+  function formatLastSeen(iso) {
+    if (!iso) return "Never";
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+
   async function renderMemberList() {
     const container = $("memberList");
     container.innerHTML = "Loading...";
@@ -723,7 +757,10 @@
     users.forEach(user => {
       const row = document.createElement("div");
       row.className = "member-item";
-      let statusBadge = user.is_online ? '<span class="badge">Online</span>' : '<span class="badge" style="background:var(--offline)">Offline</span>';
+      const onlineStatus = user.is_online
+        ? '<span class="badge">Online</span>'
+        : `<span class="badge" style="background:var(--offline)">Offline since ${formatLastSeen(user.last_seen)}</span>`;
+      let statusBadge = onlineStatus;
       if (user.is_suspended) statusBadge += ' <span class="badge warn">Suspended</span>';
       if (user.is_pending_delete) statusBadge += ' <span class="badge warn" style="background:var(--danger)">Pending delete</span>';
       row.innerHTML = `
@@ -772,7 +809,7 @@
     const preview = $("currentLogoPreview");
     const urlDisplay = $("currentLogoUrl");
     if (url) {
-      preview.src = url;
+      preview.src = url + '?t=' + Date.now();   // cache buster for preview too
       urlDisplay.textContent = url;
     } else {
       preview.src = DEFAULT_AVATAR;
@@ -782,24 +819,37 @@
 
   async function uploadAndSaveLogo(file) {
     if (!file) { toast("Please select an image file."); return; }
-    const { error: uploadError } = await sb.storage
-      .from("avatars")
-      .upload("site-logo/logo.png", file, { upsert: true });
-    if (uploadError) { toast("Upload failed: " + uploadError.message); return; }
+    const btn = $("uploadLogoBtn");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Uploading…";
+    try {
+      const { error: uploadError } = await sb.storage
+        .from("avatars")
+        .upload("site-logo/logo.png", file, { upsert: true });
+      if (uploadError) throw new Error("Upload failed: " + uploadError.message);
 
-    const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
-    const newUrl = urlData?.publicUrl;
-    if (!newUrl) { toast("Could not get public URL."); return; }
+      const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
+      const newUrl = urlData?.publicUrl;
+      if (!newUrl) throw new Error("Could not get public URL.");
 
-    const { error: upsertError } = await sb.from("settings").upsert({
-      key: "site_logo",
-      value: newUrl
-    });
-    if (upsertError) { toast("Settings update failed: " + upsertError.message); return; }
+      const { error: upsertError } = await sb.from("settings").upsert({
+        key: "site_logo",
+        value: newUrl
+      });
+      if (upsertError) throw new Error("Settings update failed: " + upsertError.message);
 
-    $("currentLogoPreview").src = newUrl;
-    $("currentLogoUrl").textContent = newUrl;
-    toast("Logo updated successfully!");
+      // Update preview with cache buster
+      $("currentLogoPreview").src = newUrl + '?t=' + Date.now();
+      $("currentLogoUrl").textContent = newUrl;
+      toast("Logo updated successfully!");
+    } catch (e) {
+      toast(e.message);
+      console.warn(e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 
   // ---------- Init ----------
