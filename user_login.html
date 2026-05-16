@@ -149,12 +149,16 @@
             Don't have an account? <button id="switchToSignup">Sign up</button>
           </div>
         </div>
-        <!-- Signup panel (extended fields) -->
+        <!-- Signup panel -->
         <div class="form-panel" id="signupPanel">
           <h2>Create account</h2>
           <div class="field">
-            <label for="signupName">Full name</label>
-            <input id="signupName" type="text" autocomplete="name" placeholder="Your full name" />
+            <label for="signupFirstName">First name</label>
+            <input id="signupFirstName" type="text" autocomplete="given-name" placeholder="First name" />
+          </div>
+          <div class="field">
+            <label for="signupLastName">Last name</label>
+            <input id="signupLastName" type="text" autocomplete="family-name" placeholder="Last name" />
           </div>
           <div class="field">
             <label>Date of birth</label>
@@ -184,7 +188,7 @@
           <div class="field">
             <label for="signupPassword">Password</label>
             <div class="pwd-wrap">
-              <input id="signupPassword" type="password" autocomplete="new-password" placeholder="••••••••" />
+              <input id="signupPassword" type="password" autocomplete="new-password" placeholder="At least 8 chars, 1 letter, 1 number, 1 special" />
               <button type="button" class="reveal" data-target="signupPassword">👁️</button>
             </div>
           </div>
@@ -219,7 +223,6 @@
   const ageError = $("ageError");
 
   const currentYear = new Date().getFullYear();
-
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   for (let i = 1; i <= 12; i++) {
     const option = document.createElement("option");
@@ -324,6 +327,15 @@
     ageError.classList.remove("show");
   }
 
+  // Password strength validation
+  function isValidPassword(pw) {
+    if (pw.length < 8) return false;
+    const hasLetter = /[a-zA-Z]/.test(pw);
+    const hasNumber = /[0-9]/.test(pw);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(pw);
+    return hasLetter && hasNumber && hasSpecial;
+  }
+
   // --- Login via username ---
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim();
@@ -356,9 +368,10 @@
     }
   });
 
-  // --- Signup with profile insert ---
+  // --- Signup ---
   $("signupSubmit").addEventListener("click", async () => {
-    const fullName = $("signupName").value.trim();
+    const firstName = $("signupFirstName").value.trim();
+    const lastName = $("signupLastName").value.trim();
     const country = $("signupCountry").value.trim();
     const username = $("signupUsername").value.trim();
     const email = $("signupEmail").value.trim();
@@ -372,25 +385,32 @@
     err.classList.remove("show");
     success.classList.remove("show");
 
-    if (!fullName || !country || !username || !email || !password || !day || !month || !year) {
+    // All fields compulsory
+    if (!firstName || !lastName || !country || !username || !email || !password || !day || !month || !year) {
       err.textContent = "All fields are required.";
       err.classList.add("show");
       return;
     }
+
     const age = parseInt(signupAge.value, 10);
     if (isNaN(age) || age < 14) {
       err.textContent = "You must be at least 14 years old to create an account.";
       err.classList.add("show");
       return;
     }
-    if (password.length < 6) {
-      err.textContent = "Password must be at least 6 characters.";
+
+    // Password rules
+    if (!isValidPassword(password)) {
+      err.textContent = "Password must be at least 8 characters with at least 1 letter, 1 number, and 1 special character.";
       err.classList.add("show");
       return;
     }
+
+    const fullName = `${firstName} ${lastName}`;
     const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
     try {
+      // Check username uniqueness
       const { data: existingUser, error: checkError } = await supabase
         .from("profiles")
         .select("id")
@@ -402,6 +422,7 @@
         err.classList.add("show");
         return;
       }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -426,7 +447,9 @@
 
       success.textContent = "Check your email to confirm your account.";
       success.classList.add("show");
-      $("signupName").value = "";
+      // Clear form
+      $("signupFirstName").value = "";
+      $("signupLastName").value = "";
       $("signupCountry").value = "";
       $("signupUsername").value = "";
       $("signupEmail").value = "";
