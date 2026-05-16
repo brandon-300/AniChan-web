@@ -28,7 +28,7 @@
   .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
   .brand{font-weight:800;font-size:18px}
   .brand span{color:var(--accent)}
-  .crumb{color:var(--muted);font-size:12px;margin-top:2px}
+  .hd-actions{display:flex;gap:8px;align-items:center}
 
   .btn{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
@@ -39,7 +39,6 @@
   .btn-primary:hover{filter:brightness(1.05)}
   .btn-danger{background:transparent;border-color:#3a1f24;color:var(--danger)}
   .btn-ghost{background:transparent}
-  .hd-actions{display:flex;gap:8px;align-items:center}
 
   .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;
     padding:18px;margin:16px 0}
@@ -132,10 +131,7 @@
   <div id="app" style="display:none">
     <header class="app">
       <div class="wrap hd">
-        <div>
-          <div class="brand">Ani<span>Chan</span> Admin</div>
-          <div class="crumb"><a href="index.html">← Back to Home</a></div>
-        </div>
+        <div class="brand">Ani<span>Chan</span> Admin</div>
         <div class="hd-actions">
           <button class="btn btn-danger" id="logoutBtn">Logout</button>
         </div>
@@ -153,6 +149,23 @@
         <div class="row end">
           <button class="btn" id="broadcastClear">Clear</button>
           <button class="btn btn-primary" id="broadcastSave">Save broadcast</button>
+        </div>
+      </section>
+
+      <!-- Site Logo (moved up here) -->
+      <section class="panel">
+        <h2>Site Logo</h2>
+        <p class="help">Change the logo that appears in the homepage header.</p>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+          <img id="currentLogoPreview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
+          <div>
+            <div style="font-size:12px;color:var(--muted)">Current logo</div>
+            <div id="currentLogoUrl" style="font-size:11px;color:var(--muted);word-break:break-all;"></div>
+          </div>
+        </div>
+        <input type="file" id="logoFileInput" accept="image/*" />
+        <div class="row end">
+          <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
         </div>
       </section>
 
@@ -225,23 +238,6 @@
       <section class="panel" id="logPanel">
         <h2>Recent Admin Actions</h2>
         <div id="actionLog"></div>
-      </section>
-
-      <!-- ───── NEW: Change Site Logo ───── -->
-      <section class="panel">
-        <h2>Site Logo</h2>
-        <p class="help">Change the logo that appears in the homepage header.</p>
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-          <img id="currentLogoPreview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
-          <div>
-            <div style="font-size:12px;color:var(--muted)">Current logo</div>
-            <div id="currentLogoUrl" style="font-size:11px;color:var(--muted);word-break:break-all;"></div>
-          </div>
-        </div>
-        <input type="file" id="logoFileInput" accept="image/*" />
-        <div class="row end">
-          <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
-        </div>
       </section>
 
     </main>
@@ -319,10 +315,10 @@
     $("broadcastInput").value = (data && data.value) || "";
   }
   async function saveBroadcast(value){
+    // Upsert without updated_at
     const { error } = await sb.from("settings").upsert({
       key: "broadcast_message",
-      value: value || "",
-      updated_at: new Date().toISOString()
+      value: value || ""
     });
     if (error) toast("Save failed: " + error.message);
     else toast(value ? "Broadcast saved" : "Broadcast cleared");
@@ -757,7 +753,7 @@
       preview.src = url;
       urlDisplay.textContent = url;
     } else {
-      preview.src = DEFAULT_AVATAR;  // placeholder
+      preview.src = DEFAULT_AVATAR;
       urlDisplay.textContent = "No logo set";
     }
   }
@@ -775,11 +771,10 @@
     const newUrl = urlData?.publicUrl;
     if (!newUrl) { toast("Could not get public URL."); return; }
 
-    // Update settings table
+    // Update settings table (no updated_at column)
     const { error: upsertError } = await sb.from("settings").upsert({
       key: "site_logo",
-      value: newUrl,
-      updated_at: new Date().toISOString()
+      value: newUrl
     });
     if (upsertError) { toast("Settings update failed: " + upsertError.message); return; }
 

@@ -30,10 +30,10 @@
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     border-bottom:1px solid var(--border)}
   #offline.show + header.app{top:32px}
-  .hd{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px} /* increased vertical padding */
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.3px}
   .brand span{color:var(--accent)}
-  .logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-block;background:var(--panel);}
+  .logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-block;flex-shrink:0}
   .hd-actions{display:flex;gap:8px;flex-wrap:wrap}
   .btn{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
@@ -61,17 +61,18 @@
   .search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);
     color:var(--muted);font-size:16px}
 
-  /* Section layout – two columns on larger screens, single column on mobile */
+  /* Sections stacked vertically on all screens */
   .sections-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
     margin-top: 20px;
   }
-  @media (max-width: 640px) {
-    .sections-grid {
-      grid-template-columns: 1fr;
-    }
+
+  /* Prevent horizontal page scroll from shelf */
+  .section-cell {
+    min-width: 0;
+    overflow: hidden;
   }
 
   section{margin:22px 0}
@@ -79,12 +80,14 @@
   .sec-head h2{margin:0;font-size:16px;letter-spacing:.3px;text-transform:uppercase;color:#cfd2d6}
   .sec-head small{color:var(--muted);font-size:12px}
 
+  /* Shelf scrolls horizontally only inside its container */
   .shelf{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
   .shelf::-webkit-scrollbar{display:none}
   .shelf{scrollbar-width:none}
   .shelf .card{flex:0 0 140px;scroll-snap-align:start}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+  /* Collection grid – fixed 2 columns everywhere */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;
     overflow:hidden;transition:transform .15s ease,border-color .15s ease}
   .card:hover{transform:translateY(-2px);border-color:#2b2b2b}
@@ -149,7 +152,7 @@
     <div class="wrap hd">
       <div class="brand">
         <img class="logo-img" id="siteLogo" src="" alt="Logo" />
-        Ani<span>Chan</span>
+        <span>Ani<span>Chan</span></span>
       </div>
       <div class="hd-actions" id="headerActions">
         <!-- Populated by JS -->
@@ -168,10 +171,10 @@
       <input id="searchInput" type="text" placeholder="Search your library…" autocomplete="off" />
     </div>
 
-    <!-- Two‑column layout for sections -->
+    <!-- Sections stacked vertically on all devices -->
     <div class="sections-grid">
-      <!-- Section 1: Currently Airing -->
-      <div id="airingSection">
+      <!-- Currently Airing -->
+      <div class="section-cell" id="airingSection">
         <section>
           <div class="sec-head">
             <h2>Currently Airing</h2>
@@ -182,8 +185,8 @@
           </div>
         </section>
       </div>
-      <!-- Section 2: My Collection -->
-      <div id="collectionSection">
+      <!-- My Collection -->
+      <div class="section-cell" id="collectionSection">
         <section>
           <div class="sec-head">
             <h2>My Collection</h2>
@@ -225,10 +228,9 @@
   let library = [];
   let currentSession = null;
 
-  // Smart back-to-top button
+  // Smart back-to-top
   const toTopBtn = $("toTop");
   let lastScrollY = window.scrollY;
-
   function handleScroll() {
     const currentScrollY = window.scrollY;
     if (currentScrollY < lastScrollY && currentScrollY > 200) {
@@ -240,20 +242,14 @@
     }
     lastScrollY = currentScrollY;
   }
-
   window.addEventListener("scroll", handleScroll, { passive: true });
-  toTopBtn.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  toTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
-  // Offline
+  // Offline banner & auto-refresh
   function syncOffline(){ $("offline").classList.toggle("show", !navigator.onLine); }
+  window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
 
-  window.addEventListener("online", () => {
-    setTimeout(() => location.reload(), 1000);
-  });
-
-  // ----- Logo loader -----
+  // Logo loader
   async function loadSiteLogo() {
     try {
       const { data, error } = await sb
@@ -262,7 +258,7 @@
         .eq("key", "site_logo")
         .maybeSingle();
       if (error) return;
-      const url = data && data.value ? data.value : "";
+      const url = data?.value || "";
       const img = $("siteLogo");
       if (url) {
         img.src = url;
@@ -275,7 +271,7 @@
     }
   }
 
-  // ----- Header buttons -----
+  // Header buttons
   function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
@@ -306,7 +302,7 @@
     }
   }
 
-  // ----- Broadcast & collection renderers -----
+  // Broadcast & collections
   async function renderBroadcast() {
     const el = $("broadcast");
     const { data } = await sb.from("settings").select("value").eq("key", "broadcast_message").maybeSingle();
@@ -329,7 +325,7 @@
     if (!items.length) {
       const e = document.createElement("div");
       e.className = "empty";
-      e.style.gridColumn = "1 / -1";
+      e.style.gridColumn = "span 2";
       e.textContent = library.length ? "No matches for your search." : "The library is empty — add anime from the Admin dashboard.";
       grid.appendChild(e);
       return;
@@ -370,7 +366,7 @@
     } catch { shelf.innerHTML = '<div class="empty" style="flex:1">Could not load</div>'; }
   }
 
-  // ----- All Members modal -----
+  // All Members modal
   function openMembersModal() {
     $("membersModal").classList.add("show");
     $("membersModal").setAttribute("aria-hidden", "false");
@@ -402,7 +398,7 @@
   $("membersModalClose").addEventListener("click", closeMembersModal);
   $("membersModal").addEventListener("click", (e) => { if (e.target.id === "membersModal") closeMembersModal(); });
 
-  // ----- Init -----
+  // Init
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
     window.addEventListener("online", syncOffline);
@@ -416,9 +412,7 @@
       renderHeader();
     });
 
-    // Load logo first
     await loadSiteLogo();
-
     renderHeader();
     renderBroadcast();
     loadLibrary();
@@ -427,12 +421,11 @@
     $("searchInput").addEventListener("input", (e) => renderCollection(e.target.value));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMembersModal(); });
 
-    // Real-time updates (also refresh logo when settings change)
     sb.channel("public-anichan")
       .on("postgres_changes", { event: "*", schema: "public", table: "anime" }, () => loadLibrary())
       .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => {
         renderBroadcast();
-        loadSiteLogo();  // so logo updates live too
+        loadSiteLogo();
       })
       .subscribe();
   });
