@@ -30,6 +30,7 @@
     padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     cursor:pointer;transition:background .15s, border-color .15s;
+    text-decoration:none;
   }
   .btn:hover{border-color:#333}
   .btn.primary{background:var(--accent);border-color:transparent;color:#062525}
@@ -159,18 +160,9 @@
   );
 
   let currentUserId = null;
-  let isOwner = false; // whether viewing own profile
+  let isOwner = false;
   let originalProfile = null;
   let isEditing = false;
-
-  // Helpers
-  function resolvePath(filename) {
-    const base = window.location.href.replace(/[^/]*$/, '');
-    return base + filename;
-  }
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
-  }
 
   // Inactivity auto-logout
   let inactivityTimer;
@@ -194,7 +186,7 @@
     if (currentUserId) await setOnlineStatus(false);
     await supabase.auth.signOut();
     clearTimeout(inactivityTimer);
-    window.location.href = resolvePath('index.html');
+    window.location.href = "index.html";
   }
 
   // Render profile data into UI
@@ -227,18 +219,21 @@
   function updateHeaderButtons() {
     const container = $('headerActions');
     container.innerHTML = '';
+
+    // Always show a "Back to Home" button
+    const homeBtn = document.createElement('a');
+    homeBtn.href = 'index.html';
+    homeBtn.className = 'btn';
+    homeBtn.textContent = '🏠 Home';
+    container.appendChild(homeBtn);
+
     if (!isOwner) {
       // Viewing another user's profile
       const msgBtn = document.createElement('button');
       msgBtn.className = 'btn primary';
       msgBtn.textContent = '💬 Message';
       msgBtn.addEventListener('click', startChat);
-      const backBtn = document.createElement('button');
-      backBtn.className = 'btn';
-      backBtn.textContent = '← Back';
-      backBtn.addEventListener('click', () => history.back());
       container.appendChild(msgBtn);
-      container.appendChild(backBtn);
       return;
     }
     // Own profile
@@ -312,11 +307,11 @@
     const { data: room } = await supabase.from('chat_rooms')
       .select('id').or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`).maybeSingle();
     if (room) {
-      location.href = resolvePath('chat.html?room=' + room.id);
+      location.href = "chat.html?room=" + room.id;
     } else {
       const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUserId, user_two_id: otherUserId }).select('id').single();
       if (error) { alert('Could not create room.'); return; }
-      location.href = resolvePath('chat.html?room=' + newRoom.id);
+      location.href = "chat.html?room=" + newRoom.id;
     }
   }
 
@@ -324,7 +319,7 @@
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.href = resolvePath('user_login.html');
+      window.location.href = "user_login.html";
       return;
     }
     currentUserId = session.user.id;
@@ -337,7 +332,6 @@
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', viewUserId).single();
       if (!profile) { alert('User not found'); history.back(); return; }
       renderProfile(profile);
-      // Hide avatar editing pencil & bottom red buttons
       $('pencilBtn').style.display = 'none';
       $('bottomActions').innerHTML = '';
       updateHeaderButtons();
@@ -353,7 +347,6 @@
     else renderProfile({});
     updateHeaderButtons();
 
-    // Avatar upload
     $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
     $('avatarInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
@@ -366,7 +359,6 @@
       } finally { e.target.value = ''; }
     });
 
-    // Red buttons
     const bottom = $('bottomActions');
     const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = 'Logout'; logoutBtn.addEventListener('click', handleLogout);
     const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.textContent = 'Delete account';
@@ -376,11 +368,10 @@
       await supabase.from('profiles').delete().eq('id', currentUserId);
       await supabase.auth.signOut();
       clearTimeout(inactivityTimer);
-      location.href = resolvePath('user_login.html');
+      location.href = "user_login.html";
     });
     bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
 
-    // Visibility presence
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) setOnlineStatus(false);
       else { setOnlineStatus(true); resetInactivity(); }
