@@ -34,7 +34,7 @@
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.3px}
   .brand span{color:var(--accent)}
   .logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-block;flex-shrink:0}
-  .hd-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .hd-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .btn{padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     transition:transform .08s ease,background .15s ease,border-color .15s ease}
@@ -44,6 +44,14 @@
   .btn-primary:hover{filter:brightness(1.05)}
   .btn-danger{background:transparent;border-color:#3a1f24;color:var(--danger)}
   .btn-danger:hover{background:#2a1218}
+
+  /* Round avatar circle */
+  .avatar-circle{
+    width:36px; height:36px; border-radius:50%; object-fit:cover;
+    cursor:pointer; border:2px solid var(--border); transition:border-color .15s;
+    background:var(--panel);
+  }
+  .avatar-circle:hover{border-color:var(--accent)}
 
   .broadcast{display:none;margin:16px 0;padding:14px 16px;border-radius:14px;
     background:linear-gradient(135deg,rgba(29,185,178,.12),rgba(29,185,178,.04));
@@ -313,22 +321,47 @@
     }
   }
 
+  // Fetch avatar for current user
+  async function getUserAvatar() {
+    if (!currentSession) return null;
+    const { data, error } = await sb
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", currentSession.user.id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.avatar_url || null;
+  }
+
   // Header buttons
-  function renderHeader() {
+  async function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
 
     if (currentSession) {
       const email = currentSession.user.email || "user";
+      const avatarUrl = await getUserAvatar();
+
+      const avatarHtml = avatarUrl
+        ? `<img class="avatar-circle" src="${avatarUrl}" alt="Profile" title="View Profile" />`
+        : `<div class="avatar-circle" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;" title="View Profile">👤</div>`;
+
       container.innerHTML = `
         <button class="btn" id="allMembersBtn">All Members</button>
         <button class="btn" id="chatBtn">💬 Chat</button>
-        <button class="btn" id="profileBtn">👤 Profile</button>
+        ${avatarHtml}
         <button class="btn btn-danger" id="logoutBtn">Logout (${email.split("@")[0]})</button>
       `;
+
+      // Attach events
       $("allMembersBtn").addEventListener("click", showAllMembers);
       $("chatBtn").addEventListener("click", () => location.href = "chat.html");
-      $("profileBtn").addEventListener("click", () => location.href = "profile.html");
+
+      const avatarElement = container.querySelector(".avatar-circle");
+      if (avatarElement) {
+        avatarElement.addEventListener("click", () => location.href = "profile.html");
+      }
+
       $("logoutBtn").addEventListener("click", async () => {
         if (confirm("Log out?")) {
           await sb.auth.signOut();
@@ -364,7 +397,6 @@
     const items = q ? library.filter(a => (a.title || "").toLowerCase().includes(q)) : library;
     const totalItems = items.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-    // Clamp current page to valid range
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages;
 
@@ -411,7 +443,6 @@
   async function loadLibrary(){
     const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
     if (error) { library = []; } else { library = data || []; }
-    // Reset to page 1 when data reloads
     currentPage = 1;
     renderCollection();
   }
@@ -454,7 +485,6 @@
     }
   });
 
-  // Search input updates the filter and resets to page 1
   $("searchInput").addEventListener("input", (e) => {
     currentSearch = e.target.value;
     currentPage = 1;
