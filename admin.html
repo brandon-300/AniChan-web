@@ -228,7 +228,7 @@
         </div>
       </section>
 
-      <!-- Member Management (moved up) -->
+      <!-- Member Management -->
       <section class="panel" id="memberPanel">
         <h2>Member Management</h2>
         <p class="help">View, suspend, or delete any registered user.</p>
@@ -284,393 +284,665 @@
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
 
-  // Gate, toast, logout, broadcast... (unchanged)
+  // ---------- Gate ----------
   async function gate(){
     $("gate").style.display = "flex";
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { $("gateMsg").textContent = "Not signed in."; setTimeout(() => location.replace("admin_login.html"), 800); return false; }
-    if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) { $("gateMsg").textContent = "Not authorized."; return false; }
-    $("gate").style.display = "none"; $("app").style.display = "block"; return true;
+    if (!session) {
+      $("gateMsg").textContent = "You're not signed in. Redirecting to admin login…";
+      setTimeout(() => location.replace("admin_login.html"), 800);
+      return false;
+    }
+    if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+      $("gateMsg").textContent = "This account is not authorized for admin access.";
+      return false;
+    }
+    $("gate").style.display = "none";
+    $("app").style.display = "block";
+    return true;
   }
-  let toastTimer;
-  function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
-  function bindLogout(){ $("logoutBtn").addEventListener("click",async()=>{ await sb.auth.signOut(); location.href="index.html"; }); }
-  async function loadBroadcast(){ const {data}=await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle(); $("broadcastInput").value=(data&&data.value)||""; }
-  async function saveBroadcast(value){ const {error}=await sb.from("settings").upsert({key:"broadcast_message",value:value||""}); if(error)toast("Save failed: "+error.message); else toast(value?"Broadcast saved":"Broadcast cleared"); }
 
-  // Form helpers
-  const TYPE_OPTIONS=["TV","Movie","OVA","ONA","Special","Music"];
-  function normalizeType(t){ if(!t)return""; const s=String(t).trim(); return TYPE_OPTIONS.find(o=>o.toLowerCase()===s.toLowerCase())||""; }
-  function parseGenres(str){ return String(str||"").split(",").map(s=>s.trim()).filter(Boolean); }
-  function renderGenreChips(){ const host=$("genresPreview"); host.innerHTML=""; for(const g of parseGenres($("genresInput").value)){ const c=document.createElement("span"); c.className="chip"; c.textContent=g; host.appendChild(c); } }
-  const STATUS_LABELS={ watching:"Watching",completed:"Completed",planned:"Plan to Watch",dropped:"Dropped" };
-  function fillFormFromJikan(a,imgSrc){
-    $("titleInput").value=a.title||"";
-    $("imageInput").value=imgSrc||"";
-    $("typeInput").value=normalizeType(a.type);
-    $("yearInput").value=a.year||(a.aired&&a.aired.from?new Date(a.aired.from).getFullYear():"")||"";
-    $("epTotalInput").value=(a.episodes!=null)?a.episodes:"";
-    $("scoreInput").value=(a.score!=null)?a.score:"";
-    $("genresInput").value=(a.genres||[]).map(g=>g.name).filter(Boolean).join(", ");
-    $("studioInput").value=(a.studios||[]).map(s=>s.name).join(", ");
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  // ---------- Logout ----------
+  function bindLogout(){
+    $("logoutBtn").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      location.href = "index.html";
+    });
+  }
+
+  // ---------- Broadcast ----------
+  async function loadBroadcast(){
+    const { data } = await sb.from("settings").select("value").eq("key", "broadcast_message").maybeSingle();
+    $("broadcastInput").value = (data && data.value) || "";
+  }
+  async function saveBroadcast(value){
+    const { error } = await sb.from("settings").upsert({
+      key: "broadcast_message",
+      value: value || ""
+    });
+    if (error) toast("Save failed: " + error.message);
+    else toast(value ? "Broadcast saved" : "Broadcast cleared");
+  }
+
+  // ---------- Smart Auto-Fetch ----------
+  let searchAbort;
+  async function runSearch(){
+    const q = $("searchQ").value.trim();
+    const results = $("searchResults");
+    const status = $("searchStatus");
+    results.hidden = true; results.innerHTML = "";
+    status.hidden = false;
+    if (!q) { status.textContent = "Type something to search."; return; }
+    if (!navigator.onLine) { status.textContent = "Offline."; return; }
+    status.textContent = "Searching Jikan…";
+
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
+    try {
+      const res = await fetch(
+        "https://api.jikan.moe/v4/anime?q=" + encodeURIComponent(q) + "&limit=6",
+        { signal: searchAbort.signal }
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const list = (data && data.data) || [];
+      if (!list.length) { status.textContent = "No results found."; return; }
+      status.hidden = true;
+      results.hidden = false;
+      for (const a of list) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "result";
+        const img = document.createElement("img");
+        const src = a.images && a.images.jpg && (a.images.jpg.image_url || a.images.jpg.large_image_url);
+        img.src = src || PLACEHOLDER;
+        img.onerror = () => { img.src = PLACEHOLDER; };
+        img.alt = "";
+        const info = document.createElement("div");
+        const t = document.createElement("div"); t.className = "t"; t.textContent = a.title || "Untitled";
+        const y = document.createElement("div"); y.className = "y";
+        y.textContent = [a.type, a.year || (a.aired && a.aired.from && new Date(a.aired.from).getFullYear())].filter(Boolean).join(" · ");
+        info.appendChild(t); info.appendChild(y);
+        btn.appendChild(img); btn.appendChild(info);
+        btn.addEventListener("click", () => {
+          fillFormFromJikan(a, src);
+          toast("Filled from Jikan — review and Save");
+        });
+        results.appendChild(btn);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      console.warn("Jikan search failed:", err);
+      status.hidden = false;
+      status.textContent = "Search failed. Try again.";
+    }
+  }
+
+  // ---------- Form helpers ----------
+  const TYPE_OPTIONS = ["TV","Movie","OVA","ONA","Special","Music"];
+  function normalizeType(t){
+    if (!t) return "";
+    const s = String(t).trim();
+    const hit = TYPE_OPTIONS.find(o => o.toLowerCase() === s.toLowerCase());
+    return hit || "";
+  }
+  function parseGenres(str){
+    return String(str || "").split(",").map(s => s.trim()).filter(Boolean);
+  }
+  function renderGenreChips(){
+    const host = $("genresPreview");
+    host.innerHTML = "";
+    for (const g of parseGenres($("genresInput").value)) {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.textContent = g;
+      host.appendChild(c);
+    }
+  }
+
+  const STATUS_LABELS = { watching:"Watching", completed:"Completed", planned:"Plan to Watch", dropped:"Dropped" };
+
+  function fillFormFromJikan(a, imgSrc){
+    $("titleInput").value = a.title || "";
+    $("imageInput").value = imgSrc || "";
+    $("typeInput").value = normalizeType(a.type);
+    const yr = a.year || (a.aired && a.aired.from ? new Date(a.aired.from).getFullYear() : null);
+    $("yearInput").value = yr || "";
+    $("epTotalInput").value = (a.episodes != null) ? a.episodes : "";
+    $("scoreInput").value = (a.score != null) ? a.score : "";
+    const genres = (a.genres || []).map(g => g && g.name).filter(Boolean);
+    $("genresInput").value = genres.join(", ");
+    $("studioInput").value = (a.studios || []).map(s => s.name).join(", ");
     renderGenreChips();
     $("titleInput").focus();
   }
+
   function setEditMode(item){
-    $("editId").value=item.id;
-    $("titleInput").value=item.title||"";
-    $("imageInput").value=item.image_url||"";
-    $("statusInput").value=item.status||"";
-    $("typeInput").value=normalizeType(item.type);
-    $("scoreInput").value=item.score!=null?item.score:"";
-    $("epWatchedInput").value=item.ep_watched!=null?item.ep_watched:"";
-    $("epTotalInput").value=item.ep_total!=null?item.ep_total:"";
-    $("yearInput").value=item.year!=null?item.year:"";
-    $("genresInput").value=Array.isArray(item.genres)?item.genres.join(", "):(item.genres||"");
-    $("studioInput").value=item.studio||"";
-    $("notesInput").value=item.notes||"";
+    $("editId").value = item.id;
+    $("titleInput").value = item.title || "";
+    $("imageInput").value = item.image_url || "";
+    $("statusInput").value = item.status || "";
+    $("typeInput").value = normalizeType(item.type);
+    $("scoreInput").value = item.score != null ? item.score : "";
+    $("epWatchedInput").value = item.ep_watched != null ? item.ep_watched : "";
+    $("epTotalInput").value = item.ep_total != null ? item.ep_total : "";
+    $("yearInput").value = item.year != null ? item.year : "";
+    $("genresInput").value = Array.isArray(item.genres) ? item.genres.join(", ") : (item.genres || "");
+    $("studioInput").value = item.studio || "";
+    $("notesInput").value = item.notes || "";
     renderGenreChips();
-    $("formTitle").textContent="Edit Item";
-    $("cancelEdit").hidden=false;
-    document.querySelector("#formTitle").scrollIntoView({behavior:"smooth",block:"start"});
+    $("formTitle").textContent = "Edit Item";
+    $("cancelEdit").hidden = false;
+    document.querySelector("#formTitle").scrollIntoView({ behavior: "smooth", block: "start" });
     $("titleInput").focus();
   }
   function clearForm(){
-    $("editId").value="";
-    for(const id of ["titleInput","imageInput","statusInput","typeInput","scoreInput","epWatchedInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"]){ $(id).value=""; }
+    $("editId").value = "";
+    for (const id of ["titleInput","imageInput","statusInput","typeInput","scoreInput","epWatchedInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"]) {
+      $(id).value = "";
+    }
     renderGenreChips();
-    $("formTitle").textContent="Add to Collection";
-    $("cancelEdit").hidden=true;
+    $("formTitle").textContent = "Add to Collection";
+    $("cancelEdit").hidden = true;
   }
-  function numOrNull(v){ if(v===""||v==null)return null; const n=Number(v); return Number.isFinite(n)?n:null; }
-  async function saveItem(){
-    const id=$("editId").value, title=$("titleInput").value.trim();
-    if(!title){ toast("Title is required"); $("titleInput").focus(); return; }
-    const payload={
-      title,
-      image_url:$("imageInput").value.trim()||null,
-      status:$("statusInput").value||null,
-      type:normalizeType($("typeInput").value)||null,
-      score:numOrNull($("scoreInput").value),
-      ep_watched:numOrNull($("epWatchedInput").value),
-      ep_total:numOrNull($("epTotalInput").value),
-      year:numOrNull($("yearInput").value),
-      genres:parseGenres($("genresInput").value),
-      studio:$("studioInput").value.trim()||null,
-      notes:$("notesInput").value.trim()||null,
-    };
-    let error;
-    if(id){ ({error}=await sb.from("anime").update(payload).eq("id",id)); }
-    else { ({error}=await sb.from("anime").insert(payload)); }
-    if(error){ toast("Save failed: "+error.message); return; }
-    toast(id?"Updated":"Added to collection");
-    clearForm(); renderList();
+  function numOrNull(v){
+    if (v === "" || v == null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   }
 
-  // Collection list rendering (unchanged)
+  async function saveItem(){
+    const id = $("editId").value;
+    const title = $("titleInput").value.trim();
+    if (!title) { toast("Title is required"); $("titleInput").focus(); return; }
+    const payload = {
+      title,
+      image_url: $("imageInput").value.trim() || null,
+      status: $("statusInput").value || null,
+      type: normalizeType($("typeInput").value) || null,
+      score: numOrNull($("scoreInput").value),
+      ep_watched: numOrNull($("epWatchedInput").value),
+      ep_total: numOrNull($("epTotalInput").value),
+      year: numOrNull($("yearInput").value),
+      genres: parseGenres($("genresInput").value),
+      studio: $("studioInput").value.trim() || null,
+      notes: $("notesInput").value.trim() || null,
+    };
+    let error;
+    if (id) {
+      ({ error } = await sb.from("anime").update(payload).eq("id", id));
+    } else {
+      ({ error } = await sb.from("anime").insert(payload));
+    }
+    if (error) { toast("Save failed: " + error.message); return; }
+    toast(id ? "Updated" : "Added to collection");
+    clearForm();
+    renderList();
+  }
+
+  // ---------- Collection list ----------
   function buildMetaLine(a){
-    const parts=[];
-    if(a.status&&STATUS_LABELS[a.status])parts.push(STATUS_LABELS[a.status]);
-    if(a.type)parts.push(a.type);
-    if(a.year)parts.push(String(a.year));
-    if(a.ep_watched!=null&&a.ep_total!=null)parts.push(a.ep_watched+"/"+a.ep_total+" eps");
-    else if(a.ep_total!=null)parts.push(a.ep_total+" eps");
-    if(a.score!=null)parts.push("★ "+a.score);
+    const parts = [];
+    if (a.status && STATUS_LABELS[a.status]) parts.push(STATUS_LABELS[a.status]);
+    if (a.type) parts.push(a.type);
+    if (a.year) parts.push(String(a.year));
+    if (a.ep_watched != null && a.ep_total != null) parts.push(a.ep_watched + "/" + a.ep_total + " eps");
+    else if (a.ep_total != null) parts.push(a.ep_total + " eps");
+    if (a.score != null) parts.push("★ " + a.score);
     return parts.join(" · ");
   }
+
   async function renderList(){
-    const list=$("list");
-    const {data,error}=await sb.from("anime").select("*").order("created_at",{ascending:false});
-    if(error){ list.innerHTML='<div class="empty">Failed to load: '+error.message+'</div>'; return; }
-    const lib=data||[];
-    const badge=$("countBadge");
-    if(lib.length){ badge.hidden=false; badge.textContent=lib.length; }
-    else badge.hidden=true;
-    list.innerHTML="";
-    if(!lib.length){ const e=document.createElement("div"); e.className="empty"; e.textContent="No items yet."; list.appendChild(e); return; }
-    const editingId=$("editId").value;
-    for(const a of lib){
-      const row=document.createElement("div"); row.className="item"+(a.id===editingId?" editing":"");
-      const img=document.createElement("img"); img.src=a.image_url||PLACEHOLDER; img.onerror=()=>{img.src=PLACEHOLDER;}; img.alt="";
-      const wrap=document.createElement("div"); wrap.className="t-wrap";
-      const t=document.createElement("div"); t.className="t"; t.textContent=a.title||"Untitled"; wrap.appendChild(t);
-      const meta=buildMetaLine(a); if(meta){ const m=document.createElement("div"); m.className="meta-line"; m.textContent=meta; wrap.appendChild(m); }
-      const acts=document.createElement("div"); acts.className="acts";
-      const editBtn=document.createElement("button"); editBtn.className="btn"; editBtn.textContent="Edit"; editBtn.addEventListener("click",()=>{setEditMode(a);renderList();});
-      const delBtn=document.createElement("button"); delBtn.className="btn btn-danger"; delBtn.textContent="Delete"; delBtn.addEventListener("click",async()=>{if(!confirm("Delete \""+(a.title||"this item")+"\"?"))return; const {error}=await sb.from("anime").delete().eq("id",a.id); if(error){toast("Delete failed: "+error.message);return;} if($("editId").value===a.id)clearForm(); renderList(); toast("Deleted");});
+    const list = $("list");
+    const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
+    if (error) { list.innerHTML = '<div class="empty">Failed to load: ' + error.message + '</div>'; return; }
+    const lib = data || [];
+    const badge = $("countBadge");
+    if (lib.length) { badge.hidden = false; badge.textContent = lib.length; }
+    else badge.hidden = true;
+
+    list.innerHTML = "";
+    if (!lib.length) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "No items yet.";
+      list.appendChild(e);
+      return;
+    }
+    const editingId = $("editId").value;
+    for (const a of lib) {
+      const row = document.createElement("div");
+      row.className = "item" + (a.id === editingId ? " editing" : "");
+      const img = document.createElement("img");
+      img.src = a.image_url || PLACEHOLDER;
+      img.onerror = () => { img.src = PLACEHOLDER; };
+      img.alt = "";
+      const wrap = document.createElement("div"); wrap.className = "t-wrap";
+      const t = document.createElement("div"); t.className = "t"; t.textContent = a.title || "Untitled"; wrap.appendChild(t);
+      const meta = buildMetaLine(a);
+      if (meta) {
+        const m = document.createElement("div"); m.className = "meta-line"; m.textContent = meta;
+        wrap.appendChild(m);
+      }
+      const acts = document.createElement("div"); acts.className = "acts";
+      const editBtn = document.createElement("button"); editBtn.className = "btn"; editBtn.textContent = "Edit"; editBtn.addEventListener("click", () => { setEditMode(a); renderList(); });
+      const delBtn = document.createElement("button"); delBtn.className = "btn btn-danger"; delBtn.textContent = "Delete"; delBtn.addEventListener("click", async () => {
+        if (!confirm("Delete \"" + (a.title || "this item") + "\"?")) return;
+        const { error } = await sb.from("anime").delete().eq("id", a.id);
+        if (error) { toast("Delete failed: " + error.message); return; }
+        if ($("editId").value === a.id) clearForm();
+        renderList();
+        toast("Deleted");
+      });
       acts.appendChild(editBtn); acts.appendChild(delBtn);
       row.appendChild(img); row.appendChild(wrap); row.appendChild(acts);
       list.appendChild(row);
     }
   }
 
-  // ---------- Bulk Import (includes score, ep_total, studio) ----------
-  let bulkPage=1;
+  // ---------- Bulk Import (with score, ep_total, studio) ----------
+  let bulkPage = 1;
   async function bulkImport(){
-    const btn=$("bulkImportBtn"), status=$("bulkStatus");
-    const origText=btn.textContent;
-    btn.disabled=true; btn.textContent="Importing…"; status.textContent="Searching…";
-    const existing=(await sb.from("anime").select("title")).data||[];
-    const existingTitles=new Set(existing.map(i=>i.title.toLowerCase().trim()));
-    const maxAttempts=50; let attempts=0, added=0;
-    try{
-      while(attempts<maxAttempts){
-        attempts++; const p1=bulkPage, p2=bulkPage+1;
-        status.textContent=`Checking pages ${p1}‑${p2}…`;
-        const [res1,res2]=await Promise.all([
+    const btn = $("bulkImportBtn"), status = $("bulkStatus");
+    const origText = btn.textContent;
+    btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
+    const existing = (await sb.from("anime").select("title")).data || [];
+    const existingTitles = new Set(existing.map(i => i.title.toLowerCase().trim()));
+    const maxAttempts = 50; let attempts = 0, added = 0;
+    try {
+      while (attempts < maxAttempts) {
+        attempts++; const p1 = bulkPage, p2 = bulkPage + 1;
+        status.textContent = `Checking pages ${p1}‑${p2}…`;
+        const [res1, res2] = await Promise.all([
           fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p1}`),
           fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p2}`)
         ]);
-        if(!res1.ok&&!res2.ok){ status.textContent="No more pages."; break; }
-        const d1=res1.ok?(await res1.json()).data||[]:[];
-        const d2=res2.ok?(await res2.json()).data||[]:[];
-        const list=[...d1,...d2];
-        if(!list.length){ status.textContent="No more titles."; break; }
-        const inserts=[];
-        for(const a of list){
-          const title=(a.title||"").trim();
-          if(!title||existingTitles.has(title.toLowerCase()))continue;
-          const image_url=(a.images?.jpg?.large_image_url)||(a.images?.jpg?.image_url)||null;
-          const type=normalizeType(a.type)||null;
-          const year=a.year||(a.aired?.from?new Date(a.aired.from).getFullYear():null);
-          const genres=(a.genres||[]).map(g=>g.name).filter(Boolean);
-          const studio=(a.studios||[]).map(s=>s.name).join(", ")||null;
-          const score=a.score||null;
-          const ep_total=(a.episodes!=null)?a.episodes:null;
-          inserts.push({title,image_url,type,year,genres,studio,score,ep_total,status:'planned'});
+        if (!res1.ok && !res2.ok) { status.textContent = "No more pages."; break; }
+        const d1 = res1.ok ? (await res1.json()).data || [] : [];
+        const d2 = res2.ok ? (await res2.json()).data || [] : [];
+        const list = [...d1, ...d2];
+        if (!list.length) { status.textContent = "No more titles."; break; }
+        const inserts = [];
+        for (const a of list) {
+          const title = (a.title || "").trim();
+          if (!title || existingTitles.has(title.toLowerCase())) continue;
+          const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
+          const type = normalizeType(a.type) || null;
+          const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
+          const genres = (a.genres || []).map(g => g.name).filter(Boolean);
+          const studio = (a.studios || []).map(s => s.name).join(", ") || null;
+          const score = a.score || null;
+          const ep_total = (a.episodes != null) ? a.episodes : null;
+          inserts.push({ title, image_url, type, year, genres, studio, score, ep_total, status: 'planned' });
           existingTitles.add(title.toLowerCase());
-          if(inserts.length>=50)break;
+          if (inserts.length >= 50) break;
         }
-        if(inserts.length){
-          const {error}=await sb.from("anime").insert(inserts);
-          if(error)throw error;
-          added=inserts.length;
+        if (inserts.length) {
+          const { error } = await sb.from("anime").insert(inserts);
+          if (error) throw error;
+          added = inserts.length;
           toast(`Imported ${added} anime.`);
           renderList();
-          status.textContent=`Added ${added} from pages ${p1}‑${p2}.`;
-          bulkPage+=2; break;
+          status.textContent = `Added ${added} from pages ${p1}‑${p2}.`;
+          bulkPage += 2;
+          break;
         }
-        bulkPage+=2;
-        status.textContent=`No new titles on ${p1}‑${p2}, trying next…`;
+        bulkPage += 2;
+        status.textContent = `No new titles on ${p1}‑${p2}, trying next…`;
       }
-      if(added===0)status.textContent="No new titles found.";
-    }catch(e){ console.warn(e); status.textContent="Import failed."; toast("Import failed."); }
-    finally{ btn.disabled=false; btn.textContent=origText; }
+      if (added === 0) status.textContent = "No new titles found.";
+    } catch (e) {
+      console.warn(e);
+      status.textContent = "Import failed.";
+      toast("Import failed.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
   }
 
-  // ---------- Fix All (fill missing fields) ----------
-  function mapAiringStatus(jikanStatus){
-    if(!jikanStatus)return null;
-    const s=jikanStatus.toLowerCase();
-    if(s.includes("currently airing"))return "Currently Airing";
-    if(s.includes("finished"))return "Aired";
-    if(s.includes("not yet aired"))return "Not yet aired";
+  // ---------- Fix All (updated status logic) ----------
+  function mapAiringStatus(jikanStatus) {
+    if (!jikanStatus) return null;
+    const s = jikanStatus.toLowerCase();
+    if (s.includes("currently airing")) return "Currently Airing";
+    if (s.includes("finished")) return "Aired";
+    if (s.includes("not yet aired")) return "Not yet aired";
     return null;
   }
+
   async function fixAll(){
-    const btn=$("fixAllBtn"), status=$("bulkStatus");
-    const origText=btn.textContent;
-    btn.disabled=true; btn.textContent="Fixing…"; status.textContent="Fetching anime list…";
-    // Get all anime
-    const {data:all,error}=await sb.from("anime").select("*");
-    if(error){ toast("Failed to fetch anime."); btn.disabled=false; btn.textContent=origText; return; }
-    // Identify those needing fix: missing score, ep_total, genres (empty), studio, or status not in correct set
-    const needFix=all.filter(a=>{
-      const missingScore=a.score==null;
-      const missingEp=a.ep_total==null;
-      const missingGenres=!a.genres||(Array.isArray(a.genres)&&a.genres.length===0);
-      const missingStudio=!a.studio||a.studio.trim()==="";
-      const invalidStatus=!a.status||!["Aired","Currently Airing","Not yet aired","watching","completed","planned","dropped"].includes(a.status);
-      return missingScore||missingEp||missingGenres||missingStudio||invalidStatus;
+    const btn = $("fixAllBtn"), status = $("bulkStatus");
+    const origText = btn.textContent;
+    btn.disabled = true; btn.textContent = "Fixing…"; status.textContent = "Fetching anime list…";
+    const { data: all, error } = await sb.from("anime").select("*");
+    if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
+
+    // NEW: only consider airing statuses as valid (ignore old watch statuses)
+    const validAiringStatuses = ["Aired", "Currently Airing", "Not yet aired"];
+    const needFix = all.filter(a => {
+      const missingScore = a.score == null;
+      const missingEp = a.ep_total == null;
+      const missingGenres = !a.genres || (Array.isArray(a.genres) && a.genres.length === 0);
+      const missingStudio = !a.studio || a.studio.trim() === "";
+      const invalidStatus = !a.status || !validAiringStatuses.includes(a.status);
+      return missingScore || missingEp || missingGenres || missingStudio || invalidStatus;
     });
-    if(!needFix.length){ status.textContent="All titles are clean, no issues found."; btn.disabled=false; btn.textContent=origText; return; }
-    status.textContent=`Found ${needFix.length} anime to fix. Processing in batches of 50…`;
-    const batchSize=50;
-    let fixedCount=0;
-    for(let i=0;i<needFix.length;i+=batchSize){
-      const batch=needFix.slice(i,i+batchSize);
-      status.textContent=`Fixing batch ${i+1}‑${Math.min(i+batchSize,needFix.length)} of ${needFix.length}…`;
-      for(const anime of batch){
-        // Search Jikan by title
-        try{
-          await new Promise(r=>setTimeout(r,600)); // rate limit
-          const q=encodeURIComponent(anime.title);
-          const res=await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
-          if(!res.ok)continue;
-          const json=await res.json();
-          const match=json.data&&json.data[0];
-          if(!match)continue;
-          const updates={};
-          if(anime.score==null&&match.score!=null)updates.score=match.score;
-          if(anime.ep_total==null&&match.episodes!=null)updates.ep_total=match.episodes;
-          if((!anime.genres||(Array.isArray(anime.genres)&&anime.genres.length===0))&&match.genres&&match.genres.length){
-            updates.genres=match.genres.map(g=>g.name).filter(Boolean);
+
+    if (!needFix.length) {
+      status.textContent = "All titles are clean, no issues found.";
+      btn.disabled = false;
+      btn.textContent = origText;
+      return;
+    }
+    status.textContent = `Found ${needFix.length} anime to fix. Processing in batches of 50…`;
+    const batchSize = 50;
+    let fixedCount = 0;
+    for (let i = 0; i < needFix.length; i += batchSize) {
+      const batch = needFix.slice(i, i + batchSize);
+      status.textContent = `Fixing batch ${i+1}‑${Math.min(i+batchSize, needFix.length)} of ${needFix.length}…`;
+      for (const anime of batch) {
+        try {
+          await new Promise(r => setTimeout(r, 600)); // rate limit
+          const q = encodeURIComponent(anime.title);
+          const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
+          if (!res.ok) continue;
+          const json = await res.json();
+          const match = json.data && json.data[0];
+          if (!match) continue;
+          const updates = {};
+          if (anime.score == null && match.score != null) updates.score = match.score;
+          if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
+          if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
+            updates.genres = match.genres.map(g => g.name).filter(Boolean);
           }
-          if((!anime.studio||anime.studio.trim()==="")&&match.studios&&match.studios.length){
-            updates.studio=match.studios.map(s=>s.name).join(", ");
+          if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
+            updates.studio = match.studios.map(s => s.name).join(", ");
           }
-          const currentStatus=anime.status;
-          if(!currentStatus||!["Aired","Currently Airing","Not yet aired","watching","completed","planned","dropped"].includes(currentStatus)){
-            const mapped=mapAiringStatus(match.status);
-            if(mapped)updates.status=mapped;
+          // Fix status: set to airing status regardless of old status
+          const mapped = mapAiringStatus(match.status);
+          if (mapped) updates.status = mapped;
+          if (Object.keys(updates).length) {
+            const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
+            if (!updErr) fixedCount++;
           }
-          if(Object.keys(updates).length){
-            const {error:updErr}=await sb.from("anime").update(updates).eq("id",anime.id);
-            if(!updErr)fixedCount++;
-          }
-        }catch(e){ console.warn(`Failed to fix ${anime.title}`,e); }
+        } catch (e) {
+          console.warn(`Failed to fix ${anime.title}`, e);
+        }
       }
     }
-    if(fixedCount>0){ toast(`Fixed ${fixedCount} titles.`); renderList(); }
-    status.textContent=fixedCount>0?`Fixed ${fixedCount} titles.`:"No fixes applied.";
-    btn.disabled=false; btn.textContent=origText;
+    if (fixedCount > 0) {
+      toast(`Fixed ${fixedCount} titles.`);
+      renderList();
+    }
+    status.textContent = fixedCount > 0 ? `Fixed ${fixedCount} titles.` : "No fixes applied.";
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 
-  // Member management (unchanged except online status formatting)
-  function formatLastSeen(iso){ if(!iso)return"Never"; const d=new Date(iso),now=new Date(),diff=now-d, mins=Math.floor(diff/60000); if(mins<1)return"Just now"; if(mins<60)return`${mins}m ago`; const hrs=Math.floor(mins/60); if(hrs<24)return`${hrs}h ago`; const days=Math.floor(hrs/24); if(days<7)return`${days}d ago`; return d.toLocaleDateString(); }
-  let memberAction=null, selectedUserId=null, currentAdminId=null;
-  function openMemberModal(action,userId,username){ memberAction=action; selectedUserId=userId; $("memberModalTitle").textContent=action==='suspend'?`Suspend @${username}`:`Delete @${username}`; let content=''; if(action==='suspend'){ content=`<div class="field"><label for="suspendDuration">Duration</label><input type="number" id="suspendDuration" min="1" max="30" value="1"/><select id="suspendUnit"><option value="hours">Hours</option><option value="days">Days</option></select></div>`; } content+=`<div class="field"><label for="adminNote">Admin note (required)</label><textarea id="adminNote" rows="3" placeholder="Reason..."></textarea></div>`; $("memberModalContent").innerHTML=content; $("memberModal").classList.add("show"); }
-  function closeMemberModal(){ $("memberModal").classList.remove("show"); memberAction=null; selectedUserId=null; }
-  $("memberModalCancel").addEventListener("click",closeMemberModal);
-  $("memberModalConfirm").addEventListener("click",async()=>{
-    const note=$("adminNote").value.trim(); if(!note){ toast("Admin note required."); return; }
-    if(memberAction==='suspend'){
-      const dur=parseInt($("suspendDuration").value), unit=$("suspendUnit").value;
-      if(isNaN(dur)||dur<1){ toast("Invalid duration."); return; }
-      let until=new Date(); if(unit==='hours')until.setHours(until.getHours()+dur); else until.setDate(until.getDate()+dur);
-      const {error}=await sb.from("profiles").update({is_suspended:true,suspended_until:until.toISOString(),admin_note:note}).eq("id",selectedUserId);
-      if(error){ toast("Failed: "+error.message); closeMemberModal(); return; }
-      await sb.from("admin_actions").insert({admin_id:currentAdminId,target_user_id:selectedUserId,action:'suspend',admin_note:note});
-      toast("User suspended."); closeMemberModal(); renderMemberList(); renderActionLog();
-    }else if(memberAction==='delete'){
-      const {error}=await sb.from("profiles").update({is_pending_delete:true,deleted_at:new Date().toISOString(),admin_note:note}).eq("id",selectedUserId);
-      if(error){ toast("Failed: "+error.message); closeMemberModal(); return; }
-      await sb.from("admin_actions").insert({admin_id:currentAdminId,target_user_id:selectedUserId,action:'delete',admin_note:note});
-      toast("User marked for deletion."); closeMemberModal(); renderMemberList(); renderActionLog();
+  // ---------- Member Management (unchanged) ----------
+  function formatLastSeen(iso){
+    if (!iso) return "Never";
+    const d = new Date(iso), now = new Date();
+    const diff = now - d, mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString();
+  }
+
+  let memberAction = null, selectedUserId = null, currentAdminId = null;
+
+  function openMemberModal(action, userId, username) {
+    memberAction = action;
+    selectedUserId = userId;
+    $("memberModalTitle").textContent = action === 'suspend' ? `Suspend @${username}` : `Delete @${username}`;
+    let content = '';
+    if (action === 'suspend') {
+      content = `
+        <div class="field">
+          <label for="suspendDuration">Duration</label>
+          <input type="number" id="suspendDuration" min="1" max="30" value="1" />
+          <select id="suspendUnit">
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+          </select>
+        </div>`;
+    }
+    content += `
+      <div class="field">
+        <label for="adminNote">Admin note (required)</label>
+        <textarea id="adminNote" rows="3" placeholder="Reason..."></textarea>
+      </div>`;
+    $("memberModalContent").innerHTML = content;
+    $("memberModal").classList.add("show");
+  }
+
+  function closeMemberModal() {
+    $("memberModal").classList.remove("show");
+    memberAction = null;
+    selectedUserId = null;
+  }
+
+  $("memberModalCancel").addEventListener("click", closeMemberModal);
+  $("memberModalConfirm").addEventListener("click", async () => {
+    const note = $("adminNote").value.trim();
+    if (!note) { toast("Admin note is required."); return; }
+
+    if (memberAction === 'suspend') {
+      const duration = parseInt($("suspendDuration").value);
+      const unit = $("suspendUnit").value;
+      if (isNaN(duration) || duration < 1) { toast("Invalid duration."); return; }
+      let suspendedUntil = new Date();
+      if (unit === 'hours') suspendedUntil.setHours(suspendedUntil.getHours() + duration);
+      else suspendedUntil.setDate(suspendedUntil.getDate() + duration);
+      const { error } = await sb.from("profiles").update({
+        is_suspended: true,
+        suspended_until: suspendedUntil.toISOString(),
+        admin_note: note
+      }).eq("id", selectedUserId);
+      if (error) { toast("Failed: " + error.message); closeMemberModal(); return; }
+      await sb.from("admin_actions").insert({
+        admin_id: currentAdminId,
+        target_user_id: selectedUserId,
+        action: 'suspend',
+        admin_note: note
+      });
+      toast("User suspended.");
+      closeMemberModal();
+      renderMemberList();
+      renderActionLog();
+    } else if (memberAction === 'delete') {
+      const { error } = await sb.from("profiles").update({
+        is_pending_delete: true,
+        deleted_at: new Date().toISOString(),
+        admin_note: note
+      }).eq("id", selectedUserId);
+      if (error) { toast("Failed: " + error.message); closeMemberModal(); return; }
+      await sb.from("admin_actions").insert({
+        admin_id: currentAdminId,
+        target_user_id: selectedUserId,
+        action: 'delete',
+        admin_note: note
+      });
+      toast("User marked for deletion (2-hour grace).");
+      closeMemberModal();
+      renderMemberList();
+      renderActionLog();
     }
   });
-  async function unsuspendUser(userId){
-    const {error}=await sb.from("profiles").update({is_suspended:false,suspended_until:null,admin_note:null}).eq("id",userId);
-    if(error){ toast("Unsuspend failed."); return; }
-    await sb.from("admin_actions").insert({admin_id:currentAdminId,target_user_id:userId,action:'unsuspend',admin_note:''});
-    toast("User unsuspended."); renderMemberList(); renderActionLog();
+
+  async function unsuspendUser(userId) {
+    const { error } = await sb.from("profiles").update({
+      is_suspended: false,
+      suspended_until: null,
+      admin_note: null
+    }).eq("id", userId);
+    if (error) { toast("Unsuspend failed."); return; }
+    await sb.from("admin_actions").insert({
+      admin_id: currentAdminId,
+      target_user_id: userId,
+      action: 'unsuspend',
+      admin_note: ''
+    });
+    toast("User unsuspended.");
+    renderMemberList();
+    renderActionLog();
   }
-  async function renderMemberList(){
-    const container=$("memberList");
-    container.innerHTML="Loading...";
-    const {data:users,error}=await sb.from("profiles").select("*").order("username");
-    if(error){ container.innerHTML="Error loading members."; return; }
-    container.innerHTML="";
-    users.forEach(user=>{
-      const row=document.createElement("div"); row.className="member-item";
-      const onlineStatus=user.is_online?'<span class="badge">Online</span>':`<span class="badge" style="background:var(--offline)">Offline since ${formatLastSeen(user.last_seen)}</span>`;
-      let statusBadge=onlineStatus;
-      if(user.is_suspended)statusBadge+=' <span class="badge warn">Suspended</span>';
-      if(user.is_pending_delete)statusBadge+=' <span class="badge warn" style="background:var(--danger)">Pending delete</span>';
-      row.innerHTML=`
-        <img class="member-avatar" src="${user.avatar_url||DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <div style="flex:1"><strong>@${user.username}</strong> ${statusBadge}<div style="font-size:11px;color:var(--muted)">${user.full_name||''}</div></div>
+
+  async function renderMemberList() {
+    const container = $("memberList");
+    container.innerHTML = "Loading...";
+    const { data: users, error } = await sb.from("profiles").select("*").order("username");
+    if (error) { container.innerHTML = "Error loading members."; return; }
+    container.innerHTML = "";
+    users.forEach(user => {
+      const row = document.createElement("div");
+      row.className = "member-item";
+      const onlineStatus = user.is_online
+        ? '<span class="badge">Online</span>'
+        : `<span class="badge" style="background:var(--offline)">Offline since ${formatLastSeen(user.last_seen)}</span>`;
+      let statusBadge = onlineStatus;
+      if (user.is_suspended) statusBadge += ' <span class="badge warn">Suspended</span>';
+      if (user.is_pending_delete) statusBadge += ' <span class="badge warn" style="background:var(--danger)">Pending delete</span>';
+      row.innerHTML = `
+        <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div style="flex:1">
+          <strong>@${user.username}</strong> ${statusBadge}
+          <div style="font-size:11px;color:var(--muted)">${user.full_name || ''}</div>
+        </div>
         <div class="acts">
           <a class="btn" href="profile.html?user=${user.id}" target="_blank">View</a>
-          ${user.is_suspended?`<button class="btn" onclick="window.unsuspendUser('${user.id}')">Unsuspend</button>`:`<button class="btn" onclick="window.openMemberModal('suspend','${user.id}','${user.username}')">Suspend</button>`}
+          ${user.is_suspended ? `<button class="btn" onclick="window.unsuspendUser('${user.id}')">Unsuspend</button>` : `<button class="btn" onclick="window.openMemberModal('suspend','${user.id}','${user.username}')">Suspend</button>`}
           <button class="btn btn-danger" onclick="window.openMemberModal('delete','${user.id}','${user.username}')">Delete</button>
         </div>`;
       container.appendChild(row);
     });
   }
-  async function renderActionLog(){
-    const container=$("actionLog");
-    const {data,error}=await sb.from("admin_actions").select("*").order("created_at",{ascending:false}).limit(20);
-    if(error){ container.innerHTML="Could not load log."; return; }
-    container.innerHTML="";
-    data.forEach(log=>{
-      const div=document.createElement("div");
-      div.style.cssText="font-size:12px;color:var(--muted);margin-bottom:4px;border-bottom:1px solid var(--border);padding:4px 0";
-      div.innerHTML=`<span style="color:var(--accent)">${log.action}</span> user ${log.target_user_id} by admin ${log.admin_id} — ${log.admin_note} (${new Date(log.created_at).toLocaleString()})`;
+
+  async function renderActionLog() {
+    const container = $("actionLog");
+    const { data, error } = await sb.from("admin_actions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) { container.innerHTML = "Could not load log."; return; }
+    container.innerHTML = "";
+    data.forEach(log => {
+      const div = document.createElement("div");
+      div.style.cssText = "font-size:12px;color:var(--muted);margin-bottom:4px;border-bottom:1px solid var(--border);padding:4px 0";
+      div.innerHTML = `<span style="color:var(--accent)">${log.action}</span> user ${log.target_user_id} by admin ${log.admin_id} — ${log.admin_note} (${new Date(log.created_at).toLocaleString()})`;
       container.appendChild(div);
     });
   }
-  window.unsuspendUser=unsuspendUser;
-  window.openMemberModal=openMemberModal;
 
-  // Site logo (unchanged)
-  async function loadCurrentLogo(){
-    const {data,error}=await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
-    if(error)return;
-    const url=data&&data.value?data.value:"";
-    const preview=$("currentLogoPreview"), urlDisplay=$("currentLogoUrl");
-    if(url){ preview.src=url+'?t='+Date.now(); urlDisplay.textContent=url; }
-    else { preview.src=DEFAULT_AVATAR; urlDisplay.textContent="No logo set"; }
-  }
-  async function uploadAndSaveLogo(file){
-    if(!file){ toast("Select an image."); return; }
-    const btn=$("uploadLogoBtn"), origText=btn.textContent;
-    btn.disabled=true; btn.textContent="Uploading…";
-    try{
-      const {error:upErr}=await sb.storage.from("avatars").upload("site-logo/logo.png",file,{upsert:true});
-      if(upErr)throw new Error("Upload failed: "+upErr.message);
-      const {data:urlData}=sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
-      const newUrl=urlData?.publicUrl; if(!newUrl)throw new Error("No public URL");
-      const {error:upsertErr}=await sb.from("settings").upsert({key:"site_logo",value:newUrl});
-      if(upsertErr)throw new Error("Settings update failed: "+upsertErr.message);
-      $("currentLogoPreview").src=newUrl+'?t='+Date.now();
-      $("currentLogoUrl").textContent=newUrl;
-      toast("Logo updated!");
-    }catch(e){ toast(e.message); console.warn(e); }
-    finally{ btn.disabled=false; btn.textContent=origText; }
+  window.unsuspendUser = unsuspendUser;
+  window.openMemberModal = openMemberModal;
+
+  // ---------- Site Logo (unchanged) ----------
+  async function loadCurrentLogo() {
+    const { data, error } = await sb
+      .from("settings")
+      .select("value")
+      .eq("key", "site_logo")
+      .maybeSingle();
+    if (error) return;
+    const url = data && data.value ? data.value : "";
+    const preview = $("currentLogoPreview");
+    const urlDisplay = $("currentLogoUrl");
+    if (url) {
+      preview.src = url + '?t=' + Date.now();
+      urlDisplay.textContent = url;
+    } else {
+      preview.src = DEFAULT_AVATAR;
+      urlDisplay.textContent = "No logo set";
+    }
   }
 
-  // Init
-  document.addEventListener("DOMContentLoaded",async()=>{
-    const ok=await gate(); if(!ok)return;
-    const {data:{session}}=await sb.auth.getSession(); currentAdminId=session.user.id;
-    bindLogout(); loadBroadcast(); renderList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
-    $("broadcastSave").addEventListener("click",()=>saveBroadcast($("broadcastInput").value.trim()));
-    $("broadcastClear").addEventListener("click",()=>{ $("broadcastInput").value=""; saveBroadcast(""); });
-    $("searchBtn").addEventListener("click",runSearch);
-    $("searchQ").addEventListener("keydown",(e)=>{if(e.key==="Enter")runSearch();});
-    $("genresInput").addEventListener("input",renderGenreChips);
-    $("cancelEdit").addEventListener("click",clearForm);
-    $("saveItem").addEventListener("click",saveItem);
-    $("bulkImportBtn").addEventListener("click",bulkImport);
-    $("fixAllBtn").addEventListener("click",fixAll);
-    $("refreshMembers").addEventListener("click",renderMemberList);
-    $("uploadLogoBtn").addEventListener("click",()=>{ const file=$("logoFileInput").files[0]; uploadAndSaveLogo(file); });
-    sb.auth.onAuthStateChange((_e,s)=>{ if(!s||(s.user.email||"").toLowerCase()!==ADMIN_EMAIL)location.replace("admin_login.html"); });
+  async function uploadAndSaveLogo(file) {
+    if (!file) { toast("Please select an image file."); return; }
+    const btn = $("uploadLogoBtn");
+    const origText = btn.textContent;
+    btn.disabled = true; btn.textContent = "Uploading…";
+    try {
+      const { error: uploadError } = await sb.storage
+        .from("avatars")
+        .upload("site-logo/logo.png", file, { upsert: true });
+      if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+
+      const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
+      const newUrl = urlData?.publicUrl;
+      if (!newUrl) throw new Error("Could not get public URL.");
+
+      const { error: upsertError } = await sb.from("settings").upsert({
+        key: "site_logo",
+        value: newUrl
+      });
+      if (upsertError) throw new Error("Settings update failed: " + upsertError.message);
+
+      $("currentLogoPreview").src = newUrl + '?t=' + Date.now();
+      $("currentLogoUrl").textContent = newUrl;
+      toast("Logo updated successfully!");
+    } catch (e) {
+      toast(e.message);
+      console.warn(e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+
+  // ---------- Init ----------
+  document.addEventListener("DOMContentLoaded", async () => {
+    const ok = await gate();
+    if (!ok) return;
+
+    const { data: { session } } = await sb.auth.getSession();
+    currentAdminId = session.user.id;
+
+    bindLogout();
+    loadBroadcast();
+    renderList();
+    renderMemberList();
+    renderActionLog();
+    loadCurrentLogo();
+
+    $("broadcastSave").addEventListener("click", () => saveBroadcast($("broadcastInput").value.trim()));
+    $("broadcastClear").addEventListener("click", () => { $("broadcastInput").value = ""; saveBroadcast(""); });
+
+    $("searchBtn").addEventListener("click", runSearch);
+    $("searchQ").addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
+
+    $("genresInput").addEventListener("input", renderGenreChips);
+    $("cancelEdit").addEventListener("click", clearForm);
+    $("saveItem").addEventListener("click", saveItem);
+
+    $("bulkImportBtn").addEventListener("click", bulkImport);
+    $("fixAllBtn").addEventListener("click", fixAll);
+    $("refreshMembers").addEventListener("click", renderMemberList);
+
+    $("uploadLogoBtn").addEventListener("click", () => {
+      const file = $("logoFileInput").files[0];
+      uploadAndSaveLogo(file);
+    });
+
+    sb.auth.onAuthStateChange((_e, s) => {
+      if (!s || (s.user.email || "").toLowerCase() !== ADMIN_EMAIL) location.replace("admin_login.html");
+    });
   });
-
-  // Smart Auto-Fetch search function (added missing)
-  let searchAbort;
-  async function runSearch(){
-    const q=$("searchQ").value.trim(), results=$("searchResults"), status=$("searchStatus");
-    results.hidden=true; results.innerHTML=""; status.hidden=false;
-    if(!q){ status.textContent="Type something to search."; return; }
-    if(!navigator.onLine){ status.textContent="Offline."; return; }
-    status.textContent="Searching Jikan…";
-    if(searchAbort)searchAbort.abort();
-    searchAbort=new AbortController();
-    try{
-      const res=await fetch("https://api.jikan.moe/v4/anime?q="+encodeURIComponent(q)+"&limit=6",{signal:searchAbort.signal});
-      if(!res.ok)throw new Error("HTTP "+res.status);
-      const data=await res.json(); const list=(data&&data.data)||[];
-      if(!list.length){ status.textContent="No results."; return; }
-      status.hidden=true; results.hidden=false;
-      for(const a of list){
-        const btn=document.createElement("button"); btn.type="button"; btn.className="result";
-        const img=document.createElement("img");
-        const src=a.images&&a.images.jpg&&(a.images.jpg.image_url||a.images.jpg.large_image_url);
-        img.src=src||PLACEHOLDER; img.onerror=()=>{img.src=PLACEHOLDER;}; img.alt="";
-        const info=document.createElement("div");
-        const t=document.createElement("div"); t.className="t"; t.textContent=a.title||"Untitled";
-        const y=document.createElement("div"); y.className="y";
-        y.textContent=[a.type,a.year||(a.aired&&a.aired.from?new Date(a.aired.from).getFullYear():null)].filter(Boolean).join(" · ");
-        info.appendChild(t); info.appendChild(y);
-        btn.appendChild(img); btn.appendChild(info);
-        btn.addEventListener("click",()=>{ fillFormFromJikan(a,src); toast("Filled from Jikan"); });
-        results.appendChild(btn);
-      }
-    }catch(err){ if(err.name==="AbortError")return; console.warn(err); status.hidden=false; status.textContent="Search failed."; }
-  }
 })();
 </script>
 </body>
