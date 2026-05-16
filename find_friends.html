@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Find Friends</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0d0d0d; --card:#161616; --panel:#1a1a1a;
+    --accent:#1db9b2; --danger:#ff4757;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#222;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  header.app{
+    background:var(--card);border-bottom:1px solid var(--border);
+    padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{font-weight:800;font-size:20px}
+  .brand span{color:var(--accent)}
+  .back-btn{
+    padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:background .15s;
+  }
+  .back-btn:hover{background:#1e1e1e}
+
+  .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+
+  .member-card{
+    display:flex;align-items:center;gap:16px;padding:16px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:16px;margin-bottom:12px;
+    transition:border-color .15s;
+  }
+  .member-card:hover{border-color:var(--accent)}
+  .member-avatar{
+    width:48px;height:48px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--border);flex-shrink:0;
+  }
+  .member-info{flex:1}
+  .member-info strong{display:block;font-size:16px;margin-bottom:4px}
+  .member-info span{font-size:13px;color:var(--muted)}
+  .message-btn{
+    padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--accent);color:#062525;
+    cursor:pointer;transition:filter .15s;
+  }
+  .message-btn:hover{filter:brightness(1.05)}
+
+  .empty-state{text-align:center;padding:40px;color:var(--muted)}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+</style>
+</head>
+<body>
+  <header class="app">
+    <div class="brand">Ani<span>Chan</span></div>
+    <button class="back-btn" id="backBtn">← Back</button>
+  </header>
+
+  <main class="container">
+    <h2 style="margin-bottom:20px;font-size:20px">Find Friends</h2>
+    <div id="membersList"></div>
+  </main>
+
+  <footer>AniChan · powered by Supabase</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
+  );
+
+  let currentUserId = null;
+
+  // Back button
+  $("backBtn").addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+
+  // Load and display all members except current user
+  async function loadMembers() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = "user_login.html";
+      return;
+    }
+    currentUserId = session.user.id;
+
+    const { data: users, error } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url, is_online")
+      .neq("id", currentUserId)  // exclude current user
+      .order("username");
+
+    const container = $("membersList");
+    if (error) {
+      container.innerHTML = '<div class="empty-state">Failed to load members.</div>';
+      return;
+    }
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="empty-state">No other members yet.</div>';
+      return;
+    }
+
+    container.innerHTML = "";
+    users.forEach(user => {
+      const card = document.createElement("div");
+      card.className = "member-card";
+      card.innerHTML = `
+        <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div class="member-info">
+          <strong>${user.full_name || user.username}</strong>
+          <span>@${user.username} · ${user.is_online ? 'Online' : 'Offline'}</span>
+        </div>
+        <button class="message-btn" data-userid="${user.id}">Message</button>
+      `;
+      container.appendChild(card);
+    });
+
+    // Add event listeners to all message buttons
+    document.querySelectorAll(".message-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const otherUserId = e.currentTarget.dataset.userid;
+        await startChat(otherUserId);
+      });
+    });
+  }
+
+  // Create or open a direct chat room and redirect
+  async function startChat(otherUserId) {
+    if (!currentUserId || !otherUserId) return;
+
+    // Check if room already exists
+    const { data: existing } = await supabase
+      .from("chat_rooms")
+      .select("id")
+      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`)
+      .maybeSingle();
+
+    if (existing) {
+      window.location.href = "chat.html?room=" + existing.id;
+    } else {
+      // Create new room
+      const { data: newRoom, error } = await supabase
+        .from("chat_rooms")
+        .insert({ user_one_id: currentUserId, user_two_id: otherUserId })
+        .select("id")
+        .single();
+      if (error) {
+        alert("Could not start chat.");
+        return;
+      }
+      window.location.href = "chat.html?room=" + newRoom.id;
+    }
+  }
+
+  // Init
+  document.addEventListener("DOMContentLoaded", loadMembers);
+})();
+</script>
+</body>
+</html>

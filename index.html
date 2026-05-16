@@ -166,24 +166,6 @@
     transform: translateY(0);
   }
 
-  /* Members modal */
-  .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;
-    justify-content:center;padding:18px;background:rgba(0,0,0,.6);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  .modal.show{display:flex}
-  .modal .panel{width:100%;max-width:400px;background:var(--card);
-    border:1px solid var(--border);border-radius:18px;padding:22px;
-    box-shadow:0 30px 60px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
-  .modal h3{margin:0 0 4px;font-size:18px}
-  .modal .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-  .modal .close{color:var(--muted);font-size:20px;line-height:1}
-  .member-item{
-    display:flex;align-items:center;gap:10px;padding:8px 0;
-    border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s
-  }
-  .member-item:hover{background:var(--panel)}
-  .member-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover}
-
   footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
 </style>
 </head>
@@ -246,17 +228,6 @@
   </main>
 
   <button id="toTop" aria-label="Scroll to top">↑</button>
-
-  <!-- All Members Modal -->
-  <div class="modal" id="membersModal" aria-hidden="true">
-    <div class="panel" role="dialog" aria-modal="true">
-      <div class="head">
-        <h3>All Members</h3>
-        <button class="close" id="membersModalClose" aria-label="Close">×</button>
-      </div>
-      <div id="membersList"></div>
-    </div>
-  </div>
 
   <footer>AniChan · powered by Supabase</footer>
 
@@ -333,7 +304,7 @@
     return data.avatar_url || null;
   }
 
-  // Header buttons – NO logout button
+  // Header buttons – NO logout button, "Find Friends" replaces "All Members"
   async function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
@@ -346,12 +317,12 @@
         : `<div class="avatar-circle" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;" title="View Profile">👤</div>`;
 
       container.innerHTML = `
-        <button class="btn" id="allMembersBtn">All Members</button>
+        <button class="btn" id="findFriendsBtn">Find Friends</button>
         <button class="btn" id="chatBtn">💬 Chat</button>
         ${avatarHtml}
       `;
 
-      $("allMembersBtn").addEventListener("click", showAllMembers);
+      $("findFriendsBtn").addEventListener("click", () => location.href = "find_friends.html");
       $("chatBtn").addEventListener("click", () => location.href = "chat.html");
 
       const avatarElement = container.querySelector(".avatar-circle");
@@ -481,38 +452,6 @@
     renderCollection();
   });
 
-  // All Members modal
-  function openMembersModal() {
-    $("membersModal").classList.add("show");
-    $("membersModal").setAttribute("aria-hidden", "false");
-  }
-  function closeMembersModal() {
-    $("membersModal").classList.remove("show");
-    $("membersModal").setAttribute("aria-hidden", "true");
-  }
-  async function showAllMembers() {
-    openMembersModal();
-    const list = $("membersList");
-    list.innerHTML = "Loading...";
-    const { data: users, error } = await sb.from("profiles").select("id, username, avatar_url").order("username");
-    if (error) { list.innerHTML = "Error loading members."; return; }
-    list.innerHTML = "";
-    users.forEach(user => {
-      const div = document.createElement("div");
-      div.className = "member-item";
-      div.innerHTML = `
-        <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <span style="flex:1">${user.username.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m])}</span>`;
-      div.addEventListener("click", () => {
-        closeMembersModal();
-        location.href = "profile.html?user=" + user.id;
-      });
-      list.appendChild(div);
-    });
-  }
-  $("membersModalClose").addEventListener("click", closeMembersModal);
-  $("membersModal").addEventListener("click", (e) => { if (e.target.id === "membersModal") closeMembersModal(); });
-
   // Init
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
@@ -543,6 +482,8 @@
       })
       .subscribe();
   });
+
+  // All Members modal removed
 })();
 </script>
 </body>
