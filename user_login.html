@@ -135,7 +135,7 @@
     </div>
     <div class="forms-wrapper">
       <div class="forms-slider" id="slider">
-        <!-- Login panel -->
+        <!-- Login panel (username only) -->
         <div class="form-panel" id="loginPanel">
           <h2>Welcome back</h2>
           <div class="field">
@@ -158,7 +158,7 @@
             Don't have an account? <button id="switchToSignup">Sign up</button>
           </div>
         </div>
-        <!-- Signup panel -->
+        <!-- Signup panel (extended fields) -->
         <div class="form-panel" id="signupPanel">
           <h2>Create account</h2>
           <div class="field">
@@ -345,7 +345,7 @@
     return hasLetter && hasNumber && hasSpecial;
   }
 
-  // --- Login via username ---
+  // --- Login via username (with suspension / deletion checks) ---
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim();
     const password = $("loginPassword").value;
@@ -357,9 +357,10 @@
       return;
     }
     try {
+      // 1. Look up email by username
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("email")
+        .select("email, id")
         .eq("username", username)
         .maybeSingle();
       if (profileError) throw profileError;
@@ -368,8 +369,70 @@
         err.classList.add("show");
         return;
       }
+
+      // 2. Authenticate
       const { error: authError } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authError) throw authError;
+
+      // 3. Fetch full profile to check status
+      const { data: fullProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("is_suspended, suspended_until, is_pending_delete, deleted_at, admin_note")
+        .eq("id", profile.id)
+        .single();
+      if (fetchError || !fullProfile) {
+        // Profile may have been deleted
+        err.textContent = "Account doesn't exist. Sign up to proceed.";
+        err.classList.add("show");
+        return;
+      }
+
+      // --- Check pending deletion ---
+      if (fullProfile.is_pending_delete) {
+        const deletedAt = new Date(fullProfile.deleted_at);
+        const now = new Date();
+        const diffMs = now - deletedAt;
+        const twoHoursMs = 2 * 60 * 60 * 1000;
+        if (diffMs >= twoHoursMs) {
+          // Grace period expired → permanently delete
+          await supabase.from("profiles").delete().eq("id", profile.id);
+          err.textContent = "Account doesn't exist. Sign up to proceed.";
+          err.classList.add("show");
+          return;
+        } else {
+          const remaining = twoHoursMs - diffMs;
+          const hours = Math.floor(remaining / 3600000);
+          const minutes = Math.floor((remaining % 3600000) / 60000);
+          err.textContent = `Your account has been deleted by an admin. Note: "${fullProfile.admin_note}". It will be permanently removed in ${hours}h ${minutes}m.`;
+          err.classList.add("show");
+          return;
+        }
+      }
+
+      // --- Check suspension ---
+      if (fullProfile.is_suspended) {
+        const suspendedUntil = new Date(fullProfile.suspended_until);
+        const now = new Date();
+        if (suspendedUntil > now) {
+          const diffMs = suspendedUntil - now;
+          const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          err.textContent = `Your account is suspended. Note: "${fullProfile.admin_note}". Remaining: ${days}d ${hours}h ${minutes}m.`;
+          err.classList.add("show");
+          return;
+        } else {
+          // Auto-unsuspend
+          await supabase.from("profiles").update({
+            is_suspended: false,
+            suspended_until: null,
+            admin_note: null
+          }).eq("id", profile.id);
+          // Proceed to login
+        }
+      }
+
+      // 4. Success
       window.location.href = "index.html";
     } catch (e) {
       err.textContent = e.message || "Login failed.";
@@ -464,6 +527,13 @@
       err.textContent = e.message || "Registration failed.";
       err.classList.add("show");
     }
+  });
+
+  // ---------- Offline auto-refresh ----------
+  window.addEventListener('online', () => {
+    setTimeout(() => {
+      location.reload();
+    }, 1000);
   });
 
   document.addEventListener("keydown", (e) => {
