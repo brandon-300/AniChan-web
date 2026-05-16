@@ -250,11 +250,12 @@
     const container = $('headerActions');
     container.innerHTML = '';
 
-    const homeBtn = document.createElement('a');
-    homeBtn.href = 'index.html';
-    homeBtn.className = 'btn';
-    homeBtn.textContent = '🏠 Home';
-    container.appendChild(homeBtn);
+    // ← Back button (goes to previous page)
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn';
+    backBtn.textContent = '← Back';
+    backBtn.addEventListener('click', () => history.back());
+    container.appendChild(backBtn);
 
     if (!isOwner) {
       const msgBtn = document.createElement('button');

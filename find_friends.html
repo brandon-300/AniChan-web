@@ -39,10 +39,16 @@
     transition:border-color .15s;
   }
   .member-card:hover{border-color:var(--accent)}
+  .member-avatar-link {
+    flex-shrink: 0;
+    display: block;
+  }
   .member-avatar{
     width:48px;height:48px;border-radius:50%;object-fit:cover;
-    border:2px solid var(--border);flex-shrink:0;
+    border:2px solid var(--border);cursor:pointer;
+    transition: border-color 0.15s;
   }
+  .member-avatar:hover{border-color:var(--accent)}
   .member-info{flex:1}
   .member-info strong{display:block;font-size:16px;margin-bottom:4px}
   .member-info span{font-size:13px;color:var(--muted)}
@@ -101,7 +107,7 @@
     const { data: users, error } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url, is_online")
-      .neq("id", currentUserId)  // exclude current user
+      .neq("id", currentUserId)
       .order("username");
 
     const container = $("membersList");
@@ -119,7 +125,9 @@
       const card = document.createElement("div");
       card.className = "member-card";
       card.innerHTML = `
-        <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <a href="profile.html?user=${user.id}" class="member-avatar-link">
+          <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        </a>
         <div class="member-info">
           <strong>${user.full_name || user.username}</strong>
           <span>@${user.username} · ${user.is_online ? 'Online' : 'Offline'}</span>
@@ -142,7 +150,6 @@
   async function startChat(otherUserId) {
     if (!currentUserId || !otherUserId) return;
 
-    // Check if room already exists
     const { data: existing } = await supabase
       .from("chat_rooms")
       .select("id")
@@ -152,7 +159,6 @@
     if (existing) {
       window.location.href = "chat.html?room=" + existing.id;
     } else {
-      // Create new room
       const { data: newRoom, error } = await supabase
         .from("chat_rooms")
         .insert({ user_one_id: currentUserId, user_two_id: otherUserId })
