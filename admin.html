@@ -609,7 +609,7 @@
     if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
   });
 
-  // ---------- Bulk Import (unchanged) ----------
+  // ---------- Bulk Import ----------
   let bulkPage = 1;
   async function bulkImport(){
     const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -670,7 +670,7 @@
     }
   }
 
-  // ---------- Fix All (now renames titles) ----------
+  // ---------- Fix All (per‑item progress with percentage) ----------
   function mapAiringStatus(jikanStatus) {
     if (!jikanStatus) return null;
     const s = jikanStatus.toLowerCase();
@@ -680,7 +680,6 @@
     return null;
   }
 
-  // Choose the best title based on admin's browser language
   function getBestTitle(a) {
     const lang = (navigator.language || 'en').split('-')[0];
     if (lang === 'ja' && a.title_japanese) return a.title_japanese;
@@ -702,7 +701,7 @@
       const missingGenres = !a.genres || (Array.isArray(a.genres) && a.genres.length === 0);
       const missingStudio = !a.studio || a.studio.trim() === "";
       const invalidStatus = !a.status || !validAiringStatuses.includes(a.status);
-      // Always consider renaming: we'll fetch best title and update if different
+      // always process to try renaming
       return missingScore || missingEp || missingGenres || missingStudio || invalidStatus || true;
     });
 
@@ -710,23 +709,31 @@
       status.textContent = "All titles are clean, no issues found.";
       btn.disabled = false; btn.textContent = origText; return;
     }
-    status.textContent = `Found ${needFix.length} anime to fix. Processing in batches of 50…`;
-    const batchSize = 50;
+
+    const total = needFix.length;
+    let processed = 0;
     let fixedCount = 0;
-    for (let i = 0; i < needFix.length; i += batchSize) {
+
+    // Process in batches of 50 to avoid overwhelming the API, but update progress per item
+    const batchSize = 50;
+    for (let i = 0; i < total; i += batchSize) {
       const batch = needFix.slice(i, i + batchSize);
-      status.textContent = `Fixing batch ${i+1}‑${Math.min(i+batchSize, needFix.length)} of ${needFix.length}…`;
       for (const anime of batch) {
+        processed++;
+        // Update progress
+        const pct = Math.round((processed / total) * 100);
+        status.textContent = `Fixing ${processed} out of ${total}… ${pct}%`;
+
         try {
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 600)); // rate limit
           const q = encodeURIComponent(anime.title);
           const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
           if (!res.ok) continue;
           const json = await res.json();
           const match = json.data && json.data[0];
           if (!match) continue;
+
           const updates = {};
-          // Rename title if a better one exists
           const bestTitle = getBestTitle(match);
           if (bestTitle && bestTitle !== anime.title) updates.title = bestTitle;
           if (anime.score == null && match.score != null) updates.score = match.score;
@@ -739,6 +746,7 @@
           }
           const mapped = mapAiringStatus(match.status);
           if (mapped) updates.status = mapped;
+
           if (Object.keys(updates).length) {
             const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
             if (!updErr) fixedCount++;
@@ -748,6 +756,7 @@
         }
       }
     }
+
     if (fixedCount > 0) {
       toast(`Fixed ${fixedCount} titles.`);
       await loadAnimeList();
@@ -757,7 +766,7 @@
     btn.textContent = origText;
   }
 
-  // ---------- Member Management (unchanged) ----------
+  // ---------- Member Management ----------
   function formatLastSeen(iso){
     if (!iso) return "Never";
     const d = new Date(iso), now = new Date();
@@ -919,7 +928,7 @@
   window.unsuspendUser = unsuspendUser;
   window.openMemberModal = openMemberModal;
 
-  // ---------- Site Logo (unchanged) ----------
+  // ---------- Site Logo ----------
   async function loadCurrentLogo() {
     const { data, error } = await sb
       .from("settings")
