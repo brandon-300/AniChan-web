@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>AniChan · Chat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="i18n.js"></script>
 <style>
   :root {
     --bg: #0d0d0d; --card: #161616; --panel: #1a1a1a;
@@ -121,13 +120,6 @@
   }
   .message.sent .status-text { justify-content: flex-end; }
 
-  /* Deleted placeholder */
-  .deleted-placeholder {
-    padding: 10px 14px; border-radius: 16px; background: var(--panel);
-    font-style: italic; color: var(--muted); font-size: 13px;
-    pointer-events: none; user-select: none;
-  }
-
   /* Reply quote inside bubble */
   .reply-quote {
     font-size: 11px; color: var(--muted); margin-bottom: 4px;
@@ -136,6 +128,13 @@
     transition: color 0.1s;
   }
   .reply-quote:hover { color: var(--text); }
+
+  /* Deleted placeholder */
+  .deleted-placeholder {
+    padding: 10px 14px; border-radius: 16px; background: var(--panel);
+    font-style: italic; color: var(--muted); font-size: 13px;
+    pointer-events: none; user-select: none;
+  }
 
   /* Reply bar */
   .reply-bar {
@@ -228,7 +227,8 @@
     </div>
     <div class="typing-indicator" id="typingIndicator"></div>
     <div class="chat-box" id="chatBox">
-      <div class="empty-chat" id="emptyChatPlaceholder">
+      <!-- The empty placeholder will be hidden by openRoom() -->
+      <div class="empty-chat" id="emptyChatPlaceholder" style="display:none;">
         Select a conversation to start chatting
       </div>
     </div>
@@ -255,11 +255,9 @@
 <script>
 /*
   ══════════════════════════════════════════════════════
-  AniChan Realtime Chat — Enhanced v2
-  Reply, delete, edit, bold previews, back button
+  AniChan Realtime Chat — Final v2.1
   ══════════════════════════════════════════════════════
 */
-
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -356,6 +354,7 @@
   // ── Open room ──
   async function openRoom(roomId, otherUserId) {
     activeRoom = roomId; partnerId = otherUserId;
+    // Immediately hide any placeholder
     $('emptyChatPlaceholder').style.display = 'none';
     $('chatHeader').style.display = 'flex';
     $('inputArea').style.display = 'flex';
@@ -520,19 +519,20 @@
 
   $('ctxCancel').addEventListener('click', () => $('contextMenu').style.display = 'none');
 
-  // ── Send with status ──
+  // ── Send with status (no duplicates) ──
   async function sendMessage() {
     const input = $('messageInput'), text = input.value.trim();
     if (!text || !activeRoom || !partnerId || isSending) return;
     input.value = '';
     isSending = true;
 
+    // Temporary optimistic message
     const tempId = 'temp-' + Date.now();
-    const tempMsg = document.createElement('div');
-    tempMsg.className = 'message sent';
-    tempMsg.dataset.msgId = tempId;
-    tempMsg.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="status-text"><span>sending…</span></div>`;
-    $('chatBox').appendChild(tempMsg);
+    const tempDiv = document.createElement('div');
+    tempDiv.className = 'message sent';
+    tempDiv.dataset.msgId = tempId;
+    tempDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="status-text"><span>sending…</span></div>`;
+    $('chatBox').appendChild(tempDiv);
     scrollToBottom();
 
     const payload = {
@@ -544,21 +544,27 @@
       reply_to: replyToMessage?.id || null
     };
 
-    const { error } = await supabase.from('messages').insert(payload);
-
-    const statusEl = tempMsg.querySelector('.status-text');
-    if (error) {
-      statusEl.innerHTML = '<span style="color:var(--danger)">not sent, try again</span>';
-    } else {
-      statusEl.innerHTML = `<span>sent</span> <span class="time">${formatTime(new Date().toISOString())}</span>`;
-      await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
-      loadRooms();
-    }
-
+    // Clear reply bar early
     if (replyToMessage) {
       replyToMessage = null;
       $('replyBar').classList.remove('show');
     }
+
+    // Insert and get the real message
+    const { data: inserted, error } = await supabase.from('messages').insert(payload).select().single();
+
+    const statusEl = tempDiv.querySelector('.status-text');
+    if (error) {
+      statusEl.innerHTML = '<span style="color:var(--danger)">not sent, try again</span>';
+    } else if (inserted) {
+      // Replace tempId with real ID so realtime won't duplicate
+      tempDiv.dataset.msgId = inserted.id;
+      statusEl.innerHTML = `<span>sent</span> <span class="time">${formatTime(inserted.created_at)}</span>`;
+      // Update sidebar
+      await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
+      loadRooms();
+    }
+
     isSending = false;
   }
 
@@ -569,6 +575,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const nm = payload.new;
+          // Skip if already present (our own sent message)
           if (!document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
             addMessageElement(nm);
             if (nm.receiver_id === currentUser.id) supabase.from('messages').update({ is_read:true }).eq('id', nm.id).then();
