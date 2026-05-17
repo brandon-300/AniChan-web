@@ -118,39 +118,17 @@
   .modal p{margin:0 0 16px;color:var(--muted);font-size:13px}
   .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 
-  /* Pagination controls (same as index) */
   .pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px;
   }
   .pagination button {
-    padding: 8px 20px;
-    border-radius: 20px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    padding: 8px 20px; border-radius: 20px; background: var(--panel);
+    border: 1px solid var(--border); color: var(--text); font-weight: 600;
+    font-size: 13px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
   }
-  .pagination button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  .pagination button:hover:not(:disabled) {
-    border-color: var(--accent);
-    background: var(--card);
-  }
-  .page-indicator {
-    font-size: 13px;
-    color: var(--muted);
-    min-width: 80px;
-    text-align: center;
-  }
+  .pagination button:disabled { opacity: 0.4; cursor: default; }
+  .pagination button:hover:not(:disabled) { border-color: var(--accent); background: var(--card); }
+  .page-indicator { font-size: 13px; color: var(--muted); min-width: 80px; text-align: center; }
 </style>
 </head>
 <body>
@@ -324,7 +302,7 @@
   );
 
   const ADMIN_ITEMS_PER_PAGE = 20;
-  let allAnime = [];                // full collection cache
+  let allAnime = [];
   let adminPage = 1;
 
   // ---------- Gate ----------
@@ -530,10 +508,10 @@
     if (error) { toast("Save failed: " + error.message); return; }
     toast(id ? "Updated" : "Added to collection");
     clearForm();
-    await loadAnimeList();     // reload full list and reset page 1
+    await loadAnimeList();
   }
 
-  // ---------- Paginated collection rendering ----------
+  // ---------- Paginated collection list ----------
   async function loadAnimeList(){
     const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
     if (error) {
@@ -588,7 +566,7 @@
           const { error } = await sb.from("anime").delete().eq("id", a.id);
           if (error) { toast("Delete failed: " + error.message); return; }
           if ($("editId").value === a.id) clearForm();
-          await loadAnimeList(); // reload
+          await loadAnimeList();
           toast("Deleted");
         });
         acts.appendChild(editBtn); acts.appendChild(delBtn);
@@ -597,7 +575,6 @@
       }
     }
 
-    // Update pagination controls
     const pagination = $("paginationControls");
     const prevBtn = $("prevPageBtn");
     const nextBtn = $("nextPageBtn");
@@ -624,22 +601,15 @@
     return parts.join(" · ");
   }
 
-  // Pagination event listeners
   $("prevPageBtn").addEventListener("click", () => {
-    if (adminPage > 1) {
-      adminPage--;
-      renderPaginatedList();
-    }
+    if (adminPage > 1) { adminPage--; renderPaginatedList(); }
   });
   $("nextPageBtn").addEventListener("click", () => {
     const totalPages = Math.ceil(allAnime.length / ADMIN_ITEMS_PER_PAGE);
-    if (adminPage < totalPages) {
-      adminPage++;
-      renderPaginatedList();
-    }
+    if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
   });
 
-  // ---------- Bulk Import (unchanged, but resets page 1 after) ----------
+  // ---------- Bulk Import (unchanged) ----------
   let bulkPage = 1;
   async function bulkImport(){
     const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -681,7 +651,7 @@
           if (error) throw error;
           added = inserts.length;
           toast(`Imported ${added} anime.`);
-          await loadAnimeList();   // refresh and reset to page 1
+          await loadAnimeList();
           status.textContent = `Added ${added} from pages ${p1}‑${p2}.`;
           bulkPage += 2;
           break;
@@ -700,7 +670,7 @@
     }
   }
 
-  // ---------- Fix All (unchanged, but reloads list after) ----------
+  // ---------- Fix All (now renames titles) ----------
   function mapAiringStatus(jikanStatus) {
     if (!jikanStatus) return null;
     const s = jikanStatus.toLowerCase();
@@ -708,6 +678,14 @@
     if (s.includes("finished")) return "Aired";
     if (s.includes("not yet aired")) return "Not yet aired";
     return null;
+  }
+
+  // Choose the best title based on admin's browser language
+  function getBestTitle(a) {
+    const lang = (navigator.language || 'en').split('-')[0];
+    if (lang === 'ja' && a.title_japanese) return a.title_japanese;
+    if (a.title_english) return a.title_english;
+    return a.title;
   }
 
   async function fixAll(){
@@ -724,14 +702,13 @@
       const missingGenres = !a.genres || (Array.isArray(a.genres) && a.genres.length === 0);
       const missingStudio = !a.studio || a.studio.trim() === "";
       const invalidStatus = !a.status || !validAiringStatuses.includes(a.status);
-      return missingScore || missingEp || missingGenres || missingStudio || invalidStatus;
+      // Always consider renaming: we'll fetch best title and update if different
+      return missingScore || missingEp || missingGenres || missingStudio || invalidStatus || true;
     });
 
     if (!needFix.length) {
       status.textContent = "All titles are clean, no issues found.";
-      btn.disabled = false;
-      btn.textContent = origText;
-      return;
+      btn.disabled = false; btn.textContent = origText; return;
     }
     status.textContent = `Found ${needFix.length} anime to fix. Processing in batches of 50…`;
     const batchSize = 50;
@@ -741,7 +718,7 @@
       status.textContent = `Fixing batch ${i+1}‑${Math.min(i+batchSize, needFix.length)} of ${needFix.length}…`;
       for (const anime of batch) {
         try {
-          await new Promise(r => setTimeout(r, 600)); // rate limit
+          await new Promise(r => setTimeout(r, 600));
           const q = encodeURIComponent(anime.title);
           const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
           if (!res.ok) continue;
@@ -749,6 +726,9 @@
           const match = json.data && json.data[0];
           if (!match) continue;
           const updates = {};
+          // Rename title if a better one exists
+          const bestTitle = getBestTitle(match);
+          if (bestTitle && bestTitle !== anime.title) updates.title = bestTitle;
           if (anime.score == null && match.score != null) updates.score = match.score;
           if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
           if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
@@ -1002,7 +982,7 @@
 
     bindLogout();
     loadBroadcast();
-    await loadAnimeList();       // initial load
+    await loadAnimeList();
     renderMemberList();
     renderActionLog();
     loadCurrentLogo();

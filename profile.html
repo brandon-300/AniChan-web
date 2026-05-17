@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AniChan · Profile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="i18n.js"></script>
 <style>
   :root{
     --bg:#0d0d0d; --card:#161616; --panel:#1a1a1a;
@@ -93,6 +94,10 @@
   .btn-red{background:var(--danger);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer}
   .avatar-upload-input{display:none}
 
+  .lang-selector{display:flex;gap:4px;margin-top:8px}
+  .lang-btn{background:none;border:1px solid var(--border);border-radius:4px;padding:2px 4px;cursor:pointer;font-size:14px;line-height:1}
+  .lang-btn:hover{border-color:var(--accent)}
+
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 
   @media(max-width:500px){
@@ -139,6 +144,18 @@
       </div>
       <div class="err-msg" id="updateErr"></div>
       <div class="success-msg" id="updateSuccess"></div>
+
+      <!-- Language selector (only on own profile) -->
+      <div id="langSelectorContainer" style="display:none;">
+        <label style="font-size:12px;color:var(--muted);margin-bottom:6px;">Language</label>
+        <div class="lang-selector">
+          <button class="lang-btn" onclick="setLanguage('en')" title="English">🇬🇧</button>
+          <button class="lang-btn" onclick="setLanguage('ja')" title="日本語">🇯🇵</button>
+          <button class="lang-btn" onclick="setLanguage('zh')" title="中文">🇨🇳</button>
+          <button class="lang-btn" onclick="setLanguage('de')" title="Deutsch">🇩🇪</button>
+          <button class="lang-btn" onclick="setLanguage('fr')" title="Français">🇫🇷</button>
+        </div>
+      </div>
     </div>
 
     <div class="bottom-actions" id="bottomActions">
@@ -164,6 +181,20 @@
   let originalProfile = null;
   let isEditing = false;
 
+  // Apply translations to static labels
+  const labels = [
+    { el: 'fullNameInput', key: 'fullName' },
+    { el: 'usernameInput', key: 'username' },
+    { el: 'emailInput', key: 'email' },
+    { el: 'ageInput', key: 'age' },
+    { el: 'dobInput', key: 'dob' },
+    { el: 'countryInput', key: 'country' },
+  ];
+  labels.forEach(({el, key}) => {
+    const input = $(el);
+    if (input && input.previousElementSibling) input.previousElementSibling.textContent = t(key);
+  });
+
   // Inactivity auto-logout
   let inactivityTimer;
   const INACTIVITY_LIMIT = 15 * 60 * 1000;
@@ -177,7 +208,6 @@
     resetInactivity();
   }
 
-  // Heartbeat: update last_seen every 30 seconds while active
   let heartbeatInterval;
   function startHeartbeat() {
     heartbeatInterval = setInterval(async () => {
@@ -192,7 +222,6 @@
     clearInterval(heartbeatInterval);
   }
 
-  // Online/offline helpers
   async function setOnlineStatus(online) {
     if (!currentUserId) return;
     await supabase.from('profiles').update({
@@ -209,7 +238,6 @@
     window.location.href = "index.html";
   }
 
-  // Render profile data into UI
   function renderProfile(profile) {
     originalProfile = { ...profile };
     $('avatarImg').src = profile?.avatar_url || DEFAULT_AVATAR;
@@ -219,12 +247,12 @@
     const lastSeenEl = $('displayLastSeen');
     if (profile?.is_online) {
       dot.classList.add('online');
-      lastSeenEl.textContent = 'Online';
+      lastSeenEl.textContent = t('online');
     } else {
       dot.classList.remove('online');
       lastSeenEl.textContent = profile?.last_seen
-        ? 'Last seen: ' + new Date(profile.last_seen).toLocaleString()
-        : 'Last seen: —';
+        ? t('lastSeen') + ': ' + new Date(profile.last_seen).toLocaleString()
+        : t('lastSeen') + ': —';
     }
 
     $('displayFullName').textContent = profile?.full_name || '—';
@@ -237,7 +265,6 @@
     $('countryInput').value = profile?.country || '';
   }
 
-  // Edit mode toggle
   function setEditMode(enabled) {
     isEditing = enabled;
     ['fullNameInput','usernameInput','emailInput','ageInput','dobInput','countryInput'].forEach(id => {
@@ -250,12 +277,10 @@
     const container = $('headerActions');
     container.innerHTML = '';
 
-    // ← Back button (always works, even in new tabs)
     const backBtn = document.createElement('button');
     backBtn.className = 'btn';
-    backBtn.textContent = '← Back';
+    backBtn.textContent = t('back');
     backBtn.addEventListener('click', () => {
-      // Try to go back, fallback to home if no history
       if (document.referrer && document.referrer !== window.location.href) {
         history.back();
       } else {
@@ -267,21 +292,25 @@
     if (!isOwner) {
       const msgBtn = document.createElement('button');
       msgBtn.className = 'btn primary';
-      msgBtn.textContent = '💬 Message';
+      msgBtn.textContent = '💬 ' + t('message');
       msgBtn.addEventListener('click', startChat);
       container.appendChild(msgBtn);
       return;
     }
+
+    // Show language selector for own profile
+    $('langSelectorContainer').style.display = 'block';
+
     if (isEditing) {
       const saveBtn = document.createElement('button');
-      saveBtn.className = 'btn primary'; saveBtn.textContent = 'Save'; saveBtn.addEventListener('click', saveProfile);
+      saveBtn.className = 'btn primary'; saveBtn.textContent = t('save'); saveBtn.addEventListener('click', saveProfile);
       const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn'; cancelBtn.textContent = 'Cancel'; cancelBtn.addEventListener('click', cancelEdit);
+      cancelBtn.className = 'btn'; cancelBtn.textContent = t('cancel'); cancelBtn.addEventListener('click', cancelEdit);
       container.appendChild(saveBtn);
       container.appendChild(cancelBtn);
     } else {
       const editBtn = document.createElement('button');
-      editBtn.className = 'btn primary'; editBtn.textContent = 'Edit Profile'; editBtn.addEventListener('click', () => setEditMode(true));
+      editBtn.className = 'btn primary'; editBtn.textContent = t('editProfile'); editBtn.addEventListener('click', () => setEditMode(true));
       container.appendChild(editBtn);
     }
   }
@@ -303,20 +332,20 @@
     const errEl = $('updateErr'); const successEl = $('updateSuccess');
     errEl.classList.remove('show'); successEl.classList.remove('show');
     if (!fullName || !username || !email) {
-      errEl.textContent = "Full name, username, email required."; errEl.classList.add('show'); return;
+      errEl.textContent = t("allFieldsRequired"); errEl.classList.add('show'); return;
     }
     if (age && age < 14) {
-      errEl.textContent = "Age must be at least 14."; errEl.classList.add('show'); return;
+      errEl.textContent = t("ageMin14"); errEl.classList.add('show'); return;
     }
     try {
       const { data: exist } = await supabase.from('profiles').select('id').eq('username', username).neq('id', currentUserId).maybeSingle();
-      if (exist) { errEl.textContent = 'Username already taken.'; errEl.classList.add('show'); return; }
+      if (exist) { errEl.textContent = t('usernameTaken'); errEl.classList.add('show'); return; }
       const updates = { full_name: fullName, username, email, age: age || null, dob: dob || null, country: country || null };
       const { error } = await supabase.from('profiles').update(updates).eq('id', currentUserId);
       if (error) throw error;
       $('displayFullName').textContent = fullName;
       $('displayUsername').textContent = '@'+username;
-      successEl.textContent = 'Profile updated.'; successEl.classList.add('show');
+      successEl.textContent = t('profileUpdated'); successEl.classList.add('show');
       setEditMode(false);
     } catch(e) {
       errEl.textContent = e.message; errEl.classList.add('show');
@@ -350,7 +379,6 @@
     }
   }
 
-  // Init
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -388,18 +416,18 @@
       if (!file) return;
       try {
         await uploadAvatar(file);
-        $('updateSuccess').textContent = 'Avatar updated.'; $('updateSuccess').classList.add('show');
+        $('updateSuccess').textContent = t('avatarUpdated'); $('updateSuccess').classList.add('show');
       } catch(err) {
         $('updateErr').textContent = err.message; $('updateErr').classList.add('show');
       } finally { e.target.value = ''; }
     });
 
     const bottom = $('bottomActions');
-    const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = 'Logout'; logoutBtn.addEventListener('click', handleLogout);
-    const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.textContent = 'Delete account';
+    const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = t('logout'); logoutBtn.addEventListener('click', handleLogout);
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.textContent = t('deleteAccount');
     deleteBtn.addEventListener('click', async () => {
-      if (!confirm('Are you sure? Your account will be permanently deleted.')) return;
-      if (!confirm('Final warning: There is no going back.')) return;
+      if (!confirm(t('deleteAccountConfirm'))) return;
+      if (!confirm(t('deleteAccountFinal'))) return;
       await supabase.from('profiles').delete().eq('id', currentUserId);
       stopHeartbeat();
       clearTimeout(inactivityTimer);

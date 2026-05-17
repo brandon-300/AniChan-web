@@ -6,6 +6,7 @@
 <title>AniChan</title>
 <meta name="description" content="Your personal anime tracker and library." />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="i18n.js"></script>
 <style>
   :root{
     --bg:#0d0d0d; --card:#161616; --panel:#1a1a1a;
@@ -45,7 +46,6 @@
   .btn-danger{background:transparent;border-color:#3a1f24;color:var(--danger)}
   .btn-danger:hover{background:#2a1218}
 
-  /* Round avatar circle */
   .avatar-circle{
     width:36px; height:36px; border-radius:50%; object-fit:cover;
     cursor:pointer; border:2px solid var(--border); transition:border-color .15s;
@@ -69,32 +69,26 @@
   .search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);
     color:var(--muted);font-size:16px}
 
-  /* Sections stacked vertically on all screens */
   .sections-grid {
     display: flex;
     flex-direction: column;
     gap: 24px;
     margin-top: 20px;
   }
-
-  /* Prevent horizontal page scroll from shelf */
   .section-cell {
     min-width: 0;
     overflow: hidden;
   }
-
   section{margin:22px 0}
   .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
   .sec-head h2{margin:0;font-size:16px;letter-spacing:.3px;text-transform:uppercase;color:#cfd2d6}
   .sec-head small{color:var(--muted);font-size:12px}
 
-  /* Shelf scrolls horizontally only inside its container */
   .shelf{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
   .shelf::-webkit-scrollbar{display:none}
   .shelf{scrollbar-width:none}
   .shelf .card{flex:0 0 140px;scroll-snap-align:start}
 
-  /* Collection grid – fixed 2 columns */
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;
     overflow:hidden;transition:transform .15s ease,border-color .15s ease}
@@ -107,7 +101,6 @@
   .empty{padding:28px;text-align:center;color:var(--muted);
     border:1px dashed var(--border);border-radius:14px;background:var(--panel)}
 
-  /* Pagination controls */
   .pagination {
     display: flex;
     align-items: center;
@@ -141,7 +134,6 @@
     text-align: center;
   }
 
-  /* Smart back-to-top button */
   #toTop {
     position: fixed;
     right: 18px;
@@ -166,7 +158,6 @@
     transform: translateY(0);
   }
 
-  /* Modal (Messages & Find Friends) */
   .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;
     justify-content:center;padding:18px;background:rgba(0,0,0,.6);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -177,12 +168,12 @@
   .modal h3{margin:0 0 4px;font-size:18px}
   .modal .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
   .modal .close{color:var(--muted);font-size:20px;line-height:1}
-  .member-item, .chat-room-item{
+  .chat-room-item{
     display:flex;align-items:center;gap:10px;padding:8px 0;
     border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s
   }
-  .member-item:hover, .chat-room-item:hover{background:var(--panel)}
-  .member-avatar, .room-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover}
+  .chat-room-item:hover{background:var(--panel)}
+  .room-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover}
   .chat-room-item .info{flex:1;min-width:0}
   .chat-room-item .name{font-weight:600;font-size:14px}
   .chat-room-item .preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -215,16 +206,14 @@
 
     <div class="search">
       <span class="ico">🔍</span>
-      <input id="searchInput" type="text" placeholder="Search your library…" autocomplete="off" />
+      <input id="searchInput" type="text" :placeholder="t('searchPlaceholder')" autocomplete="off" />
     </div>
 
-    <!-- Sections stacked vertically -->
     <div class="sections-grid">
-      <!-- Currently Airing -->
       <div class="section-cell" id="airingSection">
         <section>
           <div class="sec-head">
-            <h2>Currently Airing</h2>
+            <h2 id="currentlyAiringHeading">Currently Airing</h2>
             <small id="airingNote">via Jikan</small>
           </div>
           <div class="shelf" id="airingShelf">
@@ -232,11 +221,10 @@
           </div>
         </section>
       </div>
-      <!-- My Collection -->
       <div class="section-cell" id="collectionSection">
         <section>
           <div class="sec-head">
-            <h2>My Collection</h2>
+            <h2 id="myCollectionHeading">My Collection</h2>
             <small id="collectionCount"></small>
           </div>
           <div class="grid" id="collectionGrid"></div>
@@ -252,11 +240,10 @@
 
   <button id="toTop" aria-label="Scroll to top">↑</button>
 
-  <!-- Messages Modal -->
   <div class="modal" id="messagesModal" aria-hidden="true">
     <div class="panel" role="dialog" aria-modal="true">
       <div class="head">
-        <h3>Messages</h3>
+        <h3 id="messagesModalTitle">Messages</h3>
         <button class="close" id="messagesModalClose" aria-label="Close">×</button>
       </div>
       <div id="messagesList"></div>
@@ -283,8 +270,20 @@
   let currentPage = 1;
   let currentSearch = "";
 
-  // Smart back-to-top
+  // Apply translations to static texts
+  $("offline").textContent = t("offline");
+  $("searchInput").placeholder = t("searchPlaceholder");
+  $("currentlyAiringHeading").textContent = t("currentlyAiring");
+  $("airingNote").textContent = t("viaJikan");
+  $("myCollectionHeading").textContent = t("myCollection");
+  $("prevPageBtn").textContent = t("previous");
+  $("nextPageBtn").textContent = t("next");
+  $("messagesModalTitle").textContent = t("messages");
+
   const toTopBtn = $("toTop");
+  toTopBtn.textContent = t("backToTop");
+
+  // Smart back-to-top
   let lastScrollY = window.scrollY;
   function handleScroll() {
     const currentScrollY = window.scrollY;
@@ -300,11 +299,9 @@
   window.addEventListener("scroll", handleScroll, { passive: true });
   toTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
-  // Offline banner & auto-refresh
   function syncOffline(){ $("offline").classList.toggle("show", !navigator.onLine); }
   window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
 
-  // Logo loader (with cache buster)
   async function loadSiteLogo() {
     try {
       const { data, error } = await sb
@@ -326,7 +323,6 @@
     }
   }
 
-  // Fetch avatar for current user
   async function getUserAvatar() {
     if (!currentSession) return null;
     const { data, error } = await sb
@@ -338,21 +334,19 @@
     return data.avatar_url || null;
   }
 
-  // Header buttons – "Messages" replaces "💬 Chat"
   async function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
 
     if (currentSession) {
       const avatarUrl = await getUserAvatar();
-
       const avatarHtml = avatarUrl
         ? `<img class="avatar-circle" src="${avatarUrl}" alt="Profile" title="View Profile" />`
         : `<div class="avatar-circle" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;" title="View Profile">👤</div>`;
 
       container.innerHTML = `
-        <button class="btn" id="findFriendsBtn">Find Friends</button>
-        <button class="btn" id="messagesBtn">💬 Messages</button>
+        <button class="btn" id="findFriendsBtn">${t("findFriends")}</button>
+        <button class="btn" id="messagesBtn">💬 ${t("messages")}</button>
         ${avatarHtml}
       `;
 
@@ -365,15 +359,14 @@
       }
     } else {
       container.innerHTML = `
-        <button class="btn" id="adminBtn">Admin</button>
-        <button class="btn btn-primary" id="loginBtn">Login</button>
+        <button class="btn" id="adminBtn">${t("admin")}</button>
+        <button class="btn btn-primary" id="loginBtn">${t("login")}</button>
       `;
       $("adminBtn").onclick = () => location.href = "admin_login.html";
       $("loginBtn").onclick = () => location.href = "user_login.html";
     }
   }
 
-  // Broadcast & collections
   async function renderBroadcast() {
     const el = $("broadcast");
     const { data } = await sb.from("settings").select("value").eq("key", "broadcast_message").maybeSingle();
@@ -400,13 +393,13 @@
     const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
 
     grid.innerHTML = "";
-    $("collectionCount").textContent = library.length ? library.length + " saved" : "";
+    $("collectionCount").textContent = library.length ? library.length + " " + t("saved") : "";
 
     if (!pageItems.length) {
       const e = document.createElement("div");
       e.className = "empty";
       e.style.gridColumn = "span 2";
-      e.textContent = library.length ? (q ? "No matches for your search." : "No items on this page.") : "The library is empty — add anime from the Admin dashboard.";
+      e.textContent = library.length ? (q ? t("noMatches") : t("noItemsPage")) : t("emptyLibrary");
       grid.appendChild(e);
     } else {
       for (const a of pageItems) {
@@ -444,24 +437,46 @@
 
   async function loadAiring(){
     const shelf = $("airingShelf");
-    if (!navigator.onLine) { shelf.innerHTML = '<div class="empty" style="flex:1">Offline</div>'; return; }
+    if (!navigator.onLine) {
+      shelf.innerHTML = '<div class="empty" style="flex:1">' + t("offline") + '</div>';
+      return;
+    }
+    shelf.innerHTML = '<div class="empty" style="flex:1">' + t("loadingAiring") + '</div>';
+
     try {
-      const res = await fetch("https://api.jikan.moe/v4/seasons/now?limit=8");
+      const res = await fetch("https://api.jikan.moe/v4/seasons/now?limit=10");
+      if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
+      const list = (data && data.data) || [];
+
       shelf.innerHTML = "";
-      (data.data || []).slice(0,8).forEach(a => {
+      if (!list.length) {
+        shelf.innerHTML = '<div class="empty" style="flex:1">' + t("noAiringFound") + '</div>';
+        return;
+      }
+      for (const a of list) {
+        // pick best title for current language
+        let title = a.title;
+        if (currentLang === 'en' && a.title_english) title = a.title_english;
+        else if (currentLang === 'ja' && a.title_japanese) title = a.title_japanese;
+        // for other languages, fallback to default title
+
         const card = document.createElement("div"); card.className = "card";
         const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
-        img.src = (a.images?.jpg?.image_url) || PLACEHOLDER; img.alt = a.title;
+        const imgSrc = (a.images?.jpg?.image_url) || (a.images?.jpg?.large_image_url) || null;
+        img.src = imgSrc || PLACEHOLDER;
+        img.alt = title;
         const meta = document.createElement("div"); meta.className = "meta";
-        const t = document.createElement("div"); t.className = "title"; t.textContent = a.title;
-        meta.appendChild(t); card.appendChild(img); card.appendChild(meta);
+        const tEl = document.createElement("div"); tEl.className = "title"; tEl.textContent = title;
+        meta.appendChild(tEl); card.appendChild(img); card.appendChild(meta);
         shelf.appendChild(card);
-      });
-    } catch { shelf.innerHTML = '<div class="empty" style="flex:1">Could not load</div>'; }
+      }
+    } catch (err) {
+      console.warn("Jikan season fetch failed:", err);
+      shelf.innerHTML = '<div class="empty" style="flex:1">' + t("couldNotLoadAiring") + '</div>';
+    }
   }
 
-  // Pagination event listeners
   $("prevPageBtn").addEventListener("click", () => {
     if (currentPage > 1) {
       currentPage--;
@@ -486,7 +501,6 @@
     renderCollection();
   });
 
-  // ─── Messages Modal ───
   function openMessagesModal() {
     $("messagesModal").classList.add("show");
     $("messagesModal").setAttribute("aria-hidden", "false");
@@ -501,7 +515,7 @@
 
   async function loadChatRooms() {
     const list = $("messagesList");
-    list.innerHTML = "Loading conversations...";
+    list.innerHTML = t("loadingAiring");
 
     if (!currentSession) return;
     const { data, error } = await sb
@@ -516,7 +530,7 @@
       .order('last_message_time', { ascending: false });
 
     if (error) { list.innerHTML = "Failed to load conversations."; return; }
-    if (!data || data.length === 0) { list.innerHTML = '<div class="empty" style="margin-top:10px;">No conversations yet.</div>'; return; }
+    if (!data || data.length === 0) { list.innerHTML = '<div class="empty" style="margin-top:10px;">' + t("noConversations") + '</div>'; return; }
 
     list.innerHTML = "";
     data.forEach(room => {
@@ -529,7 +543,7 @@
         <img class="room-avatar" src="${partner.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
         <div class="info">
           <div class="name">${partner.full_name || partner.username}</div>
-          <div class="preview">${room.last_message || 'Start a conversation'}</div>
+          <div class="preview">${room.last_message || t("startConversation")}</div>
         </div>
         <div class="meta">
           <div class="time">${formatChatTime(room.last_message_time)}</div>
@@ -553,7 +567,6 @@
     return d.toLocaleDateString();
   }
 
-  // ─── Init ───
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
     window.addEventListener("online", syncOffline);
@@ -574,9 +587,7 @@
     loadAiring();
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeMessagesModal();
-      }
+      if (e.key === "Escape") closeMessagesModal();
     });
 
     sb.channel("public-anichan")
