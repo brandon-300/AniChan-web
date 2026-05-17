@@ -94,9 +94,14 @@
   .btn-red{background:var(--danger);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer}
   .avatar-upload-input{display:none}
 
-  .lang-selector{display:flex;gap:4px;margin-top:8px}
-  .lang-btn{background:none;border:1px solid var(--border);border-radius:4px;padding:2px 4px;cursor:pointer;font-size:14px;line-height:1}
-  .lang-btn:hover{border-color:var(--accent)}
+  /* Language selector */
+  .lang-selector{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .lang-btn{
+    padding:6px 14px;border-radius:8px;border:1px solid var(--border);
+    background:var(--panel);color:var(--text);cursor:pointer;
+    font-size:13px;transition:background .15s,border-color .15s;
+  }
+  .lang-btn:hover{border-color:var(--accent);background:var(--card)}
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 
@@ -149,11 +154,11 @@
       <div id="langSelectorContainer" style="display:none;">
         <label style="font-size:12px;color:var(--muted);margin-bottom:6px;">Language</label>
         <div class="lang-selector">
-          <button class="lang-btn" onclick="setLanguage('en')" title="English">🇬🇧</button>
-          <button class="lang-btn" onclick="setLanguage('ja')" title="日本語">🇯🇵</button>
-          <button class="lang-btn" onclick="setLanguage('zh')" title="中文">🇨🇳</button>
-          <button class="lang-btn" onclick="setLanguage('de')" title="Deutsch">🇩🇪</button>
-          <button class="lang-btn" onclick="setLanguage('fr')" title="Français">🇫🇷</button>
+          <button class="lang-btn" onclick="setLanguage('en')">English</button>
+          <button class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+          <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
+          <button class="lang-btn" onclick="setLanguage('de')">Deutsch</button>
+          <button class="lang-btn" onclick="setLanguage('fr')">Français</button>
         </div>
       </div>
     </div>

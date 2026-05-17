@@ -435,6 +435,7 @@
     renderCollection();
   }
 
+  // ─── Deduplicated currently airing ───
   async function loadAiring(){
     const shelf = $("airingShelf");
     if (!navigator.onLine) {
@@ -449,17 +450,24 @@
       const data = await res.json();
       const list = (data && data.data) || [];
 
+      // Deduplicate by mal_id
+      const seen = new Set();
+      const unique = [];
+      for (const anime of list) {
+        if (seen.has(anime.mal_id)) continue;
+        seen.add(anime.mal_id);
+        unique.push(anime);
+      }
+
       shelf.innerHTML = "";
-      if (!list.length) {
+      if (!unique.length) {
         shelf.innerHTML = '<div class="empty" style="flex:1">' + t("noAiringFound") + '</div>';
         return;
       }
-      for (const a of list) {
-        // pick best title for current language
+      for (const a of unique) {
         let title = a.title;
         if (currentLang === 'en' && a.title_english) title = a.title_english;
         else if (currentLang === 'ja' && a.title_japanese) title = a.title_japanese;
-        // for other languages, fallback to default title
 
         const card = document.createElement("div"); card.className = "card";
         const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
