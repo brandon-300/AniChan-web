@@ -12,14 +12,17 @@
     --text: #f1f1f1; --muted: #9aa0a6; --border: #222;
     --success: #2ed573; --offline: #555;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-    height: 100vh; overflow: hidden; display: flex;
+    height: 100dvh;          /* dynamic viewport height – avoids mobile address‑bar issues */
+    overflow: hidden;
+    display: flex;
   }
 
-  /* === SIDEBAR === */
+  /* ── SIDEBAR (unchanged) ── */
   .sidebar {
     width: 320px; background: var(--card); border-right: 1px solid var(--border);
     display: flex; flex-direction: column; z-index: 10;
@@ -41,9 +44,7 @@
     color: var(--text); font-size: 14px; outline: none;
   }
   .new-chat input:focus { border-color: var(--accent); }
-  .room-list {
-    flex: 1; overflow-y: auto; padding: 0 0 16px;
-  }
+  .room-list { flex: 1; overflow-y: auto; padding: 0 0 16px; }
   .room {
     display: flex; align-items: center; padding: 12px 16px;
     cursor: pointer; transition: background 0.15s; gap: 12px;
@@ -62,17 +63,18 @@
     width: 10px; height: 10px; border-radius: 50%; background: var(--offline);
   }
   .online-badge.online { background: var(--success); }
-  .room .preview { font-size: 12px; color: var(--muted); margin-top: 2px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room .preview {
+    font-size: 12px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .room .meta { text-align: right; flex-shrink: 0; }
   .room .time { font-size: 11px; color: var(--muted); }
   .room .unread {
     display: inline-block; background: var(--accent); color: #062525;
-    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px;
-    margin-top: 4px;
+    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; margin-top: 4px;
   }
 
-  /* === CHAT AREA === */
+  /* ── CHAT AREA ── */
   .chat-area {
     flex: 1; display: flex; flex-direction: column;
     min-width: 0; min-height: 0;
@@ -82,9 +84,7 @@
     display: flex; align-items: center; gap: 12px; background: var(--card);
     flex-shrink: 0;
   }
-  .chat-header .avatar-link {
-    display: block; flex-shrink: 0;
-  }
+  .chat-header .avatar-link { display: block; flex-shrink: 0; }
   .chat-header .avatar {
     width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
     border: 2px solid var(--border);
@@ -92,10 +92,14 @@
   .chat-header .name { font-weight: 600; }
   .chat-header .status { font-size: 12px; color: var(--muted); }
   .chat-header .last-seen { font-size: 11px; color: var(--muted); }
+
+  /* Message list – takes all available space, scrolls internally */
   .chat-box {
-    flex: 1; overflow-y: auto; padding: 16px;
+    flex: 1 1 0;           /* grow & shrink, starting from 0 */
+    overflow-y: auto;
+    padding: 16px;
     display: flex; flex-direction: column; gap: 8px;
-    min-height: 0;
+    -webkit-overflow-scrolling: touch;   /* smooth scroll on iOS */
   }
   .message {
     display: flex; gap: 8px; max-width: 85%; position: relative;
@@ -103,7 +107,7 @@
   .message.sent { align-self: flex-end; flex-direction: row-reverse; }
   .message .bubble {
     padding: 10px 14px; border-radius: 16px; background: var(--panel);
-    font-size: 14px; line-height: 1.4; position: relative;
+    font-size: 14px; line-height: 1.4; word-break: break-word;
   }
   .message.sent .bubble { background: var(--accent); color: #062525; }
   .message .time {
@@ -131,21 +135,23 @@
     cursor: pointer; transition: background 0.1s;
   }
   .dropdown button:hover { background: var(--panel); }
+
   .typing-indicator {
     padding: 4px 16px; color: var(--muted); font-size: 13px;
-    min-height: 22px; flex-shrink: 0;
+    flex-shrink: 0; min-height: 22px;
   }
+
+  /* Input area – anchored at the bottom, never cut off */
   .input-area {
-    padding: 12px 16px 20px;  /* extra bottom padding */
+    flex-shrink: 0;          /* never shrink */
     border-top: 1px solid var(--border);
-    background: var(--card); flex-shrink: 0;
+    background: var(--card);
+    padding: 12px 16px;
+    /* safe‑area bottom for notched devices */
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     display: flex; flex-direction: column; gap: 6px;
-    /* support for iPhone notch / home indicator */
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
-  .input-row {
-    display: flex; gap: 8px;
-  }
+  .input-row { display: flex; gap: 8px; }
   .input-row input {
     flex: 1; padding: 12px; border-radius: 8px;
     background: var(--panel); border: 1px solid var(--border);
@@ -158,21 +164,23 @@
   }
   .input-row button:hover { filter: brightness(1.05); }
   .input-note {
-    text-align: center; font-size: 11px; color: var(--muted);
-    user-select: none;
+    text-align: center; font-size: 11px; color: var(--muted); user-select: none;
   }
+
   .empty-chat {
     flex: 1; display: flex; align-items: center; justify-content: center;
     color: var(--muted); font-size: 14px; text-align: center; padding: 20px;
   }
 
-  /* Mobile responsiveness */
+  /* ── MOBILE ── */
   @media (max-width: 640px) {
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%);
+    }
     .sidebar.open { transform: translateX(0); }
     .back-btn { display: block; }
     .chat-box { padding: 12px; }
-    .input-area { padding: 10px 12px 16px; }
+    .input-area { padding: 10px 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -215,14 +223,6 @@
   </div>
 
 <script>
-/*
-  ══════════════════════════════════════════════════════
-  Supabase v2 Realtime Chat — AniChan
-  Text & emoji only
-  Tables: chat_rooms, messages, user_presence
-  ══════════════════════════════════════════════════════
-*/
-
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -233,414 +233,224 @@
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
 
-  let currentUser = null;
-  let activeRoom = null;
-  let partnerId = null;
-  let rooms = [];
-  let messageSub = null;
-  let presenceSub = null;
+  let currentUser = null, activeRoom = null, partnerId = null;
+  let rooms = [], messageSub = null, presenceSub = null;
 
-  // ─── Helpers ────────────────────────────────────
-  function resolvePath(filename) {
-    const base = window.location.href.replace(/[^/]*$/, '');
-    return base + filename;
-  }
+  /* ── Helpers ── */
+  function resolvePath(f) { return window.location.href.replace(/[^/]*$/, '') + f; }
   function formatTime(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    const now = new Date();
-    const diff = now - d;
-    if (diff < 86400000 && d.getDate() === now.getDate()) {
+    const d = new Date(iso), now = new Date();
+    if (now - d < 86400000 && d.getDate() === now.getDate())
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({
-      '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'
-    })[m]);
-  }
-  function scrollToBottom() {
-    const box = $('chatBox');
-    box.scrollTop = box.scrollHeight;
-  }
+  function escapeHtml(t) { return t.replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' })[m]); }
+  function scrollToBottom() { const b = $('chatBox'); b.scrollTop = b.scrollHeight; }
 
-  // ─── Presence & Typing ──────────────────────────
-  async function updatePresence(status = 'online') {
+  /* ── Presence ── */
+  async function updatePresence(status='online') {
     if (!currentUser) return;
-    await supabase.from('user_presence').upsert({
-      user_id: currentUser.id,
-      status,
-      last_active: new Date().toISOString()
-    });
+    await supabase.from('user_presence').upsert({ user_id: currentUser.id, status, last_active: new Date().toISOString() });
   }
   async function setTyping(roomId, typing) {
     if (!currentUser) return;
-    await supabase.from('user_presence').upsert({
-      user_id: currentUser.id,
-      typing_in_room_id: typing ? roomId : null
-    });
+    await supabase.from('user_presence').upsert({ user_id: currentUser.id, typing_in_room_id: typing ? roomId : null });
   }
 
-  // ─── Render Sidebar Room List ────────────────────
+  /* ── Sidebar ── */
   function renderRoomList(roomsData) {
-    const list = $('roomList');
-    list.innerHTML = '';
-    if (!roomsData.length) {
-      list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>';
-      return;
-    }
+    const list = $('roomList'); list.innerHTML = '';
+    if (!roomsData.length) { list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>'; return; }
     roomsData.forEach(room => {
-      const otherUser = room.other_user;
-      const div = document.createElement('div');
-      div.className = 'room' + (activeRoom === room.id ? ' active' : '');
+      const o = room.other_user;
+      const div = document.createElement('div'); div.className = 'room' + (activeRoom===room.id ? ' active' : '');
       div.innerHTML = `
-        <img class="avatar" src="${otherUser.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <img class="avatar" src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
         <div class="info">
-          <div class="name">
-            ${escapeHtml(otherUser.full_name || otherUser.username)}
-            <span class="online-badge ${otherUser.is_online ? 'online' : ''}"></span>
-          </div>
+          <div class="name">${escapeHtml(o.full_name || o.username)}<span class="online-badge ${o.is_online ? 'online' : ''}"></span></div>
           <div class="preview">${escapeHtml(room.last_message || 'Start a conversation')}</div>
         </div>
-        <div class="meta">
-          <div class="time">${formatTime(room.last_message_time)}</div>
-          ${room.unread_count ? `<span class="unread">${room.unread_count}</span>` : ''}
-        </div>`;
-      div.addEventListener('click', () => openRoom(room.id, otherUser.id));
+        <div class="meta"><div class="time">${formatTime(room.last_message_time)}</div>${room.unread_count ? `<span class="unread">${room.unread_count}</span>` : ''}</div>`;
+      div.addEventListener('click', () => openRoom(room.id, o.id));
       list.appendChild(div);
     });
   }
 
-  // ─── Load Rooms (sidebar) ────────────────────────
   async function loadRooms() {
     if (!currentUser) return;
     const { data, error } = await supabase
       .from('chat_rooms')
-      .select(`
-        id, last_message, last_message_time,
-        user_one_id, user_two_id,
+      .select(`id, last_message, last_message_time, user_one_id, user_two_id,
         user_one:profiles!chat_rooms_user_one_id_fkey(id, username, full_name, avatar_url, is_online),
-        user_two:profiles!chat_rooms_user_two_id_fkey(id, username, full_name, avatar_url, is_online)
-      `)
+        user_two:profiles!chat_rooms_user_two_id_fkey(id, username, full_name, avatar_url, is_online)`)
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
       .order('last_message_time', { ascending: false });
-
-    if (error) { console.error('Failed to load rooms:', error); return; }
-
+    if (error) { console.error(error); return; }
     const enriched = [];
     for (const room of data) {
-      const isUserOne = room.user_one_id === currentUser.id;
-      const partner = isUserOne ? room.user_two : room.user_one;
-      const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('room_id', room.id)
-        .eq('receiver_id', currentUser.id)
-        .eq('is_read', false);
-      enriched.push({
-        id: room.id,
-        last_message: room.last_message,
-        last_message_time: room.last_message_time,
-        other_user: partner,
-        unread_count: count || 0
-      });
+      const partner = room.user_one_id === currentUser.id ? room.user_two : room.user_one;
+      const { count } = await supabase.from('messages').select('*', { count:'exact', head:true })
+        .eq('room_id', room.id).eq('receiver_id', currentUser.id).eq('is_read', false);
+      enriched.push({ id: room.id, last_message: room.last_message, last_message_time: room.last_message_time, other_user: partner, unread_count: count||0 });
     }
     rooms = enriched;
     renderRoomList(enriched);
   }
 
-  // ─── Open a Room ──────────────────────────────────
+  /* ── Open room ── */
   async function openRoom(roomId, otherUserId) {
-    activeRoom = roomId;
-    partnerId = otherUserId;
+    activeRoom = roomId; partnerId = otherUserId;
     $('emptyChatPlaceholder').style.display = 'none';
-    $('chatHeader').style.display = 'flex';
-    $('inputArea').style.display = 'flex';
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username, full_name, avatar_url, is_online, last_seen')
-      .eq('id', otherUserId)
-      .single();
-    if (profile) {
-      $('chatPartnerAvatar').src = profile.avatar_url || DEFAULT_AVATAR;
-      $('chatPartnerName').textContent = profile.full_name || profile.username;
-      $('chatPartnerStatus').textContent = profile.is_online ? 'Online' : 'Offline';
-      if (profile.is_online) {
-        $('chatPartnerLastSeen').textContent = '';
-      } else {
-        $('chatPartnerLastSeen').textContent = profile.last_seen
-          ? `Last seen: ${new Date(profile.last_seen).toLocaleString()}`
-          : 'Last seen: —';
-      }
+    $('chatHeader').style.display = 'flex'; $('inputArea').style.display = 'flex';
+    const { data: p } = await supabase.from('profiles').select('username, full_name, avatar_url, is_online, last_seen').eq('id', otherUserId).single();
+    if (p) {
+      $('chatPartnerAvatar').src = p.avatar_url || DEFAULT_AVATAR;
+      $('chatPartnerName').textContent = p.full_name || p.username;
+      $('chatPartnerStatus').textContent = p.is_online ? 'Online' : 'Offline';
+      $('chatPartnerLastSeen').textContent = p.is_online ? '' : (p.last_seen ? `Last seen: ${new Date(p.last_seen).toLocaleString()}` : 'Last seen: —');
       $('chatAvatarLink').href = `profile.html?user=${otherUserId}`;
     }
-
     renderRoomList(rooms);
     await loadMessages(roomId);
     subscribeToMessages(roomId);
     $('typingIndicator').textContent = '';
-    if (window.innerWidth <= 640) {
-      $('sidebar').classList.remove('open');
-    }
+    if (window.innerWidth <= 640) $('sidebar').classList.remove('open');
   }
 
-  // ─── Load Messages ────────────────────────────────
+  /* ── Messages ── */
   async function loadMessages(roomId) {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('room_id', roomId)
-      .order('created_at', { ascending: true });
-    if (error) { console.error('Load messages error:', error); return; }
+    const { data, error } = await supabase.from('messages').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+    if (error) { console.error(error); return; }
     renderMessages(data, roomId);
     const unreadIds = data.filter(m => m.receiver_id === currentUser.id && !m.is_read).map(m => m.id);
-    if (unreadIds.length) {
-      await supabase.from('messages').update({ is_read: true }).in('id', unreadIds);
-      loadRooms();
-    }
+    if (unreadIds.length) { await supabase.from('messages').update({ is_read: true }).in('id', unreadIds); loadRooms(); }
   }
 
-  function renderMessages(messages, roomId) {
-    const box = $('chatBox');
-    box.innerHTML = '';
-    messages.forEach(msg => addMessageElement(msg));
-    scrollToBottom();
-  }
+  function renderMessages(msgs) { $('chatBox').innerHTML = ''; msgs.forEach(addMessageElement); scrollToBottom(); }
 
   function addMessageElement(msg) {
-    const box = $('chatBox');
-    const isSent = msg.sender_id === currentUser.id;
-    const div = document.createElement('div');
-    div.className = `message ${isSent ? 'sent' : 'received'}`;
-    div.dataset.msgId = msg.id;
-    let content = msg.is_deleted ? '<em style="color:var(--muted)">Message deleted</em>' : escapeHtml(msg.content);
+    const box = $('chatBox'), isSent = msg.sender_id === currentUser.id;
+    const div = document.createElement('div'); div.className = `message ${isSent ? 'sent' : 'received'}`; div.dataset.msgId = msg.id;
+    let content = msg.is_deleted ? '<em style="color:var(--muted)">Message deleted</em>' : escapeHtml(msg.message || msg.content || '');
     if (msg.edited_at && !msg.is_deleted) content += ' <small style="color:var(--muted)">(edited)</small>';
-    div.innerHTML = `
-      <div class="bubble">${content}</div>
-      <div class="time">${formatTime(msg.created_at)}</div>
-      ${(isSent && !msg.is_deleted) ? `<button class="actions-btn" onclick="event.stopPropagation(); toggleDropdown(this)">⋯</button>
-      <div class="dropdown">
-        <button onclick="editMessage('${msg.id}')">Edit</button>
-        <button onclick="deleteMessage('${msg.id}')">Delete</button>
-      </div>` : ''}
-    `;
+    div.innerHTML = `<div class="bubble">${content}</div><div class="time">${formatTime(msg.created_at)}</div>` +
+      (isSent && !msg.is_deleted ? `<button class="actions-btn" onclick="event.stopPropagation();toggleDropdown(this)">⋯</button><div class="dropdown"><button onclick="editMessage('${msg.id}')">Edit</button><button onclick="deleteMessage('${msg.id}')">Delete</button></div>` : '');
     box.appendChild(div);
-    const atBottom = (box.scrollHeight - box.clientHeight) <= box.scrollTop + 30;
-    if (atBottom) scrollToBottom();
+    if ((box.scrollHeight - box.clientHeight) <= box.scrollTop + 30) scrollToBottom();
   }
 
-  window.toggleDropdown = (btn) => {
-    const dropdown = btn.nextElementSibling;
-    dropdown.classList.toggle('show');
+  window.toggleDropdown = (btn) => { btn.nextElementSibling.classList.toggle('show'); };
+  window.editMessage = async (id) => {
+    const nc = prompt('Edit message:'); if (!nc) return;
+    const { error } = await supabase.from('messages').update({ message: nc, edited_at: new Date().toISOString() }).eq('id', id);
+    if (error) alert('Edit failed: ' + error.message); else loadMessages(activeRoom);
   };
-
-  window.editMessage = async (msgId) => {
-    const newContent = prompt('Edit message:');
-    if (!newContent) return;
-    const { error } = await supabase
-      .from('messages')
-      .update({ content: newContent, edited_at: new Date().toISOString() })
-      .eq('id', msgId);
-    if (error) alert('Edit failed: ' + error.message);
-    loadMessages(activeRoom);
-  };
-
-  window.deleteMessage = async (msgId) => {
+  window.deleteMessage = async (id) => {
     if (!confirm('Delete this message?')) return;
-    const { error } = await supabase
-      .from('messages')
-      .update({ is_deleted: true })
-      .eq('id', msgId);
-    if (error) alert('Delete failed: ' + error.message);
-    loadMessages(activeRoom);
+    const { error } = await supabase.from('messages').update({ is_deleted: true }).eq('id', id);
+    if (error) alert('Delete failed: ' + error.message); else loadMessages(activeRoom);
   };
 
-  // ─── Send Message ──────────────────────────────────
+  /* ── Send ── */
   async function sendMessage() {
-    const input = $('messageInput');
-    const text = input.value.trim();
+    const input = $('messageInput'), text = input.value.trim();
     if (!text || !activeRoom || !partnerId) return;
     input.value = '';
-    const payload = {
-      room_id: activeRoom,
-      sender_id: currentUser.id,
-      receiver_id: partnerId,
-      content: text,
+    const { error } = await supabase.from('messages').insert({
+      room_id: activeRoom, sender_id: currentUser.id, receiver_id: partnerId,
+      message: text,          // ← your table uses "message", not "content"
       msg_type: 'text'
-    };
-    const { error } = await supabase.from('messages').insert(payload);
+    });
     if (error) { alert('Send failed: ' + error.message); return; }
-    await supabase.from('chat_rooms').update({
-      last_message: text,
-      last_message_time: new Date().toISOString()
-    }).eq('id', activeRoom);
+    await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
     loadRooms();
   }
 
-  // ─── Realtime Message Listener ─────────────────────
+  /* ── Realtime ── */
   function subscribeToMessages(roomId) {
-    if (messageSub) { supabase.removeChannel(messageSub); }
-    messageSub = supabase
-      .channel(`room:${roomId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `room_id=eq.${roomId}`
-      }, (payload) => {
+    if (messageSub) supabase.removeChannel(messageSub);
+    messageSub = supabase.channel(`room:${roomId}`)
+      .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          const newMsg = payload.new;
-          if (!document.querySelector(`.message[data-msg-id="${newMsg.id}"]`)) {
-            addMessageElement(newMsg);
-            if (newMsg.receiver_id === currentUser.id) {
-              supabase.from('messages').update({ is_read: true }).eq('id', newMsg.id).then();
-            }
+          const nm = payload.new;
+          if (!document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
+            addMessageElement(nm);
+            if (nm.receiver_id === currentUser.id) supabase.from('messages').update({ is_read:true }).eq('id', nm.id).then();
           }
         } else if (payload.eventType === 'UPDATE') {
-          const updatedMsg = payload.new;
-          const elem = document.querySelector(`.message[data-msg-id="${updatedMsg.id}"]`);
-          if (elem) {
-            const bubble = elem.querySelector('.bubble');
-            if (updatedMsg.is_deleted) {
-              bubble.innerHTML = '<em style="color:var(--muted)">Message deleted</em>';
-            } else {
-              let content = escapeHtml(updatedMsg.content);
-              if (updatedMsg.edited_at) content += ' <small style="color:var(--muted)">(edited)</small>';
-              bubble.innerHTML = content;
-            }
-          } else {
-            loadMessages(roomId);
-          }
+          const um = payload.new, el = document.querySelector(`.message[data-msg-id="${um.id}"]`);
+          if (el) {
+            const b = el.querySelector('.bubble');
+            if (um.is_deleted) b.innerHTML = '<em style="color:var(--muted)">Message deleted</em>';
+            else { let c = escapeHtml(um.message || um.content || ''); if (um.edited_at) c += ' <small style="color:var(--muted)">(edited)</small>'; b.innerHTML = c; }
+          } else loadMessages(roomId);
         }
-      })
-      .subscribe();
+      }).subscribe();
   }
 
-  // ─── Typing Indicator ──────────────────────────────
+  /* ── Typing ── */
   let typingTimeout;
   $('messageInput').addEventListener('input', () => {
     if (!activeRoom) return;
-    setTyping(activeRoom, true);
-    clearTimeout(typingTimeout);
+    setTyping(activeRoom, true); clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => setTyping(activeRoom, false), 3000);
   });
-
   if (presenceSub) supabase.removeChannel(presenceSub);
   presenceSub = supabase.channel('presence-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, (payload) => {
+    .on('postgres_changes', { event:'*', schema:'public', table:'user_presence' }, (payload) => {
       if (partnerId && payload.new && payload.new.user_id === partnerId) {
-        const typingRoom = payload.new.typing_in_room_id;
-        $('typingIndicator').textContent = (typingRoom === activeRoom) ? 'Typing...' : '';
+        $('typingIndicator').textContent = (payload.new.typing_in_room_id === activeRoom) ? 'Typing...' : '';
       }
     }).subscribe();
 
-  // ─── Start a New Chat by Username ────────────────────
+  /* ── New chat by username ── */
   $('newChatUsername').addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      const username = e.target.value.trim();
-      if (!username) return;
-      e.target.value = '';
-      await createRoom(username);
-    }
+    if (e.key === 'Enter') { const u = e.target.value.trim(); e.target.value = ''; if (u) await createRoom(u); }
   });
-
   async function createRoom(username) {
     if (!currentUser) return;
-    const { data: user, error } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .eq('username', username)
-      .maybeSingle();
-    if (error || !user) { alert('User not found'); return; }
+    const { data: user } = await supabase.from('profiles').select('id, username').eq('username', username).maybeSingle();
+    if (!user) { alert('User not found'); return; }
     if (user.id === currentUser.id) { alert('Cannot message yourself'); return; }
-    const { data: existing } = await supabase
-      .from('chat_rooms')
-      .select('id')
-      .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${user.id}),and(user_one_id.eq.${user.id},user_two_id.eq.${currentUser.id})`)
-      .maybeSingle();
-    if (existing) {
-      openRoom(existing.id, user.id);
-      return;
-    }
-    const { data: newRoom, error: createErr } = await supabase
-      .from('chat_rooms')
-      .insert({ user_one_id: currentUser.id, user_two_id: user.id })
-      .select('id')
-      .single();
-    if (createErr) { alert('Room creation failed: ' + createErr.message); return; }
-    loadRooms();
-    openRoom(newRoom.id, user.id);
+    const { data: exist } = await supabase.from('chat_rooms').select('id')
+      .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${user.id}),and(user_one_id.eq.${user.id},user_two_id.eq.${currentUser.id})`).maybeSingle();
+    if (exist) { openRoom(exist.id, user.id); return; }
+    const { data: nr, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUser.id, user_two_id: user.id }).select('id').single();
+    if (error) { alert('Room creation failed'); return; }
+    loadRooms(); openRoom(nr.id, user.id);
   }
 
-  // ─── Presence Management ──────────────────────────
-  window.addEventListener('beforeunload', () => {
-    updatePresence('offline');
-  });
+  /* ── Lifecycle ── */
+  window.addEventListener('beforeunload', () => updatePresence('offline'));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      updatePresence('idle');
-    } else {
-      updatePresence('online');
-      loadRooms();
-    }
+    if (document.hidden) updatePresence('idle'); else { updatePresence('online'); loadRooms(); }
   });
   setInterval(loadRooms, 30000);
 
-  // ─── Mobile Sidebar Toggle ────────────────────────
-  $('sidebarBackBtn').addEventListener('click', () => {
-    $('sidebar').classList.remove('open');
-  });
+  $('sidebarBackBtn').addEventListener('click', () => $('sidebar').classList.remove('open'));
+  async function logout() { await updatePresence('offline'); await supabase.auth.signOut(); window.location.href = resolvePath('index.html'); }
 
-  // ─── Logout ──────────────────────────────────────────
-  async function logout() {
-    await updatePresence('offline');
-    await supabase.auth.signOut();
-    window.location.href = resolvePath('index.html');
-  }
-
-  // ─── Init ────────────────────────────────────────────
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = resolvePath('user_login.html');
-      return;
-    }
+    if (!session) { window.location.href = resolvePath('user_login.html'); return; }
     currentUser = session.user;
-    await updatePresence('online');
-    await loadRooms();
+    await updatePresence('online'); await loadRooms();
 
     const roomParam = new URLSearchParams(window.location.search).get('room');
     if (roomParam) {
-      const { data: room, error } = await supabase
-        .from('chat_rooms')
-        .select('user_one_id, user_two_id')
-        .eq('id', roomParam)
-        .single();
-      if (!error && room) {
-        const otherUserId = room.user_one_id === currentUser.id ? room.user_two_id : room.user_one_id;
-        openRoom(roomParam, otherUserId);
-      } else {
-        alert('Chat room not found.');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+      const { data: room } = await supabase.from('chat_rooms').select('user_one_id, user_two_id').eq('id', roomParam).single();
+      if (room) openRoom(roomParam, room.user_one_id === currentUser.id ? room.user_two_id : room.user_one_id);
+      else { alert('Chat room not found.'); window.history.replaceState({}, document.title, window.location.pathname); }
     }
 
-    supabase.channel('public:chat_rooms')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => loadRooms())
-      .subscribe();
-
+    supabase.channel('public:chat_rooms').on('postgres_changes', { event:'*', schema:'public', table:'chat_rooms' }, () => loadRooms()).subscribe();
     $('sendBtn').addEventListener('click', sendMessage);
-    $('messageInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
+    $('messageInput').addEventListener('keydown', (e) => { if (e.key==='Enter') sendMessage(); });
 
-    const logoutBtn = document.createElement('button');
-    logoutBtn.textContent = 'Logout';
-    logoutBtn.style.cssText = 'background:transparent;border:1px solid var(--border);color:var(--danger);padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:auto;';
-    logoutBtn.addEventListener('click', logout);
-    document.querySelector('.sidebar-header').appendChild(logoutBtn);
+    const lb = document.createElement('button'); lb.textContent='Logout';
+    lb.style.cssText='background:transparent;border:1px solid var(--border);color:var(--danger);padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:auto;';
+    lb.addEventListener('click', logout); document.querySelector('.sidebar-header').appendChild(lb);
   }
 
   document.addEventListener('DOMContentLoaded', init);
