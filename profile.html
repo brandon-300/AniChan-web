@@ -250,11 +250,18 @@
     const container = $('headerActions');
     container.innerHTML = '';
 
-    // ← Back button (goes to previous page)
+    // ← Back button (always works, even in new tabs)
     const backBtn = document.createElement('button');
     backBtn.className = 'btn';
     backBtn.textContent = '← Back';
-    backBtn.addEventListener('click', () => history.back());
+    backBtn.addEventListener('click', () => {
+      // Try to go back, fallback to home if no history
+      if (document.referrer && document.referrer !== window.location.href) {
+        history.back();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
     container.appendChild(backBtn);
 
     if (!isOwner) {
