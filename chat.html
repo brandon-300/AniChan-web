@@ -4,258 +4,118 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>AniChan · Chat</title>
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<!-- i18n -->
+<script src="i18n.js"></script>
 <style>
-  :root {
-    --bg: #0d0d0d; --card: #161616; --panel: #1a1a1a;
-    --accent: #1db9b2; --danger: #ff4757;
-    --text: #f1f1f1; --muted: #9aa0a6; --border: #222;
-    --success: #2ed573; --offline: #555;
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: {
+          accent: '#51dad3',
+          accent2: '#ffb597',
+          dark: '#0d0d0d',
+          card: '#161616',
+          panel: '#1a1a1a',
+          border: '#222222',
+          muted: '#9aa0a6',
+          danger: '#ff4757',
+          success: '#2ed573',
+          offline: '#555555'
+        }
+      }
+    }
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-    height: 100dvh; overflow: hidden; display: flex;
-  }
-
-  /* SIDEBAR */
-  .sidebar {
-    width: 320px; background: var(--card); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; z-index: 10;
-    transition: transform 0.25s ease;
-  }
-  .sidebar-header {
-    padding: 16px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .sidebar-header h2 { font-size: 16px; flex: 1; }
-  .back-btn {
-    display: none; background: none; border: none; color: var(--accent);
-    font-size: 20px; cursor: pointer;
-  }
-  .new-chat { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .new-chat input {
-    width: 100%; padding: 10px; border-radius: 8px;
-    background: var(--panel); border: 1px solid var(--border);
-    color: var(--text); font-size: 14px; outline: none;
-  }
-  .new-chat input:focus { border-color: var(--accent); }
-  .room-list { flex: 1; overflow-y: auto; padding: 0 0 16px; }
-  .room {
-    display: flex; align-items: center; padding: 12px 16px;
-    cursor: pointer; transition: background 0.15s; gap: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-  }
-  .room:hover, .room.active { background: var(--panel); }
-  .room .avatar {
-    width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
-    background: var(--panel); border: 2px solid var(--border); flex-shrink: 0;
-  }
-  .room .info { flex: 1; min-width: 0; }
-  .room .name {
-    font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;
-  }
-  .online-badge {
-    width: 10px; height: 10px; border-radius: 50%; background: var(--offline);
-  }
-  .online-badge.online { background: var(--success); }
-  .room .preview {
-    font-size: 12px; color: var(--muted); margin-top: 2px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .room .preview.unread { font-weight: bold; color: var(--text); }
-  .room .meta { text-align: right; flex-shrink: 0; }
-  .room .time { font-size: 11px; color: var(--muted); }
-  .room .unread {
-    display: inline-block; background: var(--accent); color: #062525;
-    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; margin-top: 4px;
-  }
-
-  /* CHAT AREA */
-  .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  .chat-header {
-    padding: 12px 16px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 12px; background: var(--card);
-    flex-shrink: 0;
-  }
-  .chat-header .header-back-arrow {
-    background: none; border: none; color: var(--accent);
-    font-size: 24px; cursor: pointer; padding: 0 8px 0 0;
-  }
-  .chat-header .avatar-link { display: block; flex-shrink: 0; }
-  .chat-header .avatar {
-    width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
-    border: 2px solid var(--border);
-  }
-  .chat-header .name { font-weight: 600; }
-  .chat-header .status { font-size: 12px; color: var(--muted); }
-  .chat-header .last-seen { font-size: 11px; color: var(--muted); }
-
-  .chat-box {
-    flex: 1 1 0; overflow-y: auto; padding: 16px;
-    display: flex; flex-direction: column; gap: 8px;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .message {
-    display: flex; gap: 8px; max-width: 85%; position: relative;
-    user-select: none;
-  }
-  .message.sent { align-self: flex-end; flex-direction: row-reverse; }
-  .message .bubble {
-    padding: 10px 14px; border-radius: 16px; background: var(--panel);
-    font-size: 14px; line-height: 1.4; word-break: break-word;
-    position: relative;
-  }
-  .message.sent .bubble { background: var(--accent); color: #062525; }
-  .message .time {
-    font-size: 10px; color: var(--muted); margin-top: 2px;
-    align-self: flex-end; white-space: nowrap;
-  }
-  .message.sent .time { text-align: right; }
-  .message .status-text {
-    font-size: 10px; color: var(--muted); margin-top: 2px;
-    display: flex; align-items: center; gap: 4px;
-  }
-  .message.sent .status-text { justify-content: flex-end; }
-
-  /* Reply quote inside bubble */
-  .reply-quote {
-    font-size: 11px; color: var(--muted); margin-bottom: 4px;
-    border-left: 2px solid var(--accent); padding-left: 6px;
-    cursor: pointer;
-    transition: color 0.1s;
-  }
-  .reply-quote:hover { color: var(--text); }
-
-  /* Deleted placeholder */
-  .deleted-placeholder {
-    padding: 10px 14px; border-radius: 16px; background: var(--panel);
-    font-style: italic; color: var(--muted); font-size: 13px;
-    pointer-events: none; user-select: none;
-  }
-
-  /* Reply bar */
-  .reply-bar {
-    background: var(--card); border-top: 1px solid var(--border);
-    padding: 8px 16px; display: none; align-items: center; gap: 8px;
-  }
-  .reply-bar.show { display: flex; }
-  .reply-bar .quote {
-    flex: 1; font-size: 12px; color: var(--muted);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .reply-bar button {
-    background: none; border: none; color: var(--danger);
-    font-size: 14px; cursor: pointer;
-  }
-
-  /* Context menu */
-  .context-menu {
-    position: fixed; background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 4px 0; min-width: 140px; z-index: 200;
-    display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  }
-  .context-menu button {
-    display: block; width: 100%; padding: 10px 16px; border: none;
-    background: none; color: var(--text); font-size: 14px; text-align: left;
-    cursor: pointer; transition: background 0.1s;
-  }
-  .context-menu button:hover { background: var(--panel); }
-  .context-menu .danger { color: var(--danger); }
-
-  .typing-indicator { padding: 4px 16px; color: var(--muted); font-size: 13px; flex-shrink: 0; min-height: 22px; }
-
-  .input-area {
-    flex-shrink: 0; border-top: 1px solid var(--border);
-    background: var(--card); padding: 12px 16px;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .input-row { display: flex; gap: 8px; }
-  .input-row input {
-    flex: 1; padding: 12px; border-radius: 8px;
-    background: var(--panel); border: 1px solid var(--border);
-    color: var(--text); font-size: 14px; outline: none;
-  }
-  .input-row button {
-    padding: 12px 18px; border: none; border-radius: 8px;
-    background: var(--accent); color: #062525; font-weight: 700;
-    cursor: pointer; transition: filter 0.15s;
-  }
-  .input-row button:hover { filter: brightness(1.05); }
-  .input-note { text-align: center; font-size: 11px; color: var(--muted); user-select: none; }
-
-  .empty-chat {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    color: var(--muted); font-size: 14px; text-align: center; padding: 20px;
-  }
-
-  @media (max-width: 640px) {
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
-    .back-btn { display: block; }
-    .chat-box { padding: 12px; }
-    .input-area { padding: 10px 12px; }
-  }
+  .glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .message .bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-break: break-word; position: relative; }
+  .message.sent .bubble { background: #51dad3; color: #062525; }
+  .message.received .bubble { background: #1a1a1a; }
+  .deleted-placeholder { padding: 10px 14px; border-radius: 16px; background: #1a1a1a; font-style: italic; color: #9aa0a6; font-size: 13px; pointer-events: none; user-select: none; }
+  .context-menu { position: fixed; background: #161616; border: 1px solid #222; border-radius: 12px; padding: 4px 0; min-width: 140px; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .context-menu button { display: block; width: 100%; padding: 10px 16px; border: none; background: none; color: #f1f1f1; font-size: 14px; text-align: left; cursor: pointer; transition: background 0.1s; }
+  .context-menu button:hover { background: #1a1a1a; }
+  .reply-quote { font-size: 11px; color: #9aa0a6; margin-bottom: 4px; border-left: 2px solid #51dad3; padding-left: 6px; cursor: pointer; }
+  .reply-quote:hover { color: #f1f1f1; }
+  .status-text { font-size: 10px; color: #9aa0a6; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
 </style>
 </head>
-<body>
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <button class="back-btn" id="sidebarBackBtn">←</button>
-      <h2>Messages</h2>
-    </div>
-    <div class="new-chat">
-      <input type="text" id="newChatUsername" placeholder="Start a chat by username..." />
-    </div>
-    <div class="room-list" id="roomList"></div>
-  </div>
+<body class="bg-dark text-white font-sans h-screen overflow-hidden flex">
 
-  <div class="chat-area" id="chatArea">
-    <div class="chat-header" id="chatHeader" style="display: none;">
-      <button class="header-back-arrow" onclick="history.back()">←</button>
-      <a class="avatar-link" id="chatAvatarLink" href="#" target="_blank">
-        <img class="avatar" id="chatPartnerAvatar" src="" alt="" />
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-80 bg-card border-r border-border flex flex-col z-10 transition-transform duration-300 md:relative fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0">
+    <div class="p-4 border-b border-border flex items-center gap-3">
+      <button id="sidebarBackBtn" class="md:hidden text-accent text-2xl">←</button>
+      <h2 class="text-base font-semibold flex-1">Messages</h2>
+    </div>
+    <div class="p-3 border-b border-border">
+      <input type="text" id="newChatUsername" placeholder="Start a chat by username..." class="w-full p-2.5 rounded-lg bg-panel border border-border text-white text-sm outline-none focus:border-accent transition" />
+    </div>
+    <div id="roomList" class="flex-1 overflow-y-auto"></div>
+  </aside>
+
+  <!-- Chat area -->
+  <div class="flex-1 flex flex-col min-w-0 min-h-0">
+
+    <!-- Header -->
+    <div id="chatHeader" class="p-3 border-b border-border flex items-center gap-3 bg-card flex-shrink-0" style="display:none;">
+      <button class="text-accent text-2xl bg-transparent border-none cursor-pointer" onclick="history.back()">←</button>
+      <a id="chatAvatarLink" href="#" target="_blank" class="flex-shrink-0">
+        <img id="chatPartnerAvatar" src="" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-border" />
       </a>
       <div>
-        <div class="name" id="chatPartnerName"></div>
-        <div class="status" id="chatPartnerStatus"></div>
-        <div class="last-seen" id="chatPartnerLastSeen"></div>
+        <div id="chatPartnerName" class="font-semibold"></div>
+        <div id="chatPartnerStatus" class="text-xs text-muted"></div>
+        <div id="chatPartnerLastSeen" class="text-xs text-muted"></div>
       </div>
     </div>
-    <div class="typing-indicator" id="typingIndicator"></div>
-    <div class="chat-box" id="chatBox">
-      <!-- The empty placeholder will be hidden by openRoom() -->
-      <div class="empty-chat" id="emptyChatPlaceholder" style="display:none;">
+
+    <!-- Typing indicator -->
+    <div id="typingIndicator" class="px-4 py-1 text-muted text-xs min-h-[22px] flex-shrink-0"></div>
+
+    <!-- Messages -->
+    <div id="chatBox" class="flex-1 overflow-y-auto p-4 space-y-2 flex flex-col">
+      <div id="emptyChatPlaceholder" class="flex-1 flex items-center justify-center text-muted text-sm" style="display:none;">
         Select a conversation to start chatting
       </div>
     </div>
-    <div class="reply-bar" id="replyBar">
-      <span class="quote" id="replyQuote"></span>
-      <button id="cancelReplyBtn">✕</button>
+
+    <!-- Reply bar -->
+    <div id="replyBar" class="bg-card border-t border-border p-2 px-4 items-center gap-2 hidden">
+      <span id="replyQuote" class="flex-1 text-xs text-muted truncate"></span>
+      <button id="cancelReplyBtn" class="text-danger text-sm">✕</button>
     </div>
-    <div class="input-area" id="inputArea" style="display: none;">
-      <div class="input-row">
-        <input type="text" id="messageInput" placeholder="Type a message..." />
-        <button id="sendBtn">Send</button>
+
+    <!-- Input area -->
+    <div id="inputArea" class="bg-card border-t border-border p-3 flex flex-col gap-1.5 flex-shrink-0" style="display:none;">
+      <div class="flex gap-2">
+        <input type="text" id="messageInput" placeholder="Type a message..." class="flex-1 p-3 rounded-lg bg-panel border border-border text-white text-sm outline-none focus:border-accent transition" />
+        <button id="sendBtn" class="px-5 py-3 rounded-lg bg-accent text-black font-bold text-sm hover:brightness-110 transition">Send</button>
       </div>
-      <div class="input-note">Text & emoji only · no files or images</div>
+      <div class="text-center text-xs text-muted select-none">Text & emoji only · no files or images</div>
     </div>
   </div>
 
-  <div class="context-menu" id="contextMenu">
+  <!-- Context menu (for long press) -->
+  <div id="contextMenu" class="context-menu">
     <button id="ctxEdit">Edit</button>
-    <button id="ctxDeleteForMe" class="danger">Delete for me</button>
-    <button id="ctxDeleteForEveryone" class="danger">Delete for everyone</button>
+    <button id="ctxDeleteForMe" class="text-danger">Delete for me</button>
+    <button id="ctxDeleteForEveryone" class="text-danger">Delete for everyone</button>
     <button id="ctxCancel">Cancel</button>
   </div>
 
 <script>
 /*
   ══════════════════════════════════════════════════════
-  AniChan Realtime Chat — Final v2.1
+  AniChan Realtime Chat — Redesigned UI
+  All original features: swipe reply, long-press edit/delete,
+  send status, delete for everyone placeholder, typing indicator.
   ══════════════════════════════════════════════════════
 */
 (() => {
@@ -304,21 +164,28 @@
     localStorage.setItem(DELETED_KEY, JSON.stringify([...s]));
   }
 
-  // ── Sidebar rendering ──
+  // ── Sidebar ──
   function renderRoomList(roomsData) {
     const list = $('roomList'); list.innerHTML = '';
-    if (!roomsData.length) { list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>'; return; }
+    if (!roomsData.length) { list.innerHTML = '<div class="p-4 text-muted text-center">No conversations yet</div>'; return; }
     roomsData.forEach(room => {
       const o = room.other_user;
-      const div = document.createElement('div'); div.className = 'room' + (activeRoom===room.id ? ' active' : '');
-      const previewClass = room.unread_count ? 'preview unread' : 'preview';
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-3 p-3 cursor-pointer hover:bg-panel transition border-b border-border ' + (activeRoom===room.id ? 'bg-panel' : '');
+      const previewClass = room.unread_count ? 'font-bold text-white' : 'text-muted';
       div.innerHTML = `
-        <img class="avatar" src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <div class="info">
-          <div class="name">${escapeHtml(o.full_name || o.username)}<span class="online-badge ${o.is_online ? 'online' : ''}"></span></div>
-          <div class="${previewClass}">${escapeHtml(room.last_message || '')}</div>
+        <img class="w-12 h-12 rounded-full object-cover border-2 border-border" src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm flex items-center gap-1.5">
+            ${escapeHtml(o.full_name || o.username)}
+            <span class="inline-block w-2.5 h-2.5 rounded-full ${o.is_online ? 'bg-success' : 'bg-offline'}"></span>
+          </div>
+          <div class="text-xs ${previewClass} mt-0.5 truncate">${escapeHtml(room.last_message || '')}</div>
         </div>
-        <div class="meta"><div class="time">${formatTime(room.last_message_time)}</div>${room.unread_count ? `<span class="unread">${room.unread_count}</span>` : ''}</div>`;
+        <div class="text-right flex-shrink-0">
+          <div class="text-xs text-muted">${formatTime(room.last_message_time)}</div>
+          ${room.unread_count ? `<span class="inline-block bg-accent text-black text-xs font-bold px-1.5 py-0.5 rounded-full mt-1">${room.unread_count}</span>` : ''}
+        </div>`;
       div.addEventListener('click', () => openRoom(room.id, o.id));
       list.appendChild(div);
     });
@@ -339,13 +206,7 @@
       const partner = room.user_one_id === currentUser.id ? room.user_two : room.user_one;
       const { count } = await supabase.from('messages').select('*', { count:'exact', head:true })
         .eq('room_id', room.id).eq('receiver_id', currentUser.id).eq('is_read', false);
-      enriched.push({
-        id: room.id,
-        last_message: room.last_message,
-        last_message_time: room.last_message_time,
-        other_user: partner,
-        unread_count: count || 0
-      });
+      enriched.push({ id: room.id, last_message: room.last_message, last_message_time: room.last_message_time, other_user: partner, unread_count: count||0 });
     }
     rooms = enriched;
     renderRoomList(enriched);
@@ -354,11 +215,9 @@
   // ── Open room ──
   async function openRoom(roomId, otherUserId) {
     activeRoom = roomId; partnerId = otherUserId;
-    // Immediately hide any placeholder
     $('emptyChatPlaceholder').style.display = 'none';
     $('chatHeader').style.display = 'flex';
     $('inputArea').style.display = 'flex';
-
     const { data: p } = await supabase.from('profiles').select('username, full_name, avatar_url, is_online, last_seen').eq('id', otherUserId).single();
     if (p) {
       $('chatPartnerAvatar').src = p.avatar_url || DEFAULT_AVATAR;
@@ -367,12 +226,12 @@
       $('chatPartnerLastSeen').textContent = p.is_online ? '' : (p.last_seen ? `Last seen: ${new Date(p.last_seen).toLocaleString()}` : 'Last seen: —');
       $('chatAvatarLink').href = `profile.html?user=${otherUserId}`;
     }
-
     renderRoomList(rooms);
     await loadMessages(roomId);
     subscribeToMessages(roomId);
     $('typingIndicator').textContent = '';
-    if (window.innerWidth <= 640) $('sidebar').classList.remove('open');
+    // Close sidebar on mobile
+    if (window.innerWidth < 768) $('sidebar').classList.add('-translate-x-full');
   }
 
   // ── Messages ──
@@ -393,17 +252,18 @@
 
   function addMessageElement(msg) {
     const box = $('chatBox'), isSent = msg.sender_id === currentUser.id;
-    const div = document.createElement('div'); div.className = `message ${isSent ? 'sent' : 'received'}`; div.dataset.msgId = msg.id;
+    const div = document.createElement('div');
+    div.className = `message flex gap-2 max-w-[85%] ${isSent ? 'sent self-end flex-row-reverse' : 'received'}`;
+    div.dataset.msgId = msg.id;
 
-    // Deleted for everyone
+    // Deleted for everyone placeholder
     if (msg.is_deleted) {
-      div.innerHTML = `<div class="deleted-placeholder">This message was deleted</div><div class="time">${formatTime(msg.created_at)}</div>`;
+      div.innerHTML = `<div class="deleted-placeholder">This message was deleted</div><div class="text-xs text-muted mt-1 self-end whitespace-nowrap">${formatTime(msg.created_at)}</div>`;
       box.appendChild(div);
       scrollToBottom();
       return;
     }
 
-    // Reply quote
     let replyHtml = '';
     if (msg.reply_to) {
       const originalEl = document.querySelector(`.message[data-msg-id="${msg.reply_to}"]`);
@@ -412,12 +272,13 @@
     }
 
     let content = escapeHtml(msg.message || msg.content || '');
-    if (msg.edited_at) content += ' <small style="color:var(--muted)">(edited)</small>';
+    if (msg.edited_at) content += ' <small class="text-muted">(edited)</small>';
 
-    div.innerHTML = `<div class="bubble">${replyHtml}${content}</div>
-      <div class="time">${formatTime(msg.created_at)}</div>`;
+    div.innerHTML = `
+      <div class="bubble">${replyHtml}${content}</div>
+      <div class="text-xs text-muted mt-1 self-end whitespace-nowrap">${formatTime(msg.created_at)}</div>`;
 
-    // Click on reply quote to jump to original message
+    // Click on reply quote to jump
     const replyDiv = div.querySelector('.reply-quote');
     if (replyDiv) {
       replyDiv.addEventListener('click', (e) => {
@@ -426,15 +287,16 @@
         const target = document.querySelector(`.message[data-msg-id="${targetId}"]`);
         if (target) {
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.style.transition = 'background 0.5s';
           target.style.background = 'var(--panel)';
           setTimeout(() => target.style.background = '', 1500);
         }
       });
     }
 
+    // Swipe to reply
     attachSwipe(div, msg);
 
+    // Long press for sent messages
     if (isSent) {
       div.addEventListener('touchstart', (e) => startLongPress(e, msg));
       div.addEventListener('touchend', cancelLongPress);
@@ -460,13 +322,15 @@
     if (msg.is_deleted) return;
     replyToMessage = { id: msg.id, sender: msg.sender_id, content: msg.message || msg.content };
     $('replyQuote').textContent = replyToMessage.content.substring(0, 60);
-    $('replyBar').classList.add('show');
+    $('replyBar').classList.remove('hidden');
+    $('replyBar').classList.add('flex');
     $('messageInput').focus();
   }
 
   $('cancelReplyBtn').addEventListener('click', () => {
     replyToMessage = null;
-    $('replyBar').classList.remove('show');
+    $('replyBar').classList.add('hidden');
+    $('replyBar').classList.remove('flex');
   });
 
   // ── Long press context menu ──
@@ -482,10 +346,8 @@
     const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
     $('ctxEdit').style.display = canEdit ? 'block' : 'none';
     menu.style.display = 'block';
-    const x = Math.min(e.touches[0].clientX, window.innerWidth - 160);
-    const y = Math.max(e.touches[0].clientY - 100, 10);
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
+    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 160) + 'px';
+    menu.style.top = (e.touches[0].clientY - 100) + 'px';
   }
 
   document.addEventListener('click', (e) => {
@@ -519,17 +381,16 @@
 
   $('ctxCancel').addEventListener('click', () => $('contextMenu').style.display = 'none');
 
-  // ── Send with status (no duplicates) ──
+  // ── Send with status ──
   async function sendMessage() {
     const input = $('messageInput'), text = input.value.trim();
     if (!text || !activeRoom || !partnerId || isSending) return;
     input.value = '';
     isSending = true;
 
-    // Temporary optimistic message
     const tempId = 'temp-' + Date.now();
     const tempDiv = document.createElement('div');
-    tempDiv.className = 'message sent';
+    tempDiv.className = 'message sent self-end flex-row-reverse flex gap-2 max-w-[85%]';
     tempDiv.dataset.msgId = tempId;
     tempDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="status-text"><span>sending…</span></div>`;
     $('chatBox').appendChild(tempDiv);
@@ -544,27 +405,23 @@
       reply_to: replyToMessage?.id || null
     };
 
-    // Clear reply bar early
     if (replyToMessage) {
       replyToMessage = null;
-      $('replyBar').classList.remove('show');
+      $('replyBar').classList.add('hidden');
+      $('replyBar').classList.remove('flex');
     }
 
-    // Insert and get the real message
     const { data: inserted, error } = await supabase.from('messages').insert(payload).select().single();
 
     const statusEl = tempDiv.querySelector('.status-text');
     if (error) {
-      statusEl.innerHTML = '<span style="color:var(--danger)">not sent, try again</span>';
+      statusEl.innerHTML = '<span class="text-danger">not sent, try again</span>';
     } else if (inserted) {
-      // Replace tempId with real ID so realtime won't duplicate
       tempDiv.dataset.msgId = inserted.id;
-      statusEl.innerHTML = `<span>sent</span> <span class="time">${formatTime(inserted.created_at)}</span>`;
-      // Update sidebar
+      statusEl.innerHTML = `<span>sent</span> <span class="text-xs text-muted">${formatTime(inserted.created_at)}</span>`;
       await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
     }
-
     isSending = false;
   }
 
@@ -575,7 +432,6 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const nm = payload.new;
-          // Skip if already present (our own sent message)
           if (!document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
             addMessageElement(nm);
             if (nm.receiver_id === currentUser.id) supabase.from('messages').update({ is_read:true }).eq('id', nm.id).then();
@@ -625,7 +481,7 @@
   });
   setInterval(loadRooms, 30000);
 
-  $('sidebarBackBtn').addEventListener('click', () => $('sidebar').classList.remove('open'));
+  $('sidebarBackBtn').addEventListener('click', () => $('sidebar').classList.toggle('-translate-x-full'));
   async function logout() { await updatePresence('offline'); await supabase.auth.signOut(); window.location.href = resolvePath('index.html'); }
 
   async function init() {
@@ -646,8 +502,9 @@
     $('messageInput').addEventListener('keydown', (e) => { if (e.key==='Enter') sendMessage(); });
 
     const lb = document.createElement('button'); lb.textContent='Logout';
-    lb.style.cssText='background:transparent;border:1px solid var(--border);color:var(--danger);padding:6px 12px;border-radius:8px;cursor:pointer;margin-left:auto;';
-    lb.addEventListener('click', logout); document.querySelector('.sidebar-header').appendChild(lb);
+    lb.className = 'ml-auto bg-transparent border border-red-900/40 text-danger px-3 py-1.5 rounded-lg text-sm hover:bg-red-900/20 transition cursor-pointer';
+    lb.addEventListener('click', logout);
+    document.querySelector('#sidebar .p-4').appendChild(lb);
   }
 
   document.addEventListener('DOMContentLoaded', init);
