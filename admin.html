@@ -602,7 +602,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Bulk Import (now populates new columns)
+      // Bulk Import (already populates new columns)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -635,7 +635,6 @@
               const score = a.score || null;
               const ep_total = (a.episodes != null) ? a.episodes : null;
               const airingStatus = a.status ? mapAiringStatus(a.status) : null;
-              // New columns
               const title_en = a.title_english || null;
               const title_jp = a.title_japanese || null;
               const aired_from = a.aired?.from ? new Date(a.aired.from).toISOString() : null;
@@ -662,7 +661,7 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
-      // Fix All (now populates all new columns)
+      // Fix All (processes ALL anime, fills missing data, updates language titles)
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -682,7 +681,7 @@
         const LAST_FIX_KEY = 'anichan_last_fix_time';
         const lastFix = localStorage.getItem(LAST_FIX_KEY);
         if (lastFix && (Date.now() - parseInt(lastFix)) < 5 * 60 * 1000) {
-          status.textContent = "There is nothing to fix at the moment.";
+          status.textContent = "Please wait 5 minutes between fixes.";
           return;
         }
 
@@ -690,18 +689,9 @@
         const { data: all, error } = await sb.from("anime").select("*");
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
 
-        const validAiringStatuses = ["Aired", "Currently Airing", "Not yet aired"];
-        const needFix = all.filter(a => !a.status || !validAiringStatuses.includes(a.status));
-
-        if (!needFix.length) {
-          status.textContent = "All titles already have correct airing statuses.";
-          btn.disabled = false; btn.textContent = origText;
-          localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
-          return;
-        }
-
-        const total = needFix.length; let processed = 0, fixedCount = 0;
-        for (const anime of needFix) {
+        // We process every anime, updating missing fields
+        const total = all.length; let processed = 0, fixedCount = 0;
+        for (const anime of all) {
           processed++;
           const pct = Math.round((processed / total) * 100);
           status.textContent = `Fixing ${processed} out of ${total}… ${pct}%`;
@@ -714,24 +704,34 @@
             const match = json.data && json.data[0];
             if (!match) continue;
             const updates = {};
+
             // Status
-            const mappedStatus = mapAiringStatus(match.status);
-            if (mappedStatus) updates.status = mappedStatus;
-            // Multi-language titles
+            if (!anime.status || !["Aired","Currently Airing","Not yet aired"].includes(anime.status)) {
+              const mappedStatus = mapAiringStatus(match.status);
+              if (mappedStatus) updates.status = mappedStatus;
+            }
+
+            // Language titles
             if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
             if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
+
             // Aired dates
             if (match.aired?.from) updates.aired_from = new Date(match.aired.from).toISOString();
             if (match.aired?.to)   updates.aired_to   = new Date(match.aired.to).toISOString();
-            // Other missing fields
+
+            // Score
             if (anime.score == null && match.score != null) updates.score = match.score;
+            // Episodes
             if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
+            // Genres
             if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
               updates.genres = match.genres.map(g => g.name).filter(Boolean);
             }
+            // Studio
             if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
               updates.studio = match.studios.map(s => s.name).join(", ");
             }
+
             if (Object.keys(updates).length) {
               const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
               if (!updErr) fixedCount++;
