@@ -162,7 +162,6 @@
 </head>
 <body>
   <div class="app-layout">
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">Ani<span class="accent">Chan</span></div>
       <nav class="sidebar-nav">
@@ -177,15 +176,12 @@
       <button class="logout-btn-side" id="logoutBtn"><span class="material-symbols-outlined">logout</span> Logout</button>
     </aside>
 
-    <!-- Main content -->
     <div class="main-area">
-      <!-- Mobile top bar -->
       <div class="top-bar-mobile">
         <div class="brand">Ani<span class="accent">Chan</span></div>
         <button class="menu-btn" id="menuBtn"><span class="material-symbols-outlined">menu</span></button>
       </div>
 
-      <!-- Gate -->
       <div id="gate" style="display:none;min-height:100vh;display:flex;align-items:center;justify-content:center">
         <div style="text-align:center">
           <h2>Checking access…</h2>
@@ -194,7 +190,6 @@
         </div>
       </div>
 
-      <!-- App content -->
       <div id="app" style="display:none;flex:1">
         <div class="content">
           <div class="bento-grid">
@@ -246,7 +241,7 @@
               </div>
             </div>
 
-            <!-- Add/Edit Anime Form (span 2) -->
+            <!-- Add/Edit Anime Form -->
             <div id="anime-form-section" class="glass-panel span-2">
               <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Collection</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the title is required.</p>
@@ -256,7 +251,12 @@
                 <div><label for="imageInput">Image URL</label><input id="imageInput" type="url" placeholder="https://…" /></div>
                 <div>
                   <label for="statusInput">Status</label>
-                  <select id="statusInput"><option value="">— None —</option><option value="watching">Watching</option><option value="completed">Completed</option><option value="planned">Plan to Watch</option><option value="dropped">Dropped</option></select>
+                  <select id="statusInput">
+                    <option value="">— None —</option>
+                    <option value="Aired">Finished Airing</option>
+                    <option value="Currently Airing">Currently Airing</option>
+                    <option value="Not yet aired">Not yet aired</option>
+                  </select>
                 </div>
                 <div>
                   <label for="typeInput">Type</label>
@@ -276,7 +276,7 @@
               </div>
             </div>
 
-            <!-- Member Management (span 2) -->
+            <!-- Member Management -->
             <div id="member-section" class="glass-panel span-2">
               <h3><span class="material-symbols-outlined">group</span> Member Management</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">View, suspend, or delete any registered user.</p>
@@ -286,13 +286,13 @@
               </div>
             </div>
 
-            <!-- Admin Actions Log (span 2) -->
+            <!-- Admin Actions Log -->
             <div id="log-section" class="glass-panel span-2">
               <h3><span class="material-symbols-outlined">history</span> Recent Admin Actions</h3>
               <div id="actionLog" style="max-height:300px;overflow-y:auto;font-size:13px;color:var(--muted)"></div>
             </div>
 
-            <!-- Collection List (span 3) -->
+            <!-- Collection List -->
             <div id="collection-section" class="glass-panel span-3">
               <h3><span class="material-symbols-outlined">library_books</span> Collection <span id="countBadge" style="margin-left:8px;padding:2px 10px;border-radius:20px;background:var(--accent);color:#0a2a28;font-size:12px;font-weight:700;display:none">0</span></h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">All anime currently saved in the AniChan database.</p>
@@ -443,8 +443,12 @@
       }
 
       // Form helpers
-      const TYPE_OPTIONS = ["TV","Movie","OVA","ONA","Special","Music"];
-      function normalizeType(t){ if (!t) return ""; return TYPE_OPTIONS.find(o => o.toLowerCase() === t.toLowerCase()) || ""; }
+      const STATUS_LABELS = {
+        "Aired": "Finished Airing",
+        "Currently Airing": "Currently Airing",
+        "Not yet aired": "Not yet aired"
+      };
+      function normalizeType(t){ if (!t) return ""; const TYPE_OPTIONS = ["TV","Movie","OVA","ONA","Special","Music"]; return TYPE_OPTIONS.find(o => o.toLowerCase() === t.toLowerCase()) || ""; }
       function parseGenres(str){ return String(str||"").split(",").map(s=>s.trim()).filter(Boolean); }
       function renderGenreChips(){
         const host = $("genresPreview"); host.innerHTML = "";
@@ -452,7 +456,6 @@
           const c = document.createElement("span"); c.className = "chip"; c.textContent = g; host.appendChild(c);
         }
       }
-      const STATUS_LABELS = { watching:"Watching", completed:"Completed", planned:"Plan to Watch", dropped:"Dropped" };
 
       function fillFormFromJikan(a, imgSrc){
         $("titleInput").value = a.title || "";
@@ -520,7 +523,7 @@
         clearForm(); await loadAnimeList();
       }
 
-      // Paginated collection – timestamp with date + time
+      // Paginated collection
       async function loadAnimeList(){
         const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
         allAnime = error ? [] : (data || []);
@@ -599,7 +602,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Bulk Import
+      // Bulk Import (now populates new columns)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -631,9 +634,18 @@
               const studio = (a.studios || []).map(s => s.name).join(", ") || null;
               const score = a.score || null;
               const ep_total = (a.episodes != null) ? a.episodes : null;
-              // Set initial status based on Jikan's airing status
               const airingStatus = a.status ? mapAiringStatus(a.status) : null;
-              inserts.push({ title, image_url, type, year, genres, studio, score, ep_total, status: airingStatus || 'planned' });
+              // New columns
+              const title_en = a.title_english || null;
+              const title_jp = a.title_japanese || null;
+              const aired_from = a.aired?.from ? new Date(a.aired.from).toISOString() : null;
+              const aired_to   = a.aired?.to   ? new Date(a.aired.to).toISOString()   : null;
+              inserts.push({
+                title, image_url, type, year, genres, studio, score, ep_total,
+                status: airingStatus || 'Not yet aired',
+                title_en, title_jp,
+                aired_from, aired_to
+              });
               existingTitles.add(title.toLowerCase());
               if (inserts.length >= 50) break;
             }
@@ -650,7 +662,7 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
-      // Fix All – ensures all statuses are Aired / Currently Airing / Not yet aired
+      // Fix All (now populates all new columns)
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -667,17 +679,25 @@
       }
       async function fixAll(){
         const btn = $("fixAllBtn"), status = $("bulkStatus");
+        const LAST_FIX_KEY = 'anichan_last_fix_time';
+        const lastFix = localStorage.getItem(LAST_FIX_KEY);
+        if (lastFix && (Date.now() - parseInt(lastFix)) < 5 * 60 * 1000) {
+          status.textContent = "There is nothing to fix at the moment.";
+          return;
+        }
+
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Fixing…"; status.textContent = "Fetching anime list…";
         const { data: all, error } = await sb.from("anime").select("*");
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
 
-        // Only need to fix if status is not one of the three airing statuses
         const validAiringStatuses = ["Aired", "Currently Airing", "Not yet aired"];
         const needFix = all.filter(a => !a.status || !validAiringStatuses.includes(a.status));
 
         if (!needFix.length) {
           status.textContent = "All titles already have correct airing statuses.";
-          btn.disabled = false; btn.textContent = origText; return;
+          btn.disabled = false; btn.textContent = origText;
+          localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
+          return;
         }
 
         const total = needFix.length; let processed = 0, fixedCount = 0;
@@ -694,11 +714,16 @@
             const match = json.data && json.data[0];
             if (!match) continue;
             const updates = {};
-            // Always update the status to the correct airing status
+            // Status
             const mappedStatus = mapAiringStatus(match.status);
             if (mappedStatus) updates.status = mappedStatus;
-
-            // Also fill missing fields as before
+            // Multi-language titles
+            if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
+            if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
+            // Aired dates
+            if (match.aired?.from) updates.aired_from = new Date(match.aired.from).toISOString();
+            if (match.aired?.to)   updates.aired_to   = new Date(match.aired.to).toISOString();
+            // Other missing fields
             if (anime.score == null && match.score != null) updates.score = match.score;
             if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
             if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
@@ -707,7 +732,6 @@
             if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
               updates.studio = match.studios.map(s => s.name).join(", ");
             }
-
             if (Object.keys(updates).length) {
               const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
               if (!updErr) fixedCount++;
@@ -718,9 +742,10 @@
         if (fixedCount > 0) { toast(`Fixed ${fixedCount} titles.`); await loadAnimeList(); }
         status.textContent = fixedCount > 0 ? `Fixed ${fixedCount} titles.` : "No fixes applied.";
         btn.disabled = false; btn.textContent = origText;
+        localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Member Management
+      // Member Management (unchanged)
       function formatLastSeen(iso){
         if (!iso) return "Never";
         const d = new Date(iso), now = new Date();

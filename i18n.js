@@ -1,4 +1,5 @@
 // i18n.js — AniChan multi-language dictionary
+
 const LANG = {
   en: {
     siteName: "AniChan",
@@ -9,6 +10,7 @@ const LANG = {
     login: "Login",
     admin: "Admin",
     searchPlaceholder: "Search your library…",
+    latestReleases: "Latest Releases",
     currentlyAiring: "Currently Airing",
     viaJikan: "via Jikan",
     myCollection: "My Collection",
@@ -65,7 +67,6 @@ const LANG = {
     message: "Message",
     back: "← Back",
     changeLanguage: "Language",
-    // Signup/login
     createAccount: "Create account",
     firstName: "First name",
     lastName: "Last name",
@@ -105,6 +106,7 @@ const LANG = {
     login: "ログイン",
     admin: "管理者",
     searchPlaceholder: "ライブラリを検索…",
+    latestReleases: "最新リリース",
     currentlyAiring: "現在放送中",
     viaJikan: "Jikan経由",
     myCollection: "マイコレクション",
@@ -200,6 +202,7 @@ const LANG = {
     login: "登录",
     admin: "管理",
     searchPlaceholder: "搜索你的库…",
+    latestReleases: "最新发布",
     currentlyAiring: "正在播出",
     viaJikan: "通过 Jikan",
     myCollection: "我的收藏",
@@ -295,6 +298,7 @@ const LANG = {
     login: "Anmelden",
     admin: "Admin",
     searchPlaceholder: "Durchsuche deine Bibliothek…",
+    latestReleases: "Neueste Veröffentlichungen",
     currentlyAiring: "Aktuell laufend",
     viaJikan: "via Jikan",
     myCollection: "Meine Sammlung",
@@ -390,6 +394,7 @@ const LANG = {
     login: "Connexion",
     admin: "Admin",
     searchPlaceholder: "Rechercher dans votre bibliothèque…",
+    latestReleases: "Dernières sorties",
     currentlyAiring: "Actuellement diffusé",
     viaJikan: "via Jikan",
     myCollection: "Ma collection",
