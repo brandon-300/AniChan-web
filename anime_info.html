@@ -87,6 +87,11 @@
   .tab-content{display:none}
   .tab-content.active{display:block}
 
+  /* Synopsis */
+  .synopsis-text{
+    line-height:1.7;margin-bottom:24px;font-size:14px;color:var(--text);
+  }
+
   /* Metadata list */
   .meta-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
   .meta-row{display:flex;flex-wrap:wrap;gap:4px 8px}
@@ -171,7 +176,7 @@
 
     <!-- Summary -->
     <div class="tab-content active" id="summaryTab">
-      <div id="synopsis" style="line-height:1.6;margin-bottom:20px;font-size:14px;"></div>
+      <div class="synopsis-text" id="synopsis">Loading synopsis...</div>
 
       <div class="meta-list" id="metaList"></div>
       <div class="genres" id="genreTags"></div>
@@ -233,6 +238,21 @@
       return `${season} ${y}`;
     }
 
+    // ── Fetch synopsis from Jikan if missing ──
+    async function fetchSynopsisFromJikan(title) {
+      try {
+        const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`);
+        const data = await res.json();
+        const match = data.data && data.data[0];
+        if (match && match.synopsis) {
+          // Update DB in background
+          sb.from('anime').update({ synopsis: match.synopsis }).eq('id', animeId).then();
+          return match.synopsis;
+        }
+      } catch(e) { console.warn('Synopsis fetch failed', e); }
+      return null;
+    }
+
     // ── Load anime data ──
     async function loadAnime() {
       const { data, error } = await sb.from('anime').select('*').eq('id', animeId).single();
@@ -246,26 +266,36 @@
       $('heroJpTitle').textContent = data.title_jp || '';
 
       // Synopsis
-      const synopsis = data.synopsis || data.notes || 'No synopsis available.';
-      $('synopsis').textContent = synopsis;
+      let synopsis = data.synopsis || data.notes || null;
+      if (!synopsis) {
+        synopsis = await fetchSynopsisFromJikan(data.title);
+        if (synopsis) {
+          animeData.synopsis = synopsis;  // update local copy
+        }
+      }
+      $('synopsis').textContent = synopsis || 'No synopsis available.';
 
-      // Metadata
-      const meta = [
-        { label: 'Japanese', value: data.title_jp || '—' },
-        { label: 'English', value: data.title_en || '—' },
-        { label: 'Chinese', value: data.title_zh || '—' },
-        { label: 'German',  value: data.title_de || '—' },
-        { label: 'French',  value: data.title_fr || '—' },
+      // Metadata (only show rows with values)
+      const metaItems = [];
+      if (data.title_jp) metaItems.push({ label: 'Japanese', value: data.title_jp });
+      if (data.title_en) metaItems.push({ label: 'English', value: data.title_en });
+      if (data.title_zh) metaItems.push({ label: 'Chinese', value: data.title_zh });
+      if (data.title_de) metaItems.push({ label: 'German', value: data.title_de });
+      if (data.title_fr) metaItems.push({ label: 'French', value: data.title_fr });
+      metaItems.push(
         { label: 'Type',    value: data.type || '—', accent: true },
         { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
         { label: 'Status',  value: data.status || '—', accent: true },
         { label: 'Aired',   value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
         { label: 'Season',  value: seasonFromDate(data.aired_from) || '—', accent: true },
         { label: 'Studios', value: data.studio || '—' },
-        { label: 'Duration', value: data.duration || '—' },
-      ];
+        { label: 'Duration', value: data.duration || '—' }
+      );
+
       const metaContainer = $('metaList');
-      meta.forEach(m => {
+      metaContainer.innerHTML = '';
+      metaItems.forEach(m => {
+        if (!m.value || m.value === '—' && m.label !== 'Duration') return;  // skip empty optional rows
         const row = document.createElement('div');
         row.className = 'meta-row';
         row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
@@ -274,6 +304,7 @@
 
       // Genres
       const genreContainer = $('genreTags');
+      genreContainer.innerHTML = '';
       if (data.genres && Array.isArray(data.genres)) {
         data.genres.forEach(g => {
           const chip = document.createElement('span');
@@ -282,15 +313,16 @@
         });
       }
 
-      // External links
+      // External links (updated Kitsu URL)
       const query = encodeURIComponent(data.title);
       const extLinks = [
         { name: 'AniList', url: `https://anilist.co/search/anime?search=${query}` },
         { name: 'MAL',     url: `https://myanimelist.net/anime.php?q=${query}` },
         { name: 'AniDB',   url: `https://anidb.net/perl-bin/animedb.pl?show=anime&do.search=search&adb.search=${query}` },
-        { name: 'Kitsu',   url: `https://kitsu.io/anime?text=${query}` },
+        { name: 'Kitsu',   url: `https://kitsu.app/anime?text=${query}` }
       ];
       const extContainer = $('extLinks');
+      extContainer.innerHTML = '';
       extLinks.forEach(link => {
         const a = document.createElement('a');
         a.className = 'ext-link'; a.href = link.url; a.target = '_blank'; a.textContent = link.name;
@@ -300,9 +332,13 @@
       // Episode grid
       const epTotal = data.ep_total || 0;
       const grid = $('episodeGrid');
+      grid.innerHTML = '';
       if (epTotal > 0 && user) {
-        // Fetch watched episodes for this anime
-        const { data: watched } = await sb.from('user_episode_progress').select('episode_number').eq('user_id', user.id).eq('anime_id', animeId).eq('watched', true);
+        const { data: watched } = await sb.from('user_episode_progress')
+          .select('episode_number')
+          .eq('user_id', user.id)
+          .eq('anime_id', animeId)
+          .eq('watched', true);
         const watchedSet = new Set((watched || []).map(w => w.episode_number));
         for (let ep = 1; ep <= epTotal; ep++) {
           const card = document.createElement('div');
@@ -312,11 +348,9 @@
           card.addEventListener('click', async () => {
             const isWatched = card.classList.contains('watched');
             if (isWatched) {
-              // Unwatch
               await sb.from('user_episode_progress').delete().eq('user_id', user.id).eq('anime_id', animeId).eq('episode_number', ep);
               card.classList.remove('watched');
             } else {
-              // Watch
               await sb.from('user_episode_progress').upsert({ user_id: user.id, anime_id: animeId, episode_number: ep, watched: true });
               card.classList.add('watched');
             }
@@ -324,7 +358,6 @@
           grid.appendChild(card);
         }
       } else {
-        // Fallback if no user or no episode count
         grid.innerHTML = '<div style="color:var(--muted);font-size:13px">No episode data</div>';
       }
 
@@ -335,11 +368,9 @@
           const jikanData = await jikanRes.json();
           const match = (jikanData.data && jikanData.data[0]);
           if (match && match.duration) {
-            // Update UI
             const durationRow = [...document.querySelectorAll('.meta-row')].find(r => r.querySelector('.meta-label').textContent === 'Duration:');
             if (durationRow) {
               durationRow.querySelector('.meta-value').textContent = match.duration;
-              // Also update the database in background
               sb.from('anime').update({ duration: match.duration }).eq('id', animeId).then();
             }
           }
@@ -365,7 +396,6 @@
     async function loadRecommendations() {
       if (!animeData) return;
       try {
-        // Try Jikan recommendations by anime ID (mal_id not stored, so we search by title)
         const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(animeData.title)}&limit=1`);
         const data = await res.json();
         const match = data.data && data.data[0];
@@ -391,9 +421,6 @@
               <div class="rec-meta">${entry.type || '?'}${entry.episodes ? ' - ' + entry.episodes + ' eps' : ''}</div>
             </div>`;
           div.addEventListener('click', () => {
-            // We don't have the DB id, so we'll search by title and redirect if found, or open a search.
-            // Simpler: store the title and navigate to our own anime_info with a title param?
-            // We'll do a quick DB lookup by title.
             sb.from('anime').select('id').eq('title', entry.title).maybeSingle().then(({data: dbAnime}) => {
               if (dbAnime) location.href = `anime_info.html?id=${dbAnime.id}`;
               else alert('Anime not in your collection yet.');
