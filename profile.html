@@ -4,122 +4,179 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AniChan · Profile</title>
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Google Fonts & Material Symbols -->
+<script src="i18n.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-<!-- i18n -->
-<script src="i18n.js"></script>
 <style>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter', 'sans-serif'] },
-        colors: {
-          accent: '#51dad3',
-          accent2: '#ffb597',
-          dark: '#0d0d0d',
-          card: '#161616',
-          panel: '#1a1a1a',
-          border: '#222222',
-          muted: '#9aa0a6',
-          danger: '#ff4757',
-          success: '#2ed573',
-          offline: '#555555'
-        }
-      }
-    }
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --accent2:#ffb597;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757; --success:#2ed573; --offline:#555;
   }
-  .glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  .lang-btn-active { border-color: #51dad3 !important; background: rgba(81,218,211,0.12) !important; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* Glass header */
+  header.app{
+    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .brand{font-weight:800;font-size:20px;white-space:nowrap}
+  .brand span{color:var(--accent)}
+  .header-actions{display:flex;gap:8px;align-items:center}
+  .btn{
+    padding:9px 16px;border-radius:12px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:all .15s;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{border-color:var(--accent);background:var(--card)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+  .btn.danger:hover{background:rgba(255,71,87,.12)}
+
+  .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+
+  /* Glass panel */
+  .glass-panel{
+    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:20px;padding:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);margin-bottom:20px;
+  }
+  .profile-header{
+    display:flex;align-items:center;gap:20px;
+  }
+  .avatar-section{position:relative;flex-shrink:0;width:90px;height:90px}
+  .avatar-img{
+    width:100%;height:100%;border-radius:50%;object-fit:cover;
+    border:2px solid var(--border);background:var(--panel);
+  }
+  .online-dot{
+    position:absolute;top:-2px;right:-2px;width:18px;height:18px;
+    border-radius:50%;background:var(--offline);border:2px solid var(--card);
+  }
+  .online-dot.online{background:var(--success)}
+  .pencil-btn{
+    position:absolute;bottom:2px;right:2px;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--accent);color:#0a2a28;border:none;
+    font-size:16px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);
+    transition:transform .1s;
+  }
+  .pencil-btn:active{transform:scale(0.95)}
+  .user-info{flex:1}
+  .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
+  .user-info .username{color:var(--muted);font-size:14px}
+  .last-seen{color:var(--muted);font-size:12px;margin-top:8px}
+
+  .field-group{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+  .field{flex:1 1 calc(50% - 7px);min-width:200px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .field input,.field select{
+    width:100%;padding:12px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .field input[readonly]{opacity:0.8;cursor:default}
+
+  .err-msg,.success-msg{font-size:13px;margin-top:12px;display:none}
+  .err-msg{color:var(--danger)}.success-msg{color:var(--accent)}
+  .err-msg.show,.success-msg.show{display:block}
+
+  .lang-selector{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .lang-btn{
+    padding:7px 14px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel);color:var(--text);font-size:13px;font-weight:500;
+    cursor:pointer;transition:all .15s;
+  }
+  .lang-btn:hover{border-color:var(--accent);background:var(--card)}
+
+  .bottom-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+  .btn-red{
+    background:var(--danger);color:#fff;border:none;
+    padding:12px 24px;border-radius:12px;font-weight:600;font-size:14px;
+    cursor:pointer;transition:filter .15s;
+  }
+  .btn-red:hover{filter:brightness(1.1)}
+  .avatar-upload-input{display:none}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+
+  @media(max-width:500px){
+    .profile-header{flex-direction:column;align-items:center;text-align:center}
+    .user-info{text-align:center}
+  }
 </style>
 </head>
-<body class="bg-dark text-white font-sans min-h-screen flex flex-col">
-
-  <!-- Header -->
-  <header class="bg-card border-b border-border px-4 py-3 flex items-center justify-between gap-3">
-    <div class="font-extrabold text-xl tracking-tight">Ani<span class="text-accent">Chan</span></div>
-    <div id="headerActions" class="flex items-center gap-2"><!-- dynamic --></div>
+<body>
+  <header class="app">
+    <div class="brand">Ani<span>Chan</span></div>
+    <div class="header-actions" id="headerActions"><!-- dynamic --></div>
   </header>
 
-  <!-- Main -->
-  <main class="max-w-2xl mx-auto px-4 py-6 w-full flex-1">
-
+  <main class="container">
     <!-- Profile header card -->
-    <div class="bg-card border border-border rounded-2xl p-6 mb-5 flex items-center gap-5 flex-col sm:flex-row sm:text-left text-center">
-      <div class="relative flex-shrink-0 w-[90px] h-[90px]">
-        <img id="avatarImg" src="" alt="Profile picture" class="w-full h-full rounded-full object-cover border-2 border-border bg-panel" />
-        <div id="onlineDot" class="absolute top-[-2px] right-[-2px] w-[18px] h-[18px] rounded-full bg-offline border-2 border-card"></div>
-        <button id="pencilBtn" title="Change photo" class="absolute bottom-[2px] right-[2px] w-7 h-7 rounded-full bg-accent text-black text-sm flex items-center justify-center cursor-pointer shadow-lg shadow-accent/30 hover:scale-105 transition-transform">
-          <span class="material-symbols-outlined text-base">edit</span>
-        </button>
-        <input type="file" id="avatarInput" accept="image/*" class="hidden" />
-      </div>
-      <div class="flex-1">
-        <h2 id="displayFullName" class="text-2xl font-bold mb-1">—</h2>
-        <div id="displayUsername" class="text-muted text-sm">@—</div>
-        <div id="displayLastSeen" class="text-muted text-xs mt-2">—</div>
+    <div class="glass-panel">
+      <div class="profile-header">
+        <div class="avatar-section" id="avatarSection">
+          <img class="avatar-img" id="avatarImg" src="" alt="Profile picture" />
+          <div class="online-dot" id="onlineDot"></div>
+          <button class="pencil-btn" id="pencilBtn" title="Change photo"><span class="material-symbols-outlined" style="font-size:16px">edit</span></button>
+          <input type="file" class="avatar-upload-input" id="avatarInput" accept="image/*" />
+        </div>
+        <div class="user-info">
+          <h2 id="displayFullName">—</h2>
+          <div class="username" id="displayUsername">@—</div>
+          <div class="last-seen" id="displayLastSeen">—</div>
+        </div>
       </div>
     </div>
 
     <!-- Editable info card -->
-    <div class="bg-card border border-border rounded-2xl p-6 mb-5">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="fullNameInput" class="block text-xs text-muted mb-1.5">Full name</label>
-          <input id="fullNameInput" type="text" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
-        <div>
-          <label for="usernameInput" class="block text-xs text-muted mb-1.5">Username</label>
-          <input id="usernameInput" type="text" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
+    <div class="glass-panel">
+      <div class="field-group">
+        <div class="field"><label for="fullNameInput">Full name</label><input id="fullNameInput" type="text" readonly /></div>
+        <div class="field"><label for="usernameInput">Username</label><input id="usernameInput" type="text" readonly /></div>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label for="emailInput" class="block text-xs text-muted mb-1.5">Email</label>
-          <input id="emailInput" type="email" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
-        <div>
-          <label for="ageInput" class="block text-xs text-muted mb-1.5">Age</label>
-          <input id="ageInput" type="number" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
+      <div class="field-group">
+        <div class="field"><label for="emailInput">Email</label><input id="emailInput" type="email" readonly /></div>
+        <div class="field"><label for="ageInput">Age</label><input id="ageInput" type="number" readonly /></div>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label for="dobInput" class="block text-xs text-muted mb-1.5">Date of birth</label>
-          <input id="dobInput" type="date" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
-        <div>
-          <label for="countryInput" class="block text-xs text-muted mb-1.5">Country</label>
-          <input id="countryInput" type="text" readonly class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition read-only:opacity-80" />
-        </div>
+      <div class="field-group">
+        <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
+        <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
       </div>
-
-      <div id="updateErr" class="text-xs text-danger mt-3 hidden"></div>
-      <div id="updateSuccess" class="text-xs text-accent mt-3 hidden"></div>
+      <div class="err-msg" id="updateErr"></div>
+      <div class="success-msg" id="updateSuccess"></div>
 
       <!-- Language selector (own profile only) -->
-      <div id="langSelectorContainer" class="mt-5 hidden">
-        <label class="text-xs text-muted mb-2 block">Language</label>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="setLanguage('en')" class="lang-btn px-3 py-1.5 rounded-lg border border-border bg-panel text-white text-sm hover:border-accent hover:bg-card transition">English</button>
-          <button onclick="setLanguage('ja')" class="lang-btn px-3 py-1.5 rounded-lg border border-border bg-panel text-white text-sm hover:border-accent hover:bg-card transition">日本語</button>
-          <button onclick="setLanguage('zh')" class="lang-btn px-3 py-1.5 rounded-lg border border-border bg-panel text-white text-sm hover:border-accent hover:bg-card transition">中文</button>
-          <button onclick="setLanguage('de')" class="lang-btn px-3 py-1.5 rounded-lg border border-border bg-panel text-white text-sm hover:border-accent hover:bg-card transition">Deutsch</button>
-          <button onclick="setLanguage('fr')" class="lang-btn px-3 py-1.5 rounded-lg border border-border bg-panel text-white text-sm hover:border-accent hover:bg-card transition">Français</button>
+      <div id="langSelectorContainer" style="display:none;">
+        <label style="font-size:12px;color:var(--muted);margin-bottom:6px;display:block;">Language</label>
+        <div class="lang-selector">
+          <button class="lang-btn" onclick="setLanguage('en')">English</button>
+          <button class="lang-btn" onclick="setLanguage('ja')">日本語</button>
+          <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
+          <button class="lang-btn" onclick="setLanguage('de')">Deutsch</button>
+          <button class="lang-btn" onclick="setLanguage('fr')">Français</button>
         </div>
       </div>
     </div>
 
-    <!-- Bottom red buttons -->
-    <div id="bottomActions" class="flex flex-wrap gap-3 mt-5"><!-- dynamic --></div>
-
+    <div class="bottom-actions" id="bottomActions"><!-- dynamic --></div>
   </main>
 
-  <footer class="text-center text-muted text-xs py-4 border-t border-border">AniChan · powered by Supabase</footer>
+  <footer>AniChan · powered by Supabase</footer>
 
 <script>
 (() => {
@@ -138,15 +195,10 @@
   let isEditing = false;
 
   // Apply translated labels
-  ["fullNameInput","usernameInput","emailInput","ageInput","dobInput","countryInput"].forEach(id => {
-    const input = $(id);
-    if (input?.previousElementSibling) input.previousElementSibling.textContent = t(input.previousElementSibling.textContent.toLowerCase().replace(/\s/g,'_'));
-  });
-  // Quick manual translations for known labels
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
 
-  // Inactivity
+  // Inactivity auto-logout
   let inactivityTimer;
   const INACTIVITY_LIMIT = 15 * 60 * 1000;
   function resetInactivity() { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(handleLogout, INACTIVITY_LIMIT); }
@@ -178,17 +230,17 @@
     originalProfile = { ...profile };
     $('avatarImg').src = profile?.avatar_url || DEFAULT_AVATAR;
     $('avatarImg').onerror = () => { $('avatarImg').src = DEFAULT_AVATAR; };
+
     const dot = $('onlineDot');
     const lastSeenEl = $('displayLastSeen');
     if (profile?.is_online) {
       dot.classList.add('online');
-      dot.style.background = '#2ed573';
       lastSeenEl.textContent = t('online');
     } else {
       dot.classList.remove('online');
-      dot.style.background = '#555';
       lastSeenEl.textContent = profile?.last_seen ? t('lastSeen') + ': ' + new Date(profile.last_seen).toLocaleString() : t('lastSeen') + ': —';
     }
+
     $('displayFullName').textContent = profile?.full_name || '—';
     $('displayUsername').textContent = profile?.username ? '@' + profile.username : '@—';
     $('fullNameInput').value = profile?.full_name || '';
@@ -210,44 +262,43 @@
   function updateHeaderButtons() {
     const container = $('headerActions');
     container.innerHTML = '';
+
     const backBtn = document.createElement('button');
-    backBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent hover:bg-card transition';
-    backBtn.textContent = t('back');
+    backBtn.className = 'btn';
+    backBtn.innerHTML = '<span class="material-symbols-outlined">arrow_back</span> Back';
     backBtn.addEventListener('click', () => {
       if (document.referrer && document.referrer !== window.location.href) history.back();
       else window.location.href = "index.html";
     });
     container.appendChild(backBtn);
+
     if (!isOwner) {
       const msgBtn = document.createElement('button');
-      msgBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-semibold bg-accent text-black hover:brightness-110 transition';
+      msgBtn.className = 'btn primary';
       msgBtn.textContent = '💬 ' + t('message');
       msgBtn.addEventListener('click', startChat);
       container.appendChild(msgBtn);
       return;
     }
-    $('langSelectorContainer').classList.remove('hidden');
+
+    // Show language selector for own profile
+    $('langSelectorContainer').style.display = 'block';
+
     if (isEditing) {
       const saveBtn = document.createElement('button');
-      saveBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-semibold bg-accent text-black hover:brightness-110 transition';
-      saveBtn.textContent = t('save');
-      saveBtn.addEventListener('click', saveProfile);
+      saveBtn.className = 'btn primary'; saveBtn.textContent = t('save'); saveBtn.addEventListener('click', saveProfile);
       const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent hover:bg-card transition';
-      cancelBtn.textContent = t('cancel');
-      cancelBtn.addEventListener('click', cancelEdit);
+      cancelBtn.className = 'btn'; cancelBtn.textContent = t('cancel'); cancelBtn.addEventListener('click', cancelEdit);
       container.appendChild(saveBtn);
       container.appendChild(cancelBtn);
     } else {
       const editBtn = document.createElement('button');
-      editBtn.className = 'px-3.5 py-2 rounded-lg text-xs font-semibold bg-accent text-black hover:brightness-110 transition';
-      editBtn.textContent = t('editProfile');
-      editBtn.addEventListener('click', () => setEditMode(true));
+      editBtn.className = 'btn primary'; editBtn.textContent = t('editProfile'); editBtn.addEventListener('click', () => setEditMode(true));
       container.appendChild(editBtn);
     }
   }
 
-  function cancelEdit() { if (originalProfile) renderProfile(originalProfile); setEditMode(false); $('updateErr').classList.add('hidden'); $('updateSuccess').classList.add('hidden'); }
+  function cancelEdit() { if (originalProfile) renderProfile(originalProfile); setEditMode(false); $('updateErr').classList.remove('show'); $('updateSuccess').classList.remove('show'); }
 
   async function saveProfile() {
     const fullName = $('fullNameInput').value.trim();
@@ -257,31 +308,31 @@
     const dob = $('dobInput').value;
     const country = $('countryInput').value.trim();
     const errEl = $('updateErr'); const successEl = $('updateSuccess');
-    errEl.classList.add('hidden'); successEl.classList.add('hidden');
-    if (!fullName || !username || !email) { errEl.textContent = t('allFieldsRequired'); errEl.classList.remove('hidden'); return; }
-    if (age && age < 14) { errEl.textContent = t('ageMin14'); errEl.classList.remove('hidden'); return; }
+    errEl.classList.remove('show'); successEl.classList.remove('show');
+    if (!fullName || !username || !email) { errEl.textContent = t('allFieldsRequired'); errEl.classList.add('show'); return; }
+    if (age && age < 14) { errEl.textContent = t('ageMin14'); errEl.classList.add('show'); return; }
     try {
       const { data: exist } = await supabase.from('profiles').select('id').eq('username', username).neq('id', currentUserId).maybeSingle();
-      if (exist) { errEl.textContent = t('usernameTaken'); errEl.classList.remove('hidden'); return; }
+      if (exist) { errEl.textContent = t('usernameTaken'); errEl.classList.add('show'); return; }
       const updates = { full_name: fullName, username, email, age: age || null, dob: dob || null, country: country || null };
       const { error } = await supabase.from('profiles').update(updates).eq('id', currentUserId);
       if (error) throw error;
       $('displayFullName').textContent = fullName;
       $('displayUsername').textContent = '@' + username;
-      successEl.textContent = t('profileUpdated'); successEl.classList.remove('hidden');
+      successEl.textContent = t('profileUpdated'); successEl.classList.add('show');
       setEditMode(false);
-    } catch(e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+    } catch(e) { errEl.textContent = e.message; errEl.classList.add('show'); }
   }
 
   async function uploadAvatar(file) {
     const ext = file.name.split('.').pop();
     const path = `${currentUserId}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-    if (upErr) throw new Error('Upload failed: ' + upErr.message);
+    if (upErr) throw new Error('Upload failed: '+upErr.message);
     const { data: url } = supabase.storage.from('avatars').getPublicUrl(path);
     if (!url?.publicUrl) throw new Error('Could not get URL');
     const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url.publicUrl }).eq('id', currentUserId);
-    if (updateErr) throw new Error('Update failed: ' + updateErr.message);
+    if (updateErr) throw new Error('Update failed: '+updateErr.message);
     $('avatarImg').src = url.publicUrl;
     return url.publicUrl;
   }
@@ -319,6 +370,7 @@
     await setOnlineStatus(true);
     setupInactivity();
     startHeartbeat();
+
     const profile = await loadProfile();
     if (profile) renderProfile(profile); else renderProfile({});
     updateHeaderButtons();
@@ -329,19 +381,14 @@
       if (!file) return;
       try {
         await uploadAvatar(file);
-        $('updateSuccess').textContent = t('avatarUpdated'); $('updateSuccess').classList.remove('hidden');
-      } catch(err) { $('updateErr').textContent = err.message; $('updateErr').classList.remove('hidden'); }
+        $('updateSuccess').textContent = t('avatarUpdated'); $('updateSuccess').classList.add('show');
+      } catch(err) { $('updateErr').textContent = err.message; $('updateErr').classList.add('show'); }
       finally { e.target.value = ''; }
     });
 
     const bottom = $('bottomActions');
-    const logoutBtn = document.createElement('button');
-    logoutBtn.className = 'w-full sm:w-auto px-6 py-3 rounded-xl bg-danger text-white font-semibold text-sm hover:brightness-110 transition';
-    logoutBtn.textContent = t('logout');
-    logoutBtn.addEventListener('click', handleLogout);
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'w-full sm:w-auto px-6 py-3 rounded-xl bg-transparent border border-red-900/40 text-danger font-semibold text-sm hover:bg-red-900/20 transition';
-    deleteBtn.textContent = t('deleteAccount');
+    const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = t('logout'); logoutBtn.addEventListener('click', handleLogout);
+    const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.style.background = 'transparent'; deleteBtn.style.border = '1px solid rgba(255,71,87,.25)'; deleteBtn.style.color = 'var(--danger)'; deleteBtn.textContent = t('deleteAccount');
     deleteBtn.addEventListener('click', async () => {
       if (!confirm(t('deleteAccountConfirm'))) return;
       if (!confirm(t('deleteAccountFinal'))) return;
@@ -350,8 +397,7 @@
       await supabase.auth.signOut();
       location.href = "user_login.html";
     });
-    bottom.appendChild(logoutBtn);
-    bottom.appendChild(deleteBtn);
+    bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) setOnlineStatus(false);
