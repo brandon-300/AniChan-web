@@ -25,7 +25,7 @@
 
   .app-layout{display:flex;height:100vh;overflow:hidden}
 
-  /* ── Sidebar ── */
+  /* Sidebar */
   .sidebar{
     width:260px;background:var(--card);border-right:1px solid var(--border);
     display:flex;flex-direction:column;z-index:30;
@@ -53,10 +53,8 @@
   }
   .logout-btn-side:hover{background:rgba(255,71,87,.12)}
 
-  /* ── Main area ── */
   .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto}
 
-  /* Top bar (mobile) */
   .top-bar-mobile{
     display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
     align-items:center;justify-content:space-between;position:sticky;top:0;z-index:25;
@@ -66,10 +64,9 @@
   .top-bar-mobile .brand .accent{color:var(--accent)}
   .menu-btn{background:none;border:none;color:var(--muted);font-size:28px;cursor:pointer}
 
-  /* Content wrapper */
   .content{padding:20px 24px;flex:1}
 
-  /* Glass panel (bento card) */
+  /* Glass panel */
   .glass-panel{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -80,14 +77,10 @@
   }
   .glass-panel h3 .material-symbols-outlined{font-size:20px;color:var(--accent)}
 
-  /* Bento grid */
-  .bento-grid{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
-  }
+  .bento-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   .bento-grid .span-2{grid-column:span 2}
   .bento-grid .span-3{grid-column:span 3}
 
-  /* Form inputs */
   label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
   input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],
   select,textarea{
@@ -119,7 +112,6 @@
     background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.35);color:#9eece9;
   }
 
-  /* Member items */
   .member-item{
     display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);
   }
@@ -133,7 +125,6 @@
   .badge.suspended{background:rgba(255,181,151,.15);color:var(--accent2)}
   .badge.pending{background:rgba(255,71,87,.15);color:var(--danger)}
 
-  /* Pagination */
   .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}
   .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
   .pagination button:disabled{opacity:.4;cursor:default}
@@ -148,7 +139,6 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* Modal */
   .modal{
     position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
     padding:18px;background:rgba(0,0,0,.6);backdrop-filter:blur(12px);
@@ -159,7 +149,6 @@
     border-radius:20px;padding:24px;box-shadow:0 30px 60px rgba(0,0,0,.5);
   }
 
-  /* Responsive */
   @media (max-width:768px){
     .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
     .sidebar.open{transform:translateX(0)}
@@ -167,6 +156,8 @@
     .bento-grid{grid-template-columns:1fr}
     .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1}
   }
+
+  .added-date{font-size:10px;color:var(--muted);margin-top:2px}
 </style>
 </head>
 <body>
@@ -206,7 +197,6 @@
       <!-- App content -->
       <div id="app" style="display:none;flex:1">
         <div class="content">
-          <!-- Bento grid -->
           <div class="bento-grid">
 
             <!-- Broadcast (span 2) -->
@@ -339,17 +329,15 @@
     document.getElementById('menuBtn').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('open');
     });
-    // Close sidebar on link click (mobile)
     document.querySelectorAll('.sidebar-link').forEach(link => {
       link.addEventListener('click', () => {
         if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
-        // Update active class
         document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
       });
     });
 
-    // All original JS logic (unchanged)
+    // All original JS logic (unchanged, except collection timestamp display)
     (() => {
       const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -533,7 +521,7 @@
         clearForm(); await loadAnimeList();
       }
 
-      // Paginated collection
+      // Paginated collection – NOW WITH TIMESTAMP
       async function loadAnimeList(){
         const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
         allAnime = error ? [] : (data || []);
@@ -574,6 +562,11 @@
             if (a.score != null) parts.push(`★ ${a.score}`);
             meta.textContent = parts.join(" · ");
             wrap.appendChild(meta);
+            // Add timestamp
+            const added = document.createElement("div"); added.className = "added-date";
+            added.textContent = "Added: " + new Date(a.created_at).toLocaleDateString();
+            wrap.appendChild(added);
+
             const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:6px;flex-shrink:0";
             const editBtn = document.createElement("button");
             editBtn.className = "btn"; editBtn.textContent = "Edit";
