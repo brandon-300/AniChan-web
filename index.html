@@ -80,38 +80,56 @@
   }
   .section-glass h2 .material-symbols-outlined{font-size:24px;color:var(--accent)}
 
-  /* Full-width stacked banner cards */
+  /* Full-width stacked cards */
   .release-list{
     display:flex;flex-direction:column;gap:20px;
   }
+
   .release-card{
-    position:relative;border-radius:18px;overflow:hidden;
-    width:100%;aspect-ratio:16/9;
-    background-size:cover;background-position:center;
+    border-radius:18px;overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--card);
+    display:flex;flex-direction:column;
     transition:transform .15s ease,box-shadow .15s ease;
     cursor:pointer;
-    border:1px solid var(--border);
   }
   .release-card:hover{
     transform:translateY(-2px);
     box-shadow:0 10px 24px rgba(0,0,0,.6);
   }
-  .release-card .overlay{
+
+  .card-image{
+    width:100%;
+    aspect-ratio:16/9;           /* thumbnail area keeps a fixed ratio */
+    background-size:cover;
+    background-position:center;
+    position:relative;
+  }
+  .card-image .overlay{
     position:absolute;inset:0;
-    background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.3) 60%, transparent 100%);
+    background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 60%);
   }
-  .release-card .card-title{
-    position:absolute;bottom:16px;left:18px;right:80px;
-    color:#fff;font-size:18px;font-weight:700;
-    line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,.8);
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+
+  .card-info{
+    background:rgba(0,0,0,.8);
+    padding:12px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
   }
-  .release-card .ep-badge{
-    position:absolute;bottom:16px;right:18px;
-    background:rgba(0,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  .card-title{
     color:#fff;font-size:15px;font-weight:700;
-    padding:6px 14px;border-radius:20px;
-    border:1px solid rgba(255,255,255,.15);
+    line-height:1.4;
+    flex:1;                      /* takes available space */
+  }
+  .ep-badge{
+    background:rgba(81,218,211,.15);
+    color:var(--accent);
+    font-size:14px;font-weight:700;
+    padding:4px 14px;border-radius:20px;
+    white-space:nowrap;
+    flex-shrink:0;
   }
 
   .empty{padding:32px;text-align:center;color:var(--muted);
@@ -221,7 +239,7 @@
   let currentPage = 1;
   let currentSearch = "";
 
-  // Translation
+  // Translation fallback
   const latestReleasesText = t('latestReleases') === 'latestReleases' ? 'Latest Releases' : t('latestReleases');
 
   $("offline").textContent = t("offline");
@@ -344,13 +362,30 @@
       for (const a of pageItems) {
         const card = document.createElement("div");
         card.className = "release-card";
-        card.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
         card.title = a.title || "Untitled";
-        card.innerHTML = `
-          <div class="overlay"></div>
-          <div class="card-title">${escapeHtml(getDisplayTitle(a))}</div>
-          <div class="ep-badge">${getEpisodeNumber(a)}</div>
-        `;
+
+        // Image area
+        const imgDiv = document.createElement("div");
+        imgDiv.className = "card-image";
+        imgDiv.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
+        const overlay = document.createElement("div");
+        overlay.className = "overlay";
+        imgDiv.appendChild(overlay);
+        card.appendChild(imgDiv);
+
+        // Info bar at the bottom
+        const infoDiv = document.createElement("div");
+        infoDiv.className = "card-info";
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "card-title";
+        titleSpan.textContent = getDisplayTitle(a);
+        const epSpan = document.createElement("span");
+        epSpan.className = "ep-badge";
+        epSpan.textContent = getEpisodeNumber(a);
+        infoDiv.appendChild(titleSpan);
+        infoDiv.appendChild(epSpan);
+        card.appendChild(infoDiv);
+
         list.appendChild(card);
       }
     }
@@ -368,14 +403,7 @@
     }
   }
 
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({
-      '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'
-    })[m]);
-  }
-
   async function loadLibrary() {
-    // Order by aired_to (NULLS FIRST → currently airing at top), then aired_from desc, then created_at desc
     const { data, error } = await sb
       .from("anime")
       .select("*")
@@ -387,7 +415,6 @@
     renderReleases();
   }
 
-  // Pagination
   $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderReleases(); } });
   $("nextPageBtn").addEventListener("click", () => {
     const items = currentSearch ? library.filter(a => (a.title||"").toLowerCase().includes(currentSearch)) : library;
@@ -396,7 +423,6 @@
 
   $("searchInput").addEventListener("input", (e) => { currentSearch = e.target.value; currentPage = 1; renderReleases(); });
 
-  // Messages modal
   function openMessagesModal() { $("messagesModal").classList.add("show"); $("messagesModal").setAttribute("aria-hidden","false"); loadChatRooms(); }
   function closeMessagesModal() { $("messagesModal").classList.remove("show"); $("messagesModal").setAttribute("aria-hidden","true"); }
   $("messagesModalClose").addEventListener("click", closeMessagesModal);
@@ -435,7 +461,6 @@
     return d.toLocaleDateString();
   }
 
-  // Init
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
     window.addEventListener("online", syncOffline);

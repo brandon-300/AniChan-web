@@ -738,23 +738,30 @@
         localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates
+      // Delete Duplicates (compares displayed title)
+      function getDisplayTitleForDedup(a) {
+        const lang = (navigator.language || 'en').split('-')[0];
+        if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
+        if (lang === 'ja' && a.title_jp) return a.title_jp.trim().toLowerCase();
+        return (a.title || '').trim().toLowerCase();
+      }
+
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true;
         btn.textContent = "Deleting…";
-        const { data: all, error } = await sb.from("anime").select("id, title, created_at").order("created_at", { ascending: true });
+        const { data: all, error } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, created_at").order("created_at", { ascending: true });
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = "Delete Duplicates"; return; }
 
-        const seen = new Map();  // title lowercased -> id of first occurrence
+        const seen = new Map();  // display title -> id of first occurrence
         const toDelete = [];
         for (const a of all) {
-          const key = a.title.toLowerCase().trim();
-          if (seen.has(key)) {
-            // duplicate – keep the first (earliest created_at) and delete this one
+          const displayTitle = getDisplayTitleForDedup(a);
+          if (!displayTitle) continue;
+          if (seen.has(displayTitle)) {
             toDelete.push(a.id);
           } else {
-            seen.set(key, a.id);
+            seen.set(displayTitle, a.id);
           }
         }
 
@@ -765,7 +772,6 @@
           return;
         }
 
-        // Delete duplicates in batches (to avoid URL too long)
         const BATCH_SIZE = 100;
         let deletedCount = 0;
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
@@ -786,7 +792,7 @@
         btn.textContent = "Delete Duplicates";
       }
 
-      // Member Management
+      // Member Management (unchanged)
       function formatLastSeen(iso){
         if (!iso) return "Never";
         const d = new Date(iso), now = new Date();
