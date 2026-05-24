@@ -55,15 +55,6 @@
 
   .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto}
 
-  .top-bar-mobile{
-    display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
-    align-items:center;justify-content:space-between;position:sticky;top:0;z-index:25;
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  }
-  .top-bar-mobile .brand{font-weight:800;font-size:18px}
-  .top-bar-mobile .brand .accent{color:var(--accent)}
-  .menu-btn{background:none;border:none;color:var(--muted);font-size:28px;cursor:pointer}
-
   .content{padding:20px 24px;flex:1}
 
   /* Glass panel */
@@ -151,11 +142,13 @@
 
   @media (max-width:768px){
     .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
-    .sidebar.open{transform:translateX(0)}
-    .top-bar-mobile{display:flex}
     .bento-grid{grid-template-columns:1fr}
     .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1}
   }
+
+  .star-rating { display: flex; gap: 2px; align-items: center; }
+  .star-rating .star { color: var(--accent); font-size: 18px; }
+  .star-rating .star.empty { color: var(--muted); opacity: 0.4; }
 
   .added-date{font-size:10px;color:var(--muted);margin-top:2px}
 </style>
@@ -168,7 +161,7 @@
         <a href="#broadcast-section" class="sidebar-link active"><span class="material-symbols-outlined">campaign</span> Broadcast</a>
         <a href="#logo-section" class="sidebar-link"><span class="material-symbols-outlined">image</span> Logo</a>
         <a href="#autofetch-section" class="sidebar-link"><span class="material-symbols-outlined">search</span> Auto‑Fetch</a>
-        <a href="#anime-form-section" class="sidebar-link"><span class="material-symbols-outlined">edit_note</span> Add Anime</a>
+        <a href="#anime-form-section" class="sidebar-link"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</a>
         <a href="#member-section" class="sidebar-link"><span class="material-symbols-outlined">group</span> Members</a>
         <a href="#log-section" class="sidebar-link"><span class="material-symbols-outlined">history</span> Log</a>
         <a href="#collection-section" class="sidebar-link"><span class="material-symbols-outlined">library_books</span> Collection</a>
@@ -177,10 +170,7 @@
     </aside>
 
     <div class="main-area">
-      <div class="top-bar-mobile">
-        <div class="brand">Ani<span class="accent">Chan</span></div>
-        <button class="menu-btn" id="menuBtn"><span class="material-symbols-outlined">menu</span></button>
-      </div>
+      <!-- No mobile top bar -->
 
       <div id="gate" style="display:none;min-height:100vh;display:flex;align-items:center;justify-content:center">
         <div style="text-align:center">
@@ -205,7 +195,7 @@
               </div>
             </div>
 
-            <!-- Site Logo – URL text removed, image centered & larger -->
+            <!-- Site Logo – URL hidden, image centered & larger -->
             <div id="logo-section" class="glass-panel">
               <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
@@ -240,9 +230,9 @@
               </div>
             </div>
 
-            <!-- Add/Edit Anime Form -->
+            <!-- Add/Edit Anime Form (now "Add to Latest Releases", Eps watched removed, star rating added) -->
             <div id="anime-form-section" class="glass-panel span-2">
-              <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Collection</h3>
+              <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the title is required.</p>
               <input type="hidden" id="editId" />
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -262,7 +252,7 @@
                   <select id="typeInput"><option value="">— None —</option><option value="TV">TV</option><option value="Movie">Movie</option><option value="OVA">OVA</option><option value="ONA">ONA</option><option value="Special">Special</option><option value="Music">Music</option></select>
                 </div>
                 <div><label for="scoreInput">Score (1–10)</label><input id="scoreInput" type="number" min="1" max="10" step="0.1" placeholder="—" /></div>
-                <div><label for="epWatchedInput">Eps watched</label><input id="epWatchedInput" type="number" min="0" step="1" placeholder="—" /></div>
+                <div><label>Rating</label><div class="star-rating" id="starRating"></div></div>
                 <div><label for="epTotalInput">Eps total</label><input id="epTotalInput" type="number" min="0" step="1" placeholder="—" /></div>
                 <div><label for="yearInput">Year</label><input id="yearInput" type="number" min="1900" max="2100" step="1" placeholder="e.g. 2024" /></div>
                 <div style="grid-column:span 2"><label for="genresInput">Genres (comma‑separated)</label><input id="genresInput" type="text" placeholder="Action, Fantasy, Adventure" /><div id="genresPreview" class="chip-preview"></div></div>
@@ -324,17 +314,19 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // Mobile sidebar toggle
-    document.getElementById('menuBtn').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('open');
-    });
-    document.querySelectorAll('.sidebar-link').forEach(link => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
-        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-      });
-    });
+    // Back‑button prevention (prompt to log out)
+    (function() {
+      if (window.history && window.history.pushState) {
+        window.history.pushState('forward', null, '');
+        window.addEventListener('popstate', function(e) {
+          if (confirm('You must log out before leaving. Log out now?')) {
+            document.getElementById('logoutBtn').click();
+          } else {
+            window.history.pushState('forward', null, '');
+          }
+        });
+      }
+    })();
 
     (() => {
       const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -356,6 +348,20 @@
 
       // Cancel flag
       let cancelFlag = false;
+
+      // Star rating helper
+      function updateStarRating(score) {
+        const container = $('starRating');
+        if (!container) return;
+        container.innerHTML = '';
+        const stars = score ? Math.round(score / 2) : 0; // 1-10 to 1-5
+        for (let i = 1; i <= 5; i++) {
+          const star = document.createElement('span');
+          star.className = `star ${i <= stars ? '' : 'empty'}`;
+          star.textContent = '★';
+          container.appendChild(star);
+        }
+      }
 
       // Gate
       async function gate(){
@@ -385,11 +391,14 @@
         toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
       }
 
-      // Logout
-      $("logoutBtn").addEventListener("click", async () => {
+      // Logout (redirect to home page)
+      async function handleLogout() {
         await sb.auth.signOut();
+        // Remove back‑button trap before leaving
+        window.removeEventListener('popstate', arguments.callee);
         location.href = "index.html";
-      });
+      }
+      $("logoutBtn").addEventListener("click", handleLogout);
 
       // Broadcast
       async function loadBroadcast(){
@@ -402,7 +411,7 @@
         else toast(value ? "Broadcast saved" : "Broadcast cleared");
       }
 
-      // Smart Auto-Fetch
+      // Smart Auto-Fetch (unchanged)
       let searchAbort;
       async function runSearch(){
         const q = $("searchQ").value.trim();
@@ -466,8 +475,6 @@
         if (a.title_english) return a.title_english;
         return a.title;
       }
-
-      // Get display title for dedup (used in bulk import and delete duplicates)
       function getDisplayTitleForDedup(a) {
         const lang = (navigator.language || 'en').split('-')[0];
         if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
@@ -483,6 +490,7 @@
         $("yearInput").value = yr || "";
         $("epTotalInput").value = (a.episodes != null) ? a.episodes : "";
         $("scoreInput").value = (a.score != null) ? a.score : "";
+        updateStarRating(a.score);
         $("genresInput").value = (a.genres || []).map(g=>g&&g.name).filter(Boolean).join(", ");
         $("studioInput").value = (a.studios || []).map(s=>s.name).join(", ");
         renderGenreChips(); $("titleInput").focus();
@@ -495,7 +503,7 @@
         $("statusInput").value = item.status || "";
         $("typeInput").value = normalizeType(item.type);
         $("scoreInput").value = item.score != null ? item.score : "";
-        $("epWatchedInput").value = item.ep_watched != null ? item.ep_watched : "";
+        updateStarRating(item.score);
         $("epTotalInput").value = item.ep_total != null ? item.ep_total : "";
         $("yearInput").value = item.year != null ? item.year : "";
         $("genresInput").value = Array.isArray(item.genres) ? item.genres.join(", ") : (item.genres || "");
@@ -509,9 +517,10 @@
       }
       function clearForm(){
         $("editId").value = "";
-        for (const id of ["titleInput","imageInput","statusInput","typeInput","scoreInput","epWatchedInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"]) $(id).value = "";
+        for (const id of ["titleInput","imageInput","statusInput","typeInput","scoreInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"]) $(id).value = "";
+        updateStarRating(null);
         renderGenreChips();
-        $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Add to Collection';
+        $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Add to Latest Releases';
         $("cancelEdit").style.display = "none";
       }
       function numOrNull(v){ if (v === "" || v == null) return null; const n = Number(v); return Number.isFinite(n) ? n : null; }
@@ -526,7 +535,6 @@
           status: $("statusInput").value || null,
           type: normalizeType($("typeInput").value) || null,
           score: numOrNull($("scoreInput").value),
-          ep_watched: numOrNull($("epWatchedInput").value),
           ep_total: numOrNull($("epTotalInput").value),
           year: numOrNull($("yearInput").value),
           genres: parseGenres($("genresInput").value),
@@ -577,9 +585,13 @@
             if (a.status && STATUS_LABELS[a.status]) parts.push(STATUS_LABELS[a.status]);
             if (a.type) parts.push(a.type);
             if (a.year) parts.push(String(a.year));
-            if (a.ep_watched != null && a.ep_total != null) parts.push(`${a.ep_watched}/${a.ep_total} eps`);
-            else if (a.ep_total != null) parts.push(`${a.ep_total} eps`);
-            if (a.score != null) parts.push(`★ ${a.score}`);
+            if (a.score != null) {
+              // Show stars in collection list as well
+              const starCount = Math.round(a.score / 2);
+              const starStr = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
+              parts.push(starStr);
+            }
+            if (a.ep_total != null) parts.push(`${a.ep_total} eps`);
             meta.textContent = parts.join(" · ");
             wrap.appendChild(meta);
             const added = document.createElement("div"); added.className = "added-date";
@@ -620,7 +632,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Cancel button helper
+      // Cancel button helper (with confirmation)
       function showCancelButton() {
         $("cancelOperationBtn").style.display = "inline-flex";
         cancelFlag = false;
@@ -629,25 +641,26 @@
         $("cancelOperationBtn").style.display = "none";
       }
       $("cancelOperationBtn").addEventListener("click", () => {
-        cancelFlag = true;
-        $("cancelOperationBtn").disabled = true;
-        $("cancelOperationBtn").textContent = "Cancelling…";
+        if (confirm("Are you sure you want to cancel the operation?")) {
+          cancelFlag = true;
+          $("cancelOperationBtn").disabled = true;
+          $("cancelOperationBtn").textContent = "Cancelling…";
+        }
       });
 
-      // Bulk Import – now accumulates up to 50 new titles across multiple pages
+      // Bulk Import (accumulates 50 new titles across pages)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
         showCancelButton();
 
-        // Fetch existing titles with all language columns for dedup
         const { data: existingData, error: existErr } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
         const existing = existingData || [];
         const existingDisplayTitles = new Set(existing.map(a => getDisplayTitleForDedup(a)));
 
-        const maxAttempts = 50; let attempts = 0, addedTotal = 0;
-        let insertsAccum = [];  // collect inserts until we hit 50 or run out of pages
+        const maxAttempts = 50; let attempts = 0;
+        let insertsAccum = [];
 
         try {
           while (attempts < maxAttempts && !cancelFlag && insertsAccum.length < 50) {
@@ -694,7 +707,6 @@
               });
               existingDisplayTitles.add(dispTitle);
             }
-            // Move to next pages regardless of whether we found new titles on this pair
             bulkPage += 2;
           }
 
@@ -703,10 +715,9 @@
           } else if (insertsAccum.length > 0) {
             const { error } = await sb.from("anime").insert(insertsAccum);
             if (error) throw error;
-            addedTotal = insertsAccum.length;
-            toast(`Imported ${addedTotal} anime.`);
+            toast(`Imported ${insertsAccum.length} anime.`);
             await loadAnimeList();
-            status.textContent = `Added ${addedTotal} new titles.`;
+            status.textContent = `Added ${insertsAccum.length} new titles.`;
           } else {
             status.textContent = "No new titles found.";
           }
@@ -718,7 +729,7 @@
         }
       }
 
-      // Fix All with rollback (unchanged)
+      // Fix All with rollback (unchanged except for star rating update during fix)
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -741,7 +752,6 @@
         const { data: all, error } = await sb.from("anime").select("*");
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; hideCancelButton(); return; }
 
-        // Save originals for potential rollback
         const originals = all.map(a => ({
           id: a.id,
           status: a.status,
@@ -985,7 +995,7 @@
       window.unsuspendUser = unsuspendUser;
       window.openMemberModal = openMemberModal;
 
-      // Site Logo – load without showing URL text
+      // Site Logo (unchanged)
       async function loadCurrentLogo(){
         const { data, error } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
         if (error) return;
@@ -1028,6 +1038,8 @@
         $("deleteDupBtn").addEventListener("click", deleteDuplicates);
         $("refreshMembers").addEventListener("click", renderMemberList);
         $("uploadLogoBtn").addEventListener("click", () => { const file = $("logoFileInput").files[0]; uploadAndSaveLogo(file); });
+        // Update star rating when score input changes
+        $("scoreInput").addEventListener("input", (e) => updateStarRating(e.target.value));
         sb.auth.onAuthStateChange((_e, s) => {
           if (!s || (s.user.email || "").toLowerCase() !== ADMIN_EMAIL) location.replace("admin_login.html");
         });
