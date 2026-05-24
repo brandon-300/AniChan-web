@@ -205,18 +205,16 @@
               </div>
             </div>
 
-            <!-- Site Logo -->
+            <!-- Site Logo – URL text removed, image centered & larger -->
             <div id="logo-section" class="glass-panel">
               <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
-              <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-                <img id="currentLogoPreview" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
-                <div>
-                  <div style="font-size:12px;color:var(--muted)">Current logo</div>
-                  <div id="currentLogoUrl" style="font-size:11px;color:var(--muted);word-break:break-all;"></div>
-                </div>
+              <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+                <img id="currentLogoPreview" src="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
               </div>
-              <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px" />
+              <!-- URL text hidden -->
+              <div id="currentLogoUrl" style="display:none;"></div>
+              <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
               <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
             </div>
 
@@ -462,6 +460,23 @@
         }
       }
 
+      // Get best title for browser language
+      function getBestTitle(a){
+        const lang = (navigator.language || 'en').split('-')[0];
+        if (lang === 'ja' && a.title_japanese) return a.title_japanese;
+        if (a.title_english) return a.title_english;   // fallback for en and others
+        return a.title;
+      }
+
+      // Get display title for dedup (used in bulk import and delete duplicates)
+      function getDisplayTitleForDedup(a) {
+        const lang = (navigator.language || 'en').split('-')[0];
+        if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
+        if (lang === 'ja' && a.title_jp) return a.title_jp.trim().toLowerCase();
+        // For other languages, fallback to English title if available, else original title
+        return (a.title_en || a.title || '').trim().toLowerCase();
+      }
+
       function fillFormFromJikan(a, imgSrc){
         $("titleInput").value = a.title || "";
         $("imageInput").value = imgSrc || "";
@@ -621,14 +636,19 @@
         $("cancelOperationBtn").textContent = "Cancelling…";
       });
 
-      // Bulk Import
+      // Bulk Import (duplicate check using displayed title)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
         showCancelButton();
-        const existing = (await sb.from("anime").select("title")).data || [];
-        const existingTitles = new Set(existing.map(i => i.title.toLowerCase().trim()));
+
+        // Fetch existing titles with all language columns for dedup
+        const { data: existingData, error: existErr } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
+        const existing = existingData || [];
+        // Build a Set of display titles (lowercased) for quick duplicate checking
+        const existingDisplayTitles = new Set(existing.map(a => getDisplayTitleForDedup(a)));
+
         const maxAttempts = 50; let attempts = 0, added = 0;
         try {
           while (attempts < maxAttempts && !cancelFlag) {
@@ -647,8 +667,12 @@
             const inserts = [];
             for (const a of list) {
               if (cancelFlag) break;
-              const title = (a.title || "").trim();
-              if (!title || existingTitles.has(title.toLowerCase())) continue;
+              // Determine the best title for this browser language
+              const bestTitle = getBestTitle(a) || (a.title || "Untitled");
+              // Use display title for dedup
+              const dispTitle = bestTitle.trim().toLowerCase();
+              if (!dispTitle || existingDisplayTitles.has(dispTitle)) continue;
+
               const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
               const type = normalizeType(a.type) || null;
               const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
@@ -657,17 +681,26 @@
               const score = a.score || null;
               const ep_total = (a.episodes != null) ? a.episodes : null;
               const airingStatus = a.status ? mapAiringStatus(a.status) : null;
+
+              // Multi-language titles
               const title_en = a.title_english || null;
               const title_jp = a.title_japanese || null;
+              // Jikan doesn't provide zh/de/fr, but we can try to extract if ever added
+              const title_zh = a.title_chinese || null;
+              const title_de = a.title_german || null;
+              const title_fr = a.title_french || null;
+
               const aired_from = a.aired?.from ? new Date(a.aired.from).toISOString() : null;
               const aired_to   = a.aired?.to   ? new Date(a.aired.to).toISOString()   : null;
+
               inserts.push({
-                title, image_url, type, year, genres, studio, score, ep_total,
+                title: bestTitle,        // main title set to best language title
+                image_url, type, year, genres, studio, score, ep_total,
                 status: airingStatus || 'Not yet aired',
-                title_en, title_jp,
+                title_en, title_jp, title_zh, title_de, title_fr,
                 aired_from, aired_to
               });
-              existingTitles.add(title.toLowerCase());
+              existingDisplayTitles.add(dispTitle);   // prevent duplicates within the same batch
               if (inserts.length >= 50) break;
             }
             if (cancelFlag) break;
@@ -689,7 +722,7 @@
         }
       }
 
-      // Fix All with rollback
+      // Fix All with rollback (unchanged, but now also tries to fill other language titles)
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -697,12 +730,6 @@
         if (s.includes("finished")) return "Aired";
         if (s.includes("not yet aired")) return "Not yet aired";
         return null;
-      }
-      function getBestTitle(a){
-        const lang = (navigator.language || 'en').split('-')[0];
-        if (lang === 'ja' && a.title_japanese) return a.title_japanese;
-        if (a.title_english) return a.title_english;
-        return a.title;
       }
       async function fixAll(){
         const btn = $("fixAllBtn"), status = $("bulkStatus");
@@ -724,6 +751,9 @@
           status: a.status,
           title_en: a.title_en,
           title_jp: a.title_jp,
+          title_zh: a.title_zh,
+          title_de: a.title_de,
+          title_fr: a.title_fr,
           aired_from: a.aired_from,
           aired_to: a.aired_to,
           score: a.score,
@@ -733,7 +763,7 @@
         }));
 
         const total = all.length; let processed = 0, fixedCount = 0;
-        const updatedIds = []; // track which records were modified
+        const updatedIds = [];
         for (const anime of all) {
           if (cancelFlag) break;
           processed++;
@@ -755,8 +785,13 @@
               if (mappedStatus) updates.status = mappedStatus;
             }
 
+            // Fill language columns if available
             if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
             if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
+            // For other languages, Jikan doesn't provide them, but we'll check if they exist in match
+            if (match.title_chinese && match.title_chinese !== anime.title_zh) updates.title_zh = match.title_chinese;
+            if (match.title_german  && match.title_german  !== anime.title_de) updates.title_de = match.title_german;
+            if (match.title_french  && match.title_french  !== anime.title_fr) updates.title_fr = match.title_french;
 
             if (match.aired?.from) updates.aired_from = new Date(match.aired.from).toISOString();
             if (match.aired?.to)   updates.aired_to   = new Date(match.aired.to).toISOString();
@@ -781,7 +816,6 @@
         }
 
         if (cancelFlag) {
-          // Rollback: restore original values for any records that were modified
           status.textContent = "Cancelling and reverting changes…";
           const revertList = originals.filter(o => updatedIds.includes(o.id));
           for (const orig of revertList) {
@@ -789,6 +823,9 @@
               status: orig.status,
               title_en: orig.title_en,
               title_jp: orig.title_jp,
+              title_zh: orig.title_zh,
+              title_de: orig.title_de,
+              title_fr: orig.title_fr,
               aired_from: orig.aired_from,
               aired_to: orig.aired_to,
               score: orig.score,
@@ -813,14 +850,7 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates
-      function getDisplayTitleForDedup(a) {
-        const lang = (navigator.language || 'en').split('-')[0];
-        if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
-        if (lang === 'ja' && a.title_jp) return a.title_jp.trim().toLowerCase();
-        return (a.title || '').trim().toLowerCase();
-      }
-
+      // Delete Duplicates (already uses display title)
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true;
@@ -961,13 +991,13 @@
       window.unsuspendUser = unsuspendUser;
       window.openMemberModal = openMemberModal;
 
-      // Site Logo
+      // Site Logo – load without showing URL text
       async function loadCurrentLogo(){
         const { data, error } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
         if (error) return;
         const url = data && data.value ? data.value : "";
         $("currentLogoPreview").src = url || DEFAULT_AVATAR;
-        $("currentLogoUrl").textContent = url || "No logo set";
+        // URL text hidden via CSS, no need to update
       }
       async function uploadAndSaveLogo(file){
         if (!file) { toast("Please select an image file."); return; }
@@ -982,7 +1012,6 @@
           const { error: upsertError } = await sb.from("settings").upsert({ key: "site_logo", value: newUrl });
           if (upsertError) throw new Error("Settings update failed: " + upsertError.message);
           $("currentLogoPreview").src = newUrl + '?t=' + Date.now();
-          $("currentLogoUrl").textContent = newUrl;
           toast("Logo updated successfully!");
         } catch (e) { toast(e.message); console.warn(e); }
         finally { btn.disabled = false; btn.textContent = origText; }
