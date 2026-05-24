@@ -337,7 +337,6 @@
       });
     });
 
-    // All original JS logic
     (() => {
       const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -521,7 +520,7 @@
         clearForm(); await loadAnimeList();
       }
 
-      // Paginated collection – with timestamp (date + time)
+      // Paginated collection – timestamp with date + time
       async function loadAnimeList(){
         const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
         allAnime = error ? [] : (data || []);
@@ -562,7 +561,6 @@
             if (a.score != null) parts.push(`★ ${a.score}`);
             meta.textContent = parts.join(" · ");
             wrap.appendChild(meta);
-            // Timestamp with date + time
             const added = document.createElement("div"); added.className = "added-date";
             added.textContent = "Added: " + new Date(a.created_at).toLocaleString();
             wrap.appendChild(added);
@@ -601,7 +599,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Bulk Import (duplicate prevention already present)
+      // Bulk Import
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -633,7 +631,9 @@
               const studio = (a.studios || []).map(s => s.name).join(", ") || null;
               const score = a.score || null;
               const ep_total = (a.episodes != null) ? a.episodes : null;
-              inserts.push({ title, image_url, type, year, genres, studio, score, ep_total, status: 'planned' });
+              // Set initial status based on Jikan's airing status
+              const airingStatus = a.status ? mapAiringStatus(a.status) : null;
+              inserts.push({ title, image_url, type, year, genres, studio, score, ep_total, status: airingStatus || 'planned' });
               existingTitles.add(title.toLowerCase());
               if (inserts.length >= 50) break;
             }
@@ -650,7 +650,7 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
-      // Fix All
+      // Fix All – ensures all statuses are Aired / Currently Airing / Not yet aired
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -670,52 +670,51 @@
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Fixing…"; status.textContent = "Fetching anime list…";
         const { data: all, error } = await sb.from("anime").select("*");
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
+
+        // Only need to fix if status is not one of the three airing statuses
         const validAiringStatuses = ["Aired", "Currently Airing", "Not yet aired"];
-        const needFix = all.filter(a => {
-          const missingScore = a.score == null;
-          const missingEp = a.ep_total == null;
-          const missingGenres = !a.genres || (Array.isArray(a.genres) && a.genres.length === 0);
-          const missingStudio = !a.studio || a.studio.trim() === "";
-          const invalidStatus = !a.status || !validAiringStatuses.includes(a.status);
-          return missingScore || missingEp || missingGenres || missingStudio || invalidStatus || true;
-        });
-        if (!needFix.length) { status.textContent = "All titles are clean, no issues found."; btn.disabled = false; btn.textContent = origText; return; }
-        const total = needFix.length; let processed = 0, fixedCount = 0;
-        const batchSize = 50;
-        for (let i = 0; i < total; i += batchSize) {
-          const batch = needFix.slice(i, i + batchSize);
-          for (const anime of batch) {
-            processed++;
-            const pct = Math.round((processed / total) * 100);
-            status.textContent = `Fixing ${processed} out of ${total}… ${pct}%`;
-            try {
-              await new Promise(r => setTimeout(r, 600));
-              const q = encodeURIComponent(anime.title);
-              const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
-              if (!res.ok) continue;
-              const json = await res.json();
-              const match = json.data && json.data[0];
-              if (!match) continue;
-              const updates = {};
-              const bestTitle = getBestTitle(match);
-              if (bestTitle && bestTitle !== anime.title) updates.title = bestTitle;
-              if (anime.score == null && match.score != null) updates.score = match.score;
-              if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
-              if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
-                updates.genres = match.genres.map(g => g.name).filter(Boolean);
-              }
-              if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
-                updates.studio = match.studios.map(s => s.name).join(", ");
-              }
-              const mapped = mapAiringStatus(match.status);
-              if (mapped) updates.status = mapped;
-              if (Object.keys(updates).length) {
-                const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
-                if (!updErr) fixedCount++;
-              }
-            } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
-          }
+        const needFix = all.filter(a => !a.status || !validAiringStatuses.includes(a.status));
+
+        if (!needFix.length) {
+          status.textContent = "All titles already have correct airing statuses.";
+          btn.disabled = false; btn.textContent = origText; return;
         }
+
+        const total = needFix.length; let processed = 0, fixedCount = 0;
+        for (const anime of needFix) {
+          processed++;
+          const pct = Math.round((processed / total) * 100);
+          status.textContent = `Fixing ${processed} out of ${total}… ${pct}%`;
+          try {
+            await new Promise(r => setTimeout(r, 600));
+            const q = encodeURIComponent(anime.title);
+            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
+            if (!res.ok) continue;
+            const json = await res.json();
+            const match = json.data && json.data[0];
+            if (!match) continue;
+            const updates = {};
+            // Always update the status to the correct airing status
+            const mappedStatus = mapAiringStatus(match.status);
+            if (mappedStatus) updates.status = mappedStatus;
+
+            // Also fill missing fields as before
+            if (anime.score == null && match.score != null) updates.score = match.score;
+            if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
+            if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
+              updates.genres = match.genres.map(g => g.name).filter(Boolean);
+            }
+            if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
+              updates.studio = match.studios.map(s => s.name).join(", ");
+            }
+
+            if (Object.keys(updates).length) {
+              const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
+              if (!updErr) fixedCount++;
+            }
+          } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
+        }
+
         if (fixedCount > 0) { toast(`Fixed ${fixedCount} titles.`); await loadAnimeList(); }
         status.textContent = fixedCount > 0 ? `Fixed ${fixedCount} titles.` : "No fixes applied.";
         btn.disabled = false; btn.textContent = origText;
