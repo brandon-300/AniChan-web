@@ -236,6 +236,7 @@
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                   <button class="btn btn-primary" id="bulkImportBtn">Bulk Import</button>
                   <button class="btn" id="fixAllBtn">Fix All</button>
+                  <button class="btn" id="deleteDupBtn">Delete Duplicates</button>
                   <span id="bulkStatus" style="font-size:12px;color:var(--muted)"></span>
                 </div>
               </div>
@@ -602,7 +603,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Bulk Import (already populates new columns)
+      // Bulk Import
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -661,7 +662,7 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
-      // Fix All (processes ALL anime, fills missing data, updates language titles)
+      // Fix All
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -689,7 +690,6 @@
         const { data: all, error } = await sb.from("anime").select("*");
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
 
-        // We process every anime, updating missing fields
         const total = all.length; let processed = 0, fixedCount = 0;
         for (const anime of all) {
           processed++;
@@ -705,29 +705,22 @@
             if (!match) continue;
             const updates = {};
 
-            // Status
             if (!anime.status || !["Aired","Currently Airing","Not yet aired"].includes(anime.status)) {
               const mappedStatus = mapAiringStatus(match.status);
               if (mappedStatus) updates.status = mappedStatus;
             }
 
-            // Language titles
             if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
             if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
 
-            // Aired dates
             if (match.aired?.from) updates.aired_from = new Date(match.aired.from).toISOString();
             if (match.aired?.to)   updates.aired_to   = new Date(match.aired.to).toISOString();
 
-            // Score
             if (anime.score == null && match.score != null) updates.score = match.score;
-            // Episodes
             if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
-            // Genres
             if ((!anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0)) && match.genres && match.genres.length) {
               updates.genres = match.genres.map(g => g.name).filter(Boolean);
             }
-            // Studio
             if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
               updates.studio = match.studios.map(s => s.name).join(", ");
             }
@@ -745,7 +738,55 @@
         localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Member Management (unchanged)
+      // Delete Duplicates
+      async function deleteDuplicates() {
+        const btn = $("deleteDupBtn");
+        btn.disabled = true;
+        btn.textContent = "Deleting…";
+        const { data: all, error } = await sb.from("anime").select("id, title, created_at").order("created_at", { ascending: true });
+        if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = "Delete Duplicates"; return; }
+
+        const seen = new Map();  // title lowercased -> id of first occurrence
+        const toDelete = [];
+        for (const a of all) {
+          const key = a.title.toLowerCase().trim();
+          if (seen.has(key)) {
+            // duplicate – keep the first (earliest created_at) and delete this one
+            toDelete.push(a.id);
+          } else {
+            seen.set(key, a.id);
+          }
+        }
+
+        if (toDelete.length === 0) {
+          toast("No duplicate titles found.");
+          btn.disabled = false;
+          btn.textContent = "Delete Duplicates";
+          return;
+        }
+
+        // Delete duplicates in batches (to avoid URL too long)
+        const BATCH_SIZE = 100;
+        let deletedCount = 0;
+        for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
+          const batch = toDelete.slice(i, i + BATCH_SIZE);
+          const { error: delErr } = await sb.from("anime").delete().in("id", batch);
+          if (delErr) {
+            toast("Error deleting duplicates: " + delErr.message);
+            btn.disabled = false;
+            btn.textContent = "Delete Duplicates";
+            return;
+          }
+          deletedCount += batch.length;
+        }
+
+        toast(`Deleted ${deletedCount} duplicate titles.`);
+        await loadAnimeList();
+        btn.disabled = false;
+        btn.textContent = "Delete Duplicates";
+      }
+
+      // Member Management
       function formatLastSeen(iso){
         if (!iso) return "Never";
         const d = new Date(iso), now = new Date();
@@ -881,6 +922,7 @@
         $("saveItem").addEventListener("click", saveItem);
         $("bulkImportBtn").addEventListener("click", bulkImport);
         $("fixAllBtn").addEventListener("click", fixAll);
+        $("deleteDupBtn").addEventListener("click", deleteDuplicates);
         $("refreshMembers").addEventListener("click", renderMemberList);
         $("uploadLogoBtn").addEventListener("click", () => { const file = $("logoFileInput").files[0]; uploadAndSaveLogo(file); });
         sb.auth.onAuthStateChange((_e, s) => {
