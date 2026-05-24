@@ -238,6 +238,7 @@
                   <button class="btn" id="fixAllBtn">Fix All</button>
                   <button class="btn" id="deleteDupBtn">Delete Duplicates</button>
                   <span id="bulkStatus" style="font-size:12px;color:var(--muted)"></span>
+                  <button class="btn btn-danger" id="cancelOperationBtn" style="display:none;">Cancel</button>
                 </div>
               </div>
             </div>
@@ -355,6 +356,9 @@
       const ADMIN_ITEMS_PER_PAGE = 20;
       let allAnime = [];
       let adminPage = 1;
+
+      // Cancel flag
+      let cancelFlag = false;
 
       // Gate
       async function gate(){
@@ -603,22 +607,38 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
+      // Cancel button helper
+      function showCancelButton() {
+        $("cancelOperationBtn").style.display = "inline-flex";
+        cancelFlag = false;
+      }
+      function hideCancelButton() {
+        $("cancelOperationBtn").style.display = "none";
+      }
+      $("cancelOperationBtn").addEventListener("click", () => {
+        cancelFlag = true;
+        $("cancelOperationBtn").disabled = true;
+        $("cancelOperationBtn").textContent = "Cancelling…";
+      });
+
       // Bulk Import
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
+        showCancelButton();
         const existing = (await sb.from("anime").select("title")).data || [];
         const existingTitles = new Set(existing.map(i => i.title.toLowerCase().trim()));
         const maxAttempts = 50; let attempts = 0, added = 0;
         try {
-          while (attempts < maxAttempts) {
+          while (attempts < maxAttempts && !cancelFlag) {
             attempts++; const p1 = bulkPage, p2 = bulkPage + 1;
             status.textContent = `Checking pages ${p1}‑${p2}…`;
             const [res1, res2] = await Promise.all([
               fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p1}`),
               fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${p2}`)
             ]);
+            if (cancelFlag) break;
             if (!res1.ok && !res2.ok) { status.textContent = "No more pages."; break; }
             const d1 = res1.ok ? (await res1.json()).data || [] : [];
             const d2 = res2.ok ? (await res2.json()).data || [] : [];
@@ -626,6 +646,7 @@
             if (!list.length) { status.textContent = "No more titles."; break; }
             const inserts = [];
             for (const a of list) {
+              if (cancelFlag) break;
               const title = (a.title || "").trim();
               if (!title || existingTitles.has(title.toLowerCase())) continue;
               const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
@@ -649,6 +670,7 @@
               existingTitles.add(title.toLowerCase());
               if (inserts.length >= 50) break;
             }
+            if (cancelFlag) break;
             if (inserts.length) {
               const { error } = await sb.from("anime").insert(inserts);
               if (error) throw error;
@@ -657,12 +679,17 @@
             }
             bulkPage += 2; status.textContent = `No new titles on ${p1}‑${p2}, trying next…`;
           }
-          if (added === 0) status.textContent = "No new titles found.";
+          if (cancelFlag) { status.textContent = "Cancelled."; toast("Import cancelled."); }
+          else if (added === 0) status.textContent = "No new titles found.";
         } catch (e) { console.warn(e); status.textContent = "Import failed."; toast("Import failed."); }
-        finally { btn.disabled = false; btn.textContent = origText; }
+        finally {
+          btn.disabled = false; btn.textContent = origText;
+          hideCancelButton();
+          cancelFlag = false;
+        }
       }
 
-      // Fix All
+      // Fix All with rollback
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -687,16 +714,34 @@
         }
 
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Fixing…"; status.textContent = "Fetching anime list…";
+        showCancelButton();
         const { data: all, error } = await sb.from("anime").select("*");
-        if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; return; }
+        if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = origText; hideCancelButton(); return; }
+
+        // Save originals for potential rollback
+        const originals = all.map(a => ({
+          id: a.id,
+          status: a.status,
+          title_en: a.title_en,
+          title_jp: a.title_jp,
+          aired_from: a.aired_from,
+          aired_to: a.aired_to,
+          score: a.score,
+          ep_total: a.ep_total,
+          genres: a.genres,
+          studio: a.studio
+        }));
 
         const total = all.length; let processed = 0, fixedCount = 0;
+        const updatedIds = []; // track which records were modified
         for (const anime of all) {
+          if (cancelFlag) break;
           processed++;
           const pct = Math.round((processed / total) * 100);
           status.textContent = `Fixing ${processed} out of ${total}… ${pct}%`;
           try {
             await new Promise(r => setTimeout(r, 600));
+            if (cancelFlag) break;
             const q = encodeURIComponent(anime.title);
             const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
             if (!res.ok) continue;
@@ -727,18 +772,48 @@
 
             if (Object.keys(updates).length) {
               const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
-              if (!updErr) fixedCount++;
+              if (!updErr) {
+                fixedCount++;
+                updatedIds.push(anime.id);
+              }
             }
           } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
         }
 
-        if (fixedCount > 0) { toast(`Fixed ${fixedCount} titles.`); await loadAnimeList(); }
-        status.textContent = fixedCount > 0 ? `Fixed ${fixedCount} titles.` : "No fixes applied.";
+        if (cancelFlag) {
+          // Rollback: restore original values for any records that were modified
+          status.textContent = "Cancelling and reverting changes…";
+          const revertList = originals.filter(o => updatedIds.includes(o.id));
+          for (const orig of revertList) {
+            await sb.from("anime").update({
+              status: orig.status,
+              title_en: orig.title_en,
+              title_jp: orig.title_jp,
+              aired_from: orig.aired_from,
+              aired_to: orig.aired_to,
+              score: orig.score,
+              ep_total: orig.ep_total,
+              genres: orig.genres,
+              studio: orig.studio
+            }).eq("id", orig.id);
+          }
+          toast("Fix cancelled and changes reverted.");
+          status.textContent = "Cancelled.";
+        } else if (fixedCount > 0) {
+          toast(`Fixed ${fixedCount} titles.`);
+          await loadAnimeList();
+          status.textContent = `Fixed ${fixedCount} titles.`;
+        } else {
+          status.textContent = "No fixes applied.";
+        }
+
         btn.disabled = false; btn.textContent = origText;
-        localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
+        hideCancelButton();
+        cancelFlag = false;
+        if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates (compares displayed title)
+      // Delete Duplicates
       function getDisplayTitleForDedup(a) {
         const lang = (navigator.language || 'en').split('-')[0];
         if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
@@ -753,7 +828,7 @@
         const { data: all, error } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, created_at").order("created_at", { ascending: true });
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = "Delete Duplicates"; return; }
 
-        const seen = new Map();  // display title -> id of first occurrence
+        const seen = new Map();
         const toDelete = [];
         for (const a of all) {
           const displayTitle = getDisplayTitleForDedup(a);
