@@ -212,7 +212,6 @@
               <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
                 <img id="currentLogoPreview" src="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
               </div>
-              <!-- URL text hidden -->
               <div id="currentLogoUrl" style="display:none;"></div>
               <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
               <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
@@ -464,7 +463,7 @@
       function getBestTitle(a){
         const lang = (navigator.language || 'en').split('-')[0];
         if (lang === 'ja' && a.title_japanese) return a.title_japanese;
-        if (a.title_english) return a.title_english;   // fallback for en and others
+        if (a.title_english) return a.title_english;
         return a.title;
       }
 
@@ -473,7 +472,6 @@
         const lang = (navigator.language || 'en').split('-')[0];
         if (lang === 'en' && a.title_en) return a.title_en.trim().toLowerCase();
         if (lang === 'ja' && a.title_jp) return a.title_jp.trim().toLowerCase();
-        // For other languages, fallback to English title if available, else original title
         return (a.title_en || a.title || '').trim().toLowerCase();
       }
 
@@ -636,7 +634,7 @@
         $("cancelOperationBtn").textContent = "Cancelling…";
       });
 
-      // Bulk Import (duplicate check using displayed title)
+      // Bulk Import – now accumulates up to 50 new titles across multiple pages
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -646,12 +644,13 @@
         // Fetch existing titles with all language columns for dedup
         const { data: existingData, error: existErr } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
         const existing = existingData || [];
-        // Build a Set of display titles (lowercased) for quick duplicate checking
         const existingDisplayTitles = new Set(existing.map(a => getDisplayTitleForDedup(a)));
 
-        const maxAttempts = 50; let attempts = 0, added = 0;
+        const maxAttempts = 50; let attempts = 0, addedTotal = 0;
+        let insertsAccum = [];  // collect inserts until we hit 50 or run out of pages
+
         try {
-          while (attempts < maxAttempts && !cancelFlag) {
+          while (attempts < maxAttempts && !cancelFlag && insertsAccum.length < 50) {
             attempts++; const p1 = bulkPage, p2 = bulkPage + 1;
             status.textContent = `Checking pages ${p1}‑${p2}…`;
             const [res1, res2] = await Promise.all([
@@ -664,12 +663,9 @@
             const d2 = res2.ok ? (await res2.json()).data || [] : [];
             const list = [...d1, ...d2];
             if (!list.length) { status.textContent = "No more titles."; break; }
-            const inserts = [];
             for (const a of list) {
-              if (cancelFlag) break;
-              // Determine the best title for this browser language
+              if (cancelFlag || insertsAccum.length >= 50) break;
               const bestTitle = getBestTitle(a) || (a.title || "Untitled");
-              // Use display title for dedup
               const dispTitle = bestTitle.trim().toLowerCase();
               if (!dispTitle || existingDisplayTitles.has(dispTitle)) continue;
 
@@ -681,39 +677,39 @@
               const score = a.score || null;
               const ep_total = (a.episodes != null) ? a.episodes : null;
               const airingStatus = a.status ? mapAiringStatus(a.status) : null;
-
-              // Multi-language titles
               const title_en = a.title_english || null;
               const title_jp = a.title_japanese || null;
-              // Jikan doesn't provide zh/de/fr, but we can try to extract if ever added
               const title_zh = a.title_chinese || null;
               const title_de = a.title_german || null;
               const title_fr = a.title_french || null;
-
               const aired_from = a.aired?.from ? new Date(a.aired.from).toISOString() : null;
               const aired_to   = a.aired?.to   ? new Date(a.aired.to).toISOString()   : null;
 
-              inserts.push({
-                title: bestTitle,        // main title set to best language title
+              insertsAccum.push({
+                title: bestTitle,
                 image_url, type, year, genres, studio, score, ep_total,
                 status: airingStatus || 'Not yet aired',
                 title_en, title_jp, title_zh, title_de, title_fr,
                 aired_from, aired_to
               });
-              existingDisplayTitles.add(dispTitle);   // prevent duplicates within the same batch
-              if (inserts.length >= 50) break;
+              existingDisplayTitles.add(dispTitle);
             }
-            if (cancelFlag) break;
-            if (inserts.length) {
-              const { error } = await sb.from("anime").insert(inserts);
-              if (error) throw error;
-              added = inserts.length; toast(`Imported ${added} anime.`); await loadAnimeList();
-              status.textContent = `Added ${added} from pages ${p1}‑${p2}.`; bulkPage += 2; break;
-            }
-            bulkPage += 2; status.textContent = `No new titles on ${p1}‑${p2}, trying next…`;
+            // Move to next pages regardless of whether we found new titles on this pair
+            bulkPage += 2;
           }
-          if (cancelFlag) { status.textContent = "Cancelled."; toast("Import cancelled."); }
-          else if (added === 0) status.textContent = "No new titles found.";
+
+          if (cancelFlag) {
+            status.textContent = "Cancelled."; toast("Import cancelled.");
+          } else if (insertsAccum.length > 0) {
+            const { error } = await sb.from("anime").insert(insertsAccum);
+            if (error) throw error;
+            addedTotal = insertsAccum.length;
+            toast(`Imported ${addedTotal} anime.`);
+            await loadAnimeList();
+            status.textContent = `Added ${addedTotal} new titles.`;
+          } else {
+            status.textContent = "No new titles found.";
+          }
         } catch (e) { console.warn(e); status.textContent = "Import failed."; toast("Import failed."); }
         finally {
           btn.disabled = false; btn.textContent = origText;
@@ -722,7 +718,7 @@
         }
       }
 
-      // Fix All with rollback (unchanged, but now also tries to fill other language titles)
+      // Fix All with rollback (unchanged)
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -785,10 +781,8 @@
               if (mappedStatus) updates.status = mappedStatus;
             }
 
-            // Fill language columns if available
             if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
             if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
-            // For other languages, Jikan doesn't provide them, but we'll check if they exist in match
             if (match.title_chinese && match.title_chinese !== anime.title_zh) updates.title_zh = match.title_chinese;
             if (match.title_german  && match.title_german  !== anime.title_de) updates.title_de = match.title_german;
             if (match.title_french  && match.title_french  !== anime.title_fr) updates.title_fr = match.title_french;
@@ -850,7 +844,7 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates (already uses display title)
+      // Delete Duplicates (unchanged)
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true;
@@ -997,7 +991,6 @@
         if (error) return;
         const url = data && data.value ? data.value : "";
         $("currentLogoPreview").src = url || DEFAULT_AVATAR;
-        // URL text hidden via CSS, no need to update
       }
       async function uploadAndSaveLogo(file){
         if (!file) { toast("Please select an image file."); return; }
