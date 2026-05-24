@@ -55,10 +55,10 @@
 
   .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto}
 
-  /* Mobile top bar – now with logout button instead of menu */
+  /* Mobile top bar – fixed full width */
   .top-bar-mobile{
     display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
-    align-items:center;justify-content:space-between;position:sticky;top:0;z-index:25;
+    align-items:center;justify-content:space-between;
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   }
   .top-bar-mobile .brand{font-weight:800;font-size:18px}
@@ -158,7 +158,11 @@
   @media (max-width:768px){
     .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
     .sidebar.open{transform:translateX(0)}
-    .top-bar-mobile{display:flex}   /* show on mobile */
+    .top-bar-mobile{
+      display:flex;
+      position:fixed; top:0; left:0; right:0; z-index:50;
+    }
+    .main-area{ padding-top:56px; }
     .bento-grid{grid-template-columns:1fr}
     .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1}
   }
@@ -187,7 +191,7 @@
     </aside>
 
     <div class="main-area">
-      <!-- Mobile top bar with logout button instead of menu -->
+      <!-- Mobile top bar with logout button -->
       <div class="top-bar-mobile">
         <div class="brand">Ani<span class="accent">Chan</span></div>
         <button class="logout-btn-mobile" id="logoutBtnMobile"><span class="material-symbols-outlined">logout</span> Logout</button>
@@ -216,7 +220,7 @@
               </div>
             </div>
 
-            <!-- Site Logo – URL hidden, image centered & larger -->
+            <!-- Site Logo -->
             <div id="logo-section" class="glass-panel">
               <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
@@ -335,7 +339,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // Back‑button prevention (prompt to log out)
+    // ── Back‑button prevention (always asks to log out) ──
     (function() {
       if (window.history && window.history.pushState) {
         window.history.pushState('forward', null, '');
@@ -343,6 +347,7 @@
           if (confirm('You must log out before leaving. Log out now?')) {
             document.getElementById('logoutBtn').click();
           } else {
+            // Push another state so the next back press also triggers the confirmation
             window.history.pushState('forward', null, '');
           }
         });
@@ -415,8 +420,8 @@
       // Logout (redirect to home page)
       async function handleLogout() {
         await sb.auth.signOut();
-        // Remove back‑button trap before leaving
-        window.removeEventListener('popstate', arguments.callee);
+        // Remove the popstate listener so we can actually navigate away
+        window.onpopstate = null;
         location.href = "index.html";
       }
       $("logoutBtn").addEventListener("click", handleLogout);
@@ -669,7 +674,7 @@
         }
       });
 
-      // Bulk Import (accumulates 50 new titles across pages)
+      // Bulk Import
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
@@ -750,7 +755,7 @@
         }
       }
 
-      // Fix All with rollback (unchanged except for star rating update)
+      // Fix All with rollback
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -875,7 +880,7 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates (unchanged)
+      // Delete Duplicates
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true;
