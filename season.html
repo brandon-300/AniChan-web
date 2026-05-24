@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Season</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="i18n.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --accent2:#ffb597;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757; --success:#2ed573; --offline:#555;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* Header */
+  header.app{
+    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:50;
+  }
+  .brand{font-weight:800;font-size:20px}
+  .brand span{color:var(--accent)}
+  .back-btn{
+    background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
+    padding:0 8px;line-height:1;
+  }
+
+  .container{max-width:1100px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+
+  .glass-panel{
+    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:20px;padding:20px;
+    margin-bottom:24px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .glass-panel h2{
+    font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
+  }
+
+  .release-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+
+  .release-card{
+    border-radius:18px;overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--card);
+    display:flex;flex-direction:column;
+    transition:transform .15s ease,box-shadow .15s ease;
+    cursor:pointer;
+    text-decoration:none;color:inherit;
+  }
+  .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
+  .card-image{
+    width:100%;aspect-ratio:16/9;
+    background-size:cover;background-position:center;
+    position:relative;
+  }
+  .card-image .overlay{
+    position:absolute;inset:0;
+    background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 60%);
+  }
+  .card-info{
+    background:rgba(0,0,0,.8);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .card-title{color:#fff;font-size:15px;font-weight:700;line-height:1.4;flex:1}
+  .ep-badge{
+    background:rgba(81,218,211,.15);color:var(--accent);
+    font-size:14px;font-weight:700;padding:4px 14px;border-radius:20px;
+    white-space:nowrap;flex-shrink:0;
+  }
+
+  .empty{padding:32px;text-align:center;color:var(--muted);
+    border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px}
+
+  .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
+  .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+  .pagination button:disabled{opacity:.4;cursor:default}
+  .pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
+  .page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+</style>
+</head>
+<body>
+  <header class="app">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <div class="brand">Ani<span>Chan</span></div>
+    <div></div> <!-- spacer -->
+  </header>
+
+  <main class="container">
+    <div class="glass-panel">
+      <h2 id="pageTitle">Seasonal Anime</h2>
+      <div class="release-grid" id="releaseGrid"></div>
+      <div class="pagination" id="paginationControls" style="display:none;">
+        <button id="prevPageBtn">← Previous</button>
+        <span class="page-indicator" id="pageIndicator">1 / 1</span>
+        <button id="nextPageBtn">Next →</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>AniChan · powered by Supabase</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = id => document.getElementById(id);
+  const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+
+  const ITEMS_PER_PAGE = 26;
+  let library = [];
+  let currentPage = 1;
+
+  const params = new URLSearchParams(window.location.search);
+  const season = params.get('season');  // "Winter","Spring","Summer","Fall"
+  const year   = parseInt(params.get('year'));
+
+  if (!season || !year) { alert('Invalid season'); history.back(); }
+
+  // Map season name to month ranges
+  const seasonMonths = {
+    'Winter': [0, 1, 2],  // Jan-Mar
+    'Spring': [3, 4, 5],
+    'Summer': [6, 7, 8],
+    'Fall':   [9, 10, 11]
+  };
+
+  $('pageTitle').textContent = `${season} ${year}`;
+
+  async function loadSeasonAnime() {
+    // We need to find anime whose aired_from falls within the given season and year.
+    // Since aired_from is a timestamptz, we can filter using PostgreSQL date functions.
+    const months = seasonMonths[season];
+    if (!months) { alert('Unknown season'); return; }
+
+    // Use .gte and .lt on aired_from
+    const startDate = new Date(year, months[0], 1).toISOString();
+    const endDate = new Date(year, months[2] + 1, 1).toISOString(); // first day of next month
+
+    const { data, error } = await sb
+      .from('anime')
+      .select('*')
+      .gte('aired_from', startDate)
+      .lt('aired_from', endDate)
+      .order('aired_from', { ascending: true })
+      .order('title', { ascending: true });
+
+    if (error) { console.error(error); return; }
+    library = data || [];
+    currentPage = 1;
+    renderGrid();
+  }
+
+  function renderGrid() {
+    const grid = $('releaseGrid');
+    const items = library;
+    const totalItems = items.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
+
+    grid.innerHTML = '';
+    if (!pageItems.length) {
+      const e = document.createElement('div');
+      e.className = 'empty'; e.style.gridColumn = 'span 2';
+      e.textContent = 'No anime found for this season.';
+      grid.appendChild(e);
+    } else {
+      for (const a of pageItems) {
+        const card = document.createElement('a');
+        card.className = 'release-card';
+        card.href = `anime_info.html?id=${a.id}`;
+
+        const imgDiv = document.createElement('div');
+        imgDiv.className = 'card-image';
+        imgDiv.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        imgDiv.appendChild(overlay);
+        card.appendChild(imgDiv);
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'card-info';
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'card-title';
+        titleSpan.textContent = a.title || 'Untitled';
+        const epSpan = document.createElement('span');
+        epSpan.className = 'ep-badge';
+        epSpan.textContent = a.ep_total != null ? a.ep_total : '?';
+        infoDiv.appendChild(titleSpan);
+        infoDiv.appendChild(epSpan);
+        card.appendChild(infoDiv);
+
+        grid.appendChild(card);
+      }
+    }
+
+    const pagination = $('paginationControls');
+    const prevBtn = $('prevPageBtn');
+    const nextBtn = $('nextPageBtn');
+    const indicator = $('pageIndicator');
+    if (totalPages <= 1) {
+      pagination.style.display = 'none';
+    } else {
+      pagination.style.display = 'flex';
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+      indicator.textContent = `${currentPage} / ${totalPages}`;
+    }
+  }
+
+  $('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderGrid(); } });
+  $('nextPageBtn').addEventListener('click', () => {
+    const totalPages = Math.ceil(library.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) { currentPage++; renderGrid(); }
+  });
+
+  loadSeasonAnime();
+})();
+</script>
+</body>
+</html>

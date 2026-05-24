@@ -245,7 +245,6 @@
         const data = await res.json();
         const match = data.data && data.data[0];
         if (match && match.synopsis) {
-          // Update DB in background
           sb.from('anime').update({ synopsis: match.synopsis }).eq('id', animeId).then();
           return match.synopsis;
         }
@@ -270,12 +269,12 @@
       if (!synopsis) {
         synopsis = await fetchSynopsisFromJikan(data.title);
         if (synopsis) {
-          animeData.synopsis = synopsis;  // update local copy
+          animeData.synopsis = synopsis;
         }
       }
       $('synopsis').textContent = synopsis || 'No synopsis available.';
 
-      // Metadata (only show rows with values)
+      // Metadata
       const metaItems = [];
       if (data.title_jp) metaItems.push({ label: 'Japanese', value: data.title_jp });
       if (data.title_en) metaItems.push({ label: 'English', value: data.title_en });
@@ -287,7 +286,7 @@
         { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
         { label: 'Status',  value: data.status || '—', accent: true },
         { label: 'Aired',   value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
-        { label: 'Season',  value: seasonFromDate(data.aired_from) || '—', accent: true },
+        { label: 'Season',  value: seasonFromDate(data.aired_from) || '—', accent: true, link: true },
         { label: 'Studios', value: data.studio || '—' },
         { label: 'Duration', value: data.duration || '—' }
       );
@@ -295,10 +294,19 @@
       const metaContainer = $('metaList');
       metaContainer.innerHTML = '';
       metaItems.forEach(m => {
-        if (!m.value || m.value === '—' && m.label !== 'Duration') return;  // skip empty optional rows
+        if (!m.value || m.value === '—' && m.label !== 'Duration') return;
+
         const row = document.createElement('div');
         row.className = 'meta-row';
-        row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
+
+        if (m.link) {
+          const seasonStr = seasonFromDate(data.aired_from);
+          if (!seasonStr) return;
+          const [seasonName, year] = seasonStr.split(' ');
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="season.html?season=${seasonName}&year=${year}" class="meta-value accent-value" style="text-decoration:underline;">${seasonStr}</a>`;
+        } else {
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
+        }
         metaContainer.appendChild(row);
       });
 
@@ -313,7 +321,7 @@
         });
       }
 
-      // External links (updated Kitsu URL)
+      // External links
       const query = encodeURIComponent(data.title);
       const extLinks = [
         { name: 'AniList', url: `https://anilist.co/search/anime?search=${query}` },
