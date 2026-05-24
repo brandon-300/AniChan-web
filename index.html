@@ -115,6 +115,8 @@
     display:flex;flex-direction:column;
     transition:transform .15s ease,box-shadow .15s ease;
     cursor:pointer;
+    text-decoration:none;       /* remove underline */
+    color:inherit;
   }
   .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
   .card-image{
@@ -300,7 +302,6 @@
         ? `<img class="avatar-circle-small" src="${avatarUrl}" alt="Profile" />`
         : `<span class="material-symbols-outlined" style="font-size:28px">account_circle</span>`;
 
-      // Menu button + dropdown
       container.innerHTML = `
         <button class="menu-btn" id="menuToggle"><span class="material-symbols-outlined">menu</span></button>
         <div class="dropdown-menu" id="dropdownMenu">
@@ -317,7 +318,6 @@
         </div>
       `;
 
-      // Toggle dropdown
       const toggleBtn = $("menuToggle");
       const dropdown = $("dropdownMenu");
       toggleBtn.addEventListener("click", (e) => {
@@ -328,13 +328,11 @@
         dropdown.classList.remove("show");
       });
 
-      // Attach actions
       $("menuFindFriends").addEventListener("click", () => { dropdown.classList.remove("show"); location.href = "find_friends.html"; });
       $("menuMessages").addEventListener("click", () => { dropdown.classList.remove("show"); openMessagesModal(); });
       $("menuProfile").addEventListener("click", () => { dropdown.classList.remove("show"); location.href = "profile.html"; });
 
     } else {
-      // Not logged in – admin + login buttons
       container.innerHTML = `
         <button class="btn" id="adminBtn">${t("admin")}</button>
         <button class="btn btn-primary" id="loginBtn">${t("login")}</button>
@@ -395,8 +393,10 @@
       list.appendChild(e);
     } else {
       for (const a of pageItems) {
-        const card = document.createElement("div");
+        // ── CARD BECOMES A LINK ──
+        const card = document.createElement("a");
         card.className = "release-card";
+        card.href = `anime_info.html?id=${a.id}`;
         card.title = a.title || "Untitled";
 
         const imgDiv = document.createElement("div");
