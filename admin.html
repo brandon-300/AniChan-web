@@ -239,7 +239,7 @@
               <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
                 <p style="color:var(--muted);font-size:13px;margin:0 0 10px">Import 50 popular anime at once (no duplicates).</p>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <button class="btn btn-primary" id="bulkImportBtn">Bulk Import 50 Anime</button>
+                  <button class="btn btn-primary" id="bulkImportBtn">Bulk Import</button>
                   <button class="btn" id="fixAllBtn">Fix All</button>
                   <span id="bulkStatus" style="font-size:12px;color:var(--muted)"></span>
                 </div>
@@ -337,7 +337,7 @@
       });
     });
 
-    // All original JS logic (unchanged, except collection timestamp display)
+    // All original JS logic
     (() => {
       const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -521,7 +521,7 @@
         clearForm(); await loadAnimeList();
       }
 
-      // Paginated collection – NOW WITH TIMESTAMP
+      // Paginated collection – with timestamp (date + time)
       async function loadAnimeList(){
         const { data, error } = await sb.from("anime").select("*").order("created_at", { ascending: false });
         allAnime = error ? [] : (data || []);
@@ -562,9 +562,9 @@
             if (a.score != null) parts.push(`★ ${a.score}`);
             meta.textContent = parts.join(" · ");
             wrap.appendChild(meta);
-            // Add timestamp
+            // Timestamp with date + time
             const added = document.createElement("div"); added.className = "added-date";
-            added.textContent = "Added: " + new Date(a.created_at).toLocaleDateString();
+            added.textContent = "Added: " + new Date(a.created_at).toLocaleString();
             wrap.appendChild(added);
 
             const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:6px;flex-shrink:0";
@@ -601,7 +601,7 @@
         if (adminPage < totalPages) { adminPage++; renderPaginatedList(); }
       });
 
-      // Bulk Import
+      // Bulk Import (duplicate prevention already present)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
