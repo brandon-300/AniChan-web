@@ -5,131 +5,200 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AniChan</title>
 <meta name="description" content="Your personal anime tracker and library." />
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Google Fonts & Material Symbols -->
+<script src="i18n.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-<!-- i18n -->
-<script src="i18n.js"></script>
 <style>
-  /* Tailwind custom config */
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter', 'sans-serif'] },
-        colors: {
-          accent: '#51dad3',
-          accent2: '#ffb597',
-          dark: '#0d0d0d',
-          card: '#161616',
-          panel: '#1a1a1a',
-          border: '#222222',
-          muted: '#9aa0a6',
-          danger: '#ff4757'
-        }
-      }
-    }
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --accent2:#ffb597;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757; --success:#2ed573; --offline:#555;
   }
-  /* Extra custom styles */
-  .shelf::-webkit-scrollbar { display: none; }
-  .shelf { scrollbar-width: none; }
-  .glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  .toast {
-    background: #062525; color: #dffaf8; border: 1px solid rgba(81,218,211,0.4);
-    padding: 10px 14px; border-radius: 10px; font-size: 13px; opacity: 0;
-    pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
-    transform: translateY(20px);
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  img{display:block;max-width:100%}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+
+  #offline{position:sticky;top:0;z-index:60;background:var(--danger);color:#fff;
+    text-align:center;font-size:13px;padding:8px;display:none}
+  #offline.show{display:block}
+
+  header.app{position:sticky;top:0;z-index:50;background:rgba(19,19,19,.80);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border)}
+  #offline.show + header.app{top:32px}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:.3px}
+  .brand .accent{color:var(--accent)}
+  .logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-block;flex-shrink:0;background:var(--panel);}
+  .hd-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{padding:9px 15px;border-radius:12px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    transition:transform .08s ease,background .15s ease,border-color .15s ease}
+  .btn:hover{border-color:var(--accent)}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
+  .btn-primary:hover{filter:brightness(1.08)}
+
+  .avatar-circle{
+    width:36px; height:36px; border-radius:50%; object-fit:cover;
+    cursor:pointer; border:2px solid var(--border); transition:border-color .15s;
+    background:var(--panel);
   }
-  .toast.show { opacity: 1; transform: translateY(0); }
+  .avatar-circle:hover{border-color:var(--accent)}
+
+  .broadcast{display:none;margin:16px 0;padding:14px 16px;border-radius:16px;
+    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;gap:12px;align-items:flex-start}
+  .broadcast.hidden{display:none}
+
+  .search{position:relative;margin:14px 0 22px}
+  .search input{width:100%;padding:14px 14px 14px 42px;border-radius:14px;
+    background:var(--card);border:1px solid var(--border);color:var(--text);
+    font-size:14px;outline:none}
+  .search input:focus{border-color:var(--accent)}
+  .search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}
+
+  .section-glass{
+    background:rgba(26,26,26,.70); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--border); border-radius:20px; padding:20px;
+    margin-bottom:24px; box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .section-glass h2{
+    margin:0 0 12px; font-size:16px; letter-spacing:.4px; text-transform:uppercase;
+    color:#c8cdd0; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .section-glass h2 .material-symbols-outlined{ font-size:20px; color:var(--accent); }
+
+  .shelf{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
+  .shelf::-webkit-scrollbar{display:none}
+  .shelf{scrollbar-width:none}
+  .shelf .card{flex:0 0 140px;scroll-snap-align:start}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:18px;
+    overflow:hidden;transition:transform .15s ease,border-color .15s ease}
+  .card:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .card .poster{aspect-ratio:2/3;background:#0a0a0a;width:100%;object-fit:cover}
+  .card .meta{padding:10px 12px}
+  .card .title{font-size:13px;line-height:1.35;font-weight:600;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  .progress-bar{height:4px; border-radius:2px; background:#2a2a2a; margin-top:6px; overflow:hidden}
+  .progress-fill{height:100%; background:var(--accent); border-radius:2px; transition:width .3s}
+
+  .badge{display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:12px;
+    text-transform:uppercase; letter-spacing:.5px; margin-left:6px}
+  .badge.watching{background:rgba(81,218,211,.15); color:var(--accent)}
+  .badge.completed{background:rgba(46,213,115,.15); color:var(--success)}
+  .badge.planned{background:rgba(255,181,151,.15); color:var(--accent2)}
+  .badge.dropped{background:rgba(255,71,87,.15); color:var(--danger)}
+
+  .empty{padding:32px;text-align:center;color:var(--muted);
+    border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px}
+
+  .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
+  .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+  .pagination button:disabled{opacity:.4;cursor:default}
+  .pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
+  .page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
+
+  #toTop{position:fixed;right:18px;bottom:18px;width:46px;height:46px;border-radius:50%;
+    background:var(--accent);color:#0a2a28;font-size:20px;font-weight:800;
+    box-shadow:0 12px 28px rgba(81,218,211,.30);opacity:0;pointer-events:none;
+    transition:opacity .25s ease,transform .25s ease;z-index:40;transform:translateY(20px)}
+  #toTop.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+
+  .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+    padding:18px;background:rgba(0,0,0,.60);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .modal.show{display:flex}
+  .modal .panel{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);
+    border-radius:20px;padding:24px;box-shadow:0 30px 60px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
+  .modal h3{margin:0 0 4px;font-size:18px;font-weight:700}
+  .modal .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .modal .close{color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
+
+  .chat-room-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+  .chat-room-item:hover{background:var(--panel)}
+  .room-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+  .chat-room-item .info{flex:1;min-width:0}
+  .chat-room-item .name{font-weight:600;font-size:14px}
+  .chat-room-item .preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-room-item .meta{text-align:right;flex-shrink:0}
+  .chat-room-item .time{font-size:11px;color:var(--muted)}
+
+  footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
 </style>
 </head>
-<body class="bg-dark text-white font-sans">
+<body>
+  <div id="offline" role="status">You're offline — live API features disabled.</div>
 
-  <!-- Offline banner -->
-  <div id="offline" role="status" class="sticky top-0 z-60 bg-danger text-white text-center text-sm py-2 hidden">You're offline — live API features disabled.</div>
-
-  <!-- Header -->
-  <header class="sticky top-0 z-50 bg-dark/85 glass border-b border-border" :class="{'top-8': offline.show}">
-    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between py-5">
-      <div class="flex items-center gap-3">
-        <img id="siteLogo" src="" alt="Logo" class="w-9 h-9 rounded-full object-cover bg-panel" />
-        <div class="font-extrabold text-2xl tracking-tight">
-          Ani<span class="text-accent">Chan</span>
-        </div>
+  <header class="app">
+    <div class="wrap hd">
+      <div class="brand">
+        <img class="logo-img" id="siteLogo" src="" alt="Logo" />
+        <span>Ani<span class="accent">Chan</span></span>
       </div>
-      <div id="headerActions" class="flex items-center gap-2 flex-wrap">
-        <!-- Populated by JS -->
-      </div>
+      <div class="hd-actions" id="headerActions"></div>
     </div>
   </header>
 
-  <!-- Main -->
-  <main class="max-w-6xl mx-auto px-4 pb-20">
-    <!-- Broadcast -->
-    <div id="broadcast" class="hidden my-4 p-4 rounded-2xl bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 text-accent/90 flex gap-3 items-start">
-      <span class="material-symbols-outlined text-xl">campaign</span>
-      <div class="text-sm leading-relaxed flex-1" id="broadcastMsg"></div>
-      <button onclick="document.getElementById('broadcast').classList.add('hidden')" class="text-muted hover:text-white">✕</button>
+  <main class="wrap">
+    <div class="broadcast hidden" id="broadcast">
+      <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
+      <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
     </div>
 
-    <!-- Search -->
-    <div class="relative my-4">
-      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted text-lg">search</span>
-      <input id="searchInput" type="text" :placeholder="t('searchPlaceholder')" autocomplete="off"
-             class="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-white text-sm outline-none focus:border-accent transition-colors" />
+    <div class="search">
+      <span class="ico material-symbols-outlined">search</span>
+      <input id="searchInput" type="text" :placeholder="t('searchPlaceholder')" autocomplete="off" />
     </div>
 
-    <!-- Sections -->
-    <div class="flex flex-col gap-6 mt-6">
-      <!-- Currently Airing -->
-      <section>
-        <div class="flex items-baseline justify-between mb-3">
-          <h2 class="text-base uppercase tracking-wider text-gray-300 font-semibold" id="currentlyAiringHeading">Currently Airing</h2>
-          <small class="text-muted text-xs" id="airingNote">via Jikan</small>
-        </div>
-        <div class="shelf flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory" id="airingShelf">
-          <div class="text-center py-10 text-muted w-full">Loading airing anime…</div>
-        </div>
-      </section>
+    <div class="section-glass" id="airingSection">
+      <h2>
+        <span class="material-symbols-outlined">live_tv</span>
+        <span id="currentlyAiringHeading">Currently Airing</span>
+        <small id="airingNote" style="margin-left:auto;font-size:12px;color:var(--muted);text-transform:none;font-weight:400">via Jikan</small>
+      </h2>
+      <div class="shelf" id="airingShelf"><div class="empty" style="flex:1">Loading airing anime…</div></div>
+    </div>
 
-      <!-- My Collection -->
-      <section>
-        <div class="flex items-baseline justify-between mb-3">
-          <h2 class="text-base uppercase tracking-wider text-gray-300 font-semibold" id="myCollectionHeading">My Collection</h2>
-          <small class="text-muted text-xs" id="collectionCount">0 saved</small>
-        </div>
-        <div class="grid grid-cols-2 gap-3.5" id="collectionGrid"></div>
-        <div class="flex justify-center items-center gap-3 mt-5" id="paginationControls" style="display:none;">
-          <button id="prevPageBtn" class="px-5 py-2 rounded-full bg-panel border border-border text-white font-semibold text-xs hover:border-accent hover:bg-card transition disabled:opacity-40" disabled>← Previous</button>
-          <span class="text-muted text-xs min-w-[5rem] text-center" id="pageIndicator">1 / 1</span>
-          <button id="nextPageBtn" class="px-5 py-2 rounded-full bg-panel border border-border text-white font-semibold text-xs hover:border-accent hover:bg-card transition disabled:opacity-40">Next →</button>
-        </div>
-      </section>
+    <div class="section-glass" id="collectionSection">
+      <h2>
+        <span class="material-symbols-outlined">collections_bookmark</span>
+        <span id="myCollectionHeading">My Collection</span>
+        <small id="collectionCount" style="margin-left:auto;font-size:12px;color:var(--muted);text-transform:none;font-weight:400"></small>
+      </h2>
+      <div class="grid" id="collectionGrid"></div>
+      <div class="pagination" id="paginationControls" style="display:none;">
+        <button id="prevPageBtn">← Previous</button>
+        <span class="page-indicator" id="pageIndicator">1 / 1</span>
+        <button id="nextPageBtn">Next →</button>
+      </div>
     </div>
   </main>
 
-  <!-- Back to top -->
-  <button id="toTop" aria-label="Scroll to top"
-          class="fixed right-5 bottom-5 w-11 h-11 rounded-full bg-accent text-black font-extrabold text-xl shadow-lg shadow-accent/30 opacity-0 pointer-events-none transition-all duration-300 translate-y-5 z-40">
-    ↑
-  </button>
+  <button id="toTop" aria-label="Scroll to top">↑</button>
 
-  <!-- Messages Modal -->
-  <div id="messagesModal" aria-hidden="true"
-       class="fixed inset-0 z-80 hidden items-center justify-center p-5 bg-black/60 glass">
-    <div class="bg-card border border-border rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto shadow-2xl" role="dialog" aria-modal="true">
-      <div class="flex justify-between items-start mb-4">
-        <h3 class="text-xl font-bold" id="messagesModalTitle">Messages</h3>
-        <button id="messagesModalClose" aria-label="Close" class="text-muted text-2xl leading-none">×</button>
+  <div class="modal" id="messagesModal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true">
+      <div class="head">
+        <h3 id="messagesModalTitle">Messages</h3>
+        <button class="close" id="messagesModalClose" aria-label="Close">×</button>
       </div>
       <div id="messagesList"></div>
     </div>
   </div>
 
-  <footer class="text-center text-muted text-xs py-10">AniChan · powered by Supabase</footer>
+  <footer>AniChan · powered by Supabase</footer>
 
 <script>
 (() => {
@@ -149,7 +218,6 @@
   let currentPage = 1;
   let currentSearch = "";
 
-  // Apply translations
   $("offline").textContent = t("offline");
   $("searchInput").placeholder = t("searchPlaceholder");
   $("currentlyAiringHeading").textContent = t("currentlyAiring");
@@ -160,7 +228,6 @@
   $("messagesModalTitle").textContent = t("messages");
   $("toTop").textContent = t("backToTop");
 
-  // Back-to-top smart toggle
   let lastScrollY = window.scrollY;
   window.addEventListener("scroll", () => {
     const y = window.scrollY;
@@ -172,75 +239,61 @@
   }, { passive: true });
   $("toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
-  // Offline handling
-  function syncOffline(){ $("offline").classList.toggle("hidden", !navigator.onLine); }
+  function syncOffline(){ $("offline").classList.toggle("show", !navigator.onLine); }
   window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
 
-  // Site logo
   async function loadSiteLogo() {
     try {
       const { data, error } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
       if (error) return;
       const url = data?.value || "";
       const img = $("siteLogo");
-      if (url) {
-        img.src = url + '?t=' + Date.now();
-        img.style.display = "block";
-      } else {
-        img.style.display = "none";
-      }
+      if (url) { img.src = url + '?t=' + Date.now(); img.style.display = "inline-block"; }
+      else { img.style.display = "none"; }
     } catch(e) { console.warn("Logo load error", e); }
   }
 
-  // User avatar
   async function getUserAvatar() {
     if (!currentSession) return null;
     const { data, error } = await sb.from("profiles").select("avatar_url").eq("id", currentSession.user.id).maybeSingle();
     return data?.avatar_url || null;
   }
 
-  // Header
   async function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
     if (currentSession) {
       const avatarUrl = await getUserAvatar();
       const avatarHtml = avatarUrl
-        ? `<img class="w-9 h-9 rounded-full object-cover cursor-pointer border-2 border-border hover:border-accent transition" src="${avatarUrl}" alt="Profile" title="View Profile" />`
-        : `<div class="w-9 h-9 rounded-full bg-panel flex items-center justify-center text-muted cursor-pointer border-2 border-border hover:border-accent transition" title="View Profile"><span class="material-symbols-outlined text-xl">person</span></div>`;
+        ? `<img class="avatar-circle" src="${avatarUrl}" alt="Profile" title="View Profile" />`
+        : `<div class="avatar-circle" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;" title="View Profile">👤</div>`;
       container.innerHTML = `
-        <button class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent transition" id="findFriendsBtn">${t("findFriends")}</button>
-        <button class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent transition" id="messagesBtn">💬 ${t("messages")}</button>
+        <button class="btn" id="findFriendsBtn">${t("findFriends")}</button>
+        <button class="btn" id="messagesBtn">💬 ${t("messages")}</button>
         ${avatarHtml}
       `;
       $("findFriendsBtn").addEventListener("click", () => location.href = "find_friends.html");
       $("messagesBtn").addEventListener("click", () => openMessagesModal());
-      const avatarEl = container.querySelector(".w-9");
+      const avatarEl = container.querySelector(".avatar-circle");
       if (avatarEl) avatarEl.addEventListener("click", () => location.href = "profile.html");
     } else {
       container.innerHTML = `
-        <button class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent transition" id="adminBtn">${t("admin")}</button>
-        <button class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-accent text-black border-transparent hover:brightness-110 transition" id="loginBtn">${t("login")}</button>
+        <button class="btn" id="adminBtn">${t("admin")}</button>
+        <button class="btn btn-primary" id="loginBtn">${t("login")}</button>
       `;
       $("adminBtn").onclick = () => location.href = "admin_login.html";
       $("loginBtn").onclick = () => location.href = "user_login.html";
     }
   }
 
-  // Broadcast
   async function renderBroadcast() {
     const el = $("broadcast");
     const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
     const msg = (data && data.value || "").trim();
-    if (msg) {
-      $("broadcastMsg").textContent = msg;
-      el.classList.remove("hidden");
-    } else {
-      el.classList.add("hidden");
-    }
+    if (msg) { $("broadcastMsg").textContent = msg; el.classList.remove("hidden"); }
+    else { el.classList.add("hidden"); }
   }
 
-  // Collection rendering
   function renderCollection() {
     const grid = $("collectionGrid");
     const q = currentSearch.trim().toLowerCase();
@@ -249,7 +302,6 @@
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages || 1;
-
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
 
@@ -258,24 +310,34 @@
 
     if (!pageItems.length) {
       const e = document.createElement("div");
-      e.className = "col-span-2 text-center py-8 text-muted border border-dashed border-border rounded-2xl bg-panel";
+      e.className = "empty";
+      e.style.gridColumn = "span 2";
       e.textContent = library.length ? (q ? t("noMatches") : t("noItemsPage")) : t("emptyLibrary");
       grid.appendChild(e);
     } else {
       for (const a of pageItems) {
-        const card = document.createElement("div");
-        card.className = "bg-card border border-border rounded-2xl overflow-hidden hover:-translate-y-1 hover:border-gray-600 transition-all duration-200";
-        const img = document.createElement("img");
-        img.className = "aspect-[2/3] w-full object-cover bg-black";
-        img.src = a.image_url || PLACEHOLDER;
-        img.onerror = () => { img.src = PLACEHOLDER; };
-        img.alt = a.title || "Untitled";
-        const meta = document.createElement("div");
-        meta.className = "p-2.5";
-        const t = document.createElement("div");
-        t.className = "text-sm font-semibold leading-tight line-clamp-2";
-        t.textContent = a.title || "Untitled";
-        meta.appendChild(t);
+        const card = document.createElement("div"); card.className = "card";
+        const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
+        img.src = a.image_url || PLACEHOLDER; img.onerror = () => { img.src = PLACEHOLDER; }; img.alt = a.title || "Untitled";
+        const meta = document.createElement("div"); meta.className = "meta";
+        const tEl = document.createElement("div"); tEl.className = "title"; tEl.textContent = a.title || "Untitled";
+        meta.appendChild(tEl);
+
+        if (a.status === 'watching' && a.ep_watched != null && a.ep_total != null && a.ep_total > 0) {
+          const pct = Math.min(100, Math.round((a.ep_watched / a.ep_total) * 100));
+          const progBar = document.createElement("div"); progBar.className = "progress-bar";
+          const fill = document.createElement("div"); fill.className = "progress-fill"; fill.style.width = pct + '%';
+          progBar.appendChild(fill);
+          meta.appendChild(progBar);
+        }
+
+        if (a.status) {
+          const badge = document.createElement("span");
+          badge.className = `badge ${a.status}`;
+          badge.textContent = a.status.charAt(0).toUpperCase() + a.status.slice(1);
+          meta.appendChild(badge);
+        }
+
         card.appendChild(img);
         card.appendChild(meta);
         grid.appendChild(card);
@@ -286,9 +348,8 @@
     const prevBtn = $("prevPageBtn");
     const nextBtn = $("nextPageBtn");
     const indicator = $("pageIndicator");
-    if (totalPages <= 1) {
-      pagination.style.display = "none";
-    } else {
+    if (totalPages <= 1) { pagination.style.display = "none"; }
+    else {
       pagination.style.display = "flex";
       prevBtn.disabled = currentPage <= 1;
       nextBtn.disabled = currentPage >= totalPages;
@@ -303,89 +364,50 @@
     renderCollection();
   }
 
-  // Airing
   async function loadAiring() {
     const shelf = $("airingShelf");
-    if (!navigator.onLine) {
-      shelf.innerHTML = `<div class="text-center py-8 text-muted w-full">${t("offline")}</div>`;
-      return;
-    }
-    shelf.innerHTML = `<div class="text-center py-8 text-muted w-full">${t("loadingAiring")}</div>`;
-
+    if (!navigator.onLine) { shelf.innerHTML = `<div class="empty" style="flex:1">${t("offline")}</div>`; return; }
+    shelf.innerHTML = `<div class="empty" style="flex:1">${t("loadingAiring")}</div>`;
     try {
       const res = await fetch("https://api.jikan.moe/v4/seasons/now?limit=10");
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       const list = (data && data.data) || [];
-
-      // Deduplicate by mal_id
       const seen = new Set();
       const unique = list.filter(a => seen.has(a.mal_id) ? false : seen.add(a.mal_id));
-
       shelf.innerHTML = "";
-      if (!unique.length) {
-        shelf.innerHTML = `<div class="text-center py-8 text-muted w-full">${t("noAiringFound")}</div>`;
-        return;
-      }
+      if (!unique.length) { shelf.innerHTML = `<div class="empty" style="flex:1">${t("noAiringFound")}</div>`; return; }
       for (const a of unique) {
         let title = a.title;
         if (currentLang === 'en' && a.title_english) title = a.title_english;
         else if (currentLang === 'ja' && a.title_japanese) title = a.title_japanese;
-
-        const card = document.createElement("div");
-        card.className = "flex-none w-[140px] snap-start bg-card border border-border rounded-2xl overflow-hidden hover:-translate-y-1 hover:border-gray-600 transition-all duration-200";
-        const img = document.createElement("img");
-        img.className = "aspect-[2/3] w-full object-cover bg-black";
+        const card = document.createElement("div"); card.className = "card";
+        const img = document.createElement("img"); img.className = "poster"; img.loading = "lazy";
         const imgSrc = (a.images?.jpg?.image_url) || (a.images?.jpg?.large_image_url) || null;
-        img.src = imgSrc || PLACEHOLDER;
-        img.alt = title;
-        const meta = document.createElement("div");
-        meta.className = "p-2.5";
-        const tEl = document.createElement("div");
-        tEl.className = "text-sm font-semibold leading-tight line-clamp-2";
-        tEl.textContent = title;
+        img.src = imgSrc || PLACEHOLDER; img.alt = title;
+        const meta = document.createElement("div"); meta.className = "meta";
+        const tEl = document.createElement("div"); tEl.className = "title"; tEl.textContent = title;
         meta.appendChild(tEl);
-        card.appendChild(img);
-        card.appendChild(meta);
+        card.appendChild(img); card.appendChild(meta);
         shelf.appendChild(card);
       }
-    } catch (err) {
-      console.warn("Jikan error", err);
-      shelf.innerHTML = `<div class="text-center py-8 text-muted w-full">${t("couldNotLoadAiring")}</div>`;
-    }
+    } catch (err) { shelf.innerHTML = `<div class="empty" style="flex:1">${t("couldNotLoadAiring")}</div>`; }
   }
 
-  // Pagination
-  $("prevPageBtn").addEventListener("click", () => {
-    if (currentPage > 1) { currentPage--; renderCollection(); }
-  });
+  $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderCollection(); } });
   $("nextPageBtn").addEventListener("click", () => {
     const items = currentSearch ? library.filter(a => (a.title||"").toLowerCase().includes(currentSearch)) : library;
     if (currentPage < Math.ceil(items.length / ITEMS_PER_PAGE)) { currentPage++; renderCollection(); }
   });
+  $("searchInput").addEventListener("input", (e) => { currentSearch = e.target.value; currentPage = 1; renderCollection(); });
 
-  $("searchInput").addEventListener("input", (e) => {
-    currentSearch = e.target.value;
-    currentPage = 1;
-    renderCollection();
-  });
-
-  // Messages modal
-  function openMessagesModal() {
-    $("messagesModal").classList.add("show");
-    $("messagesModal").setAttribute("aria-hidden", "false");
-    loadChatRooms();
-  }
-  function closeMessagesModal() {
-    $("messagesModal").classList.remove("show");
-    $("messagesModal").setAttribute("aria-hidden", "true");
-  }
+  function openMessagesModal() { $("messagesModal").classList.add("show"); $("messagesModal").setAttribute("aria-hidden","false"); loadChatRooms(); }
+  function closeMessagesModal() { $("messagesModal").classList.remove("show"); $("messagesModal").setAttribute("aria-hidden","true"); }
   $("messagesModalClose").addEventListener("click", closeMessagesModal);
   $("messagesModal").addEventListener("click", (e) => { if (e.target.id === "messagesModal") closeMessagesModal(); });
 
   async function loadChatRooms() {
-    const list = $("messagesList");
-    list.innerHTML = "Loading...";
+    const list = $("messagesList"); list.innerHTML = "Loading...";
     if (!currentSession) return;
     const { data, error } = await sb.from("chat_rooms")
       .select(`id, last_message, last_message_time, user_one_id, user_two_id,
@@ -393,23 +415,18 @@
         user_two:profiles!chat_rooms_user_two_id_fkey(id, username, full_name, avatar_url, is_online)`)
       .or(`user_one_id.eq.${currentSession.user.id},user_two_id.eq.${currentSession.user.id}`)
       .order('last_message_time', { ascending: false });
-
     if (error) { list.innerHTML = "Failed to load."; return; }
-    if (!data?.length) { list.innerHTML = `<div class="text-muted py-4">${t("noConversations")}</div>`; return; }
-
+    if (!data?.length) { list.innerHTML = `<div style="padding:16px;color:var(--muted);text-align:center">${t("noConversations")}</div>`; return; }
     list.innerHTML = "";
     data.forEach(room => {
       const isUserOne = room.user_one_id === currentSession.user.id;
       const partner = isUserOne ? room.user_two : room.user_one;
       const div = document.createElement("div");
-      div.className = "flex items-center gap-3 py-2 border-b border-border cursor-pointer hover:bg-panel transition";
+      div.className = "chat-room-item";
       div.innerHTML = `
-        <img class="w-8 h-8 rounded-full object-cover" src="${partner.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <div class="flex-1 min-w-0">
-          <div class="font-semibold text-sm">${partner.full_name || partner.username}</div>
-          <div class="text-xs text-muted truncate">${room.last_message || ""}</div>
-        </div>
-        <div class="text-xs text-muted">${formatChatTime(room.last_message_time)}</div>`;
+        <img class="room-avatar" src="${partner.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div class="info"><div class="name">${partner.full_name || partner.username}</div><div class="preview">${room.last_message || ""}</div></div>
+        <div class="meta"><div class="time">${formatChatTime(room.last_message_time)}</div></div>`;
       div.addEventListener("click", () => { closeMessagesModal(); location.href = "chat.html?room=" + room.id; });
       list.appendChild(div);
     });
@@ -422,24 +439,19 @@
     return d.toLocaleDateString();
   }
 
-  // Init
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
     window.addEventListener("online", syncOffline);
     window.addEventListener("offline", syncOffline);
-
     const { data: { session } } = await sb.auth.getSession();
     currentSession = session;
     sb.auth.onAuthStateChange((_e, s) => { currentSession = s; renderHeader(); });
-
     await loadSiteLogo();
     renderHeader();
     renderBroadcast();
     loadLibrary();
     loadAiring();
-
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMessagesModal(); });
-
     sb.channel("public-anichan")
       .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => loadLibrary())
       .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => { renderBroadcast(); loadSiteLogo(); })

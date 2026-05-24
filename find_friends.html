@@ -4,55 +4,97 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AniChan · Find Friends</title>
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Google Fonts & Material Symbols -->
+<script src="i18n.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-<!-- i18n -->
-<script src="i18n.js"></script>
 <style>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter', 'sans-serif'] },
-        colors: {
-          accent: '#51dad3',
-          accent2: '#ffb597',
-          dark: '#0d0d0d',
-          card: '#161616',
-          panel: '#1a1a1a',
-          border: '#222222',
-          muted: '#9aa0a6',
-          danger: '#ff4757',
-          success: '#2ed573',
-          offline: '#555555'
-        }
-      }
-    }
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --accent2:#ffb597;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757; --success:#2ed573; --offline:#555;
   }
-  .glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* Glass header */
+  header.app{
+    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{font-weight:800;font-size:20px;letter-spacing:.3px}
+  .brand span{color:var(--accent)}
+  .btn{
+    padding:9px 16px;border-radius:12px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:all .15s;text-decoration:none;
+  }
+  .btn:hover{border-color:var(--accent);background:var(--card)}
+  .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+
+  /* Glass panel */
+  .glass-panel{
+    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:20px;padding:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .glass-panel h2{
+    font-size:20px;font-weight:700;margin:0 0 20px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .glass-panel h2 .material-symbols-outlined{font-size:22px;color:var(--accent)}
+
+  .member-card{
+    display:flex;align-items:center;gap:16px;padding:16px;
+    background:var(--card);border:1px solid var(--border);border-radius:16px;
+    margin-bottom:12px;transition:border-color .15s;
+  }
+  .member-card:hover{border-color:var(--accent)}
+  .member-avatar{
+    width:48px;height:48px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--border);flex-shrink:0;transition:border-color .15s;
+  }
+  .member-avatar:hover{border-color:var(--accent)}
+  .member-info{flex:1;min-width:0}
+  .member-info strong{display:block;font-size:16px;margin-bottom:4px}
+  .member-info span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    display:inline-block;
+  }
+  .status-dot.online{background:var(--success)}
+  .status-dot.offline{background:var(--offline)}
+  .message-btn{
+    padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;
+    border:none;background:var(--accent);color:#0a2a28;
+    cursor:pointer;transition:filter .15s;flex-shrink:0;
+  }
+  .message-btn:hover{filter:brightness(1.08)}
+  .empty-state{text-align:center;padding:40px;color:var(--muted)}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
 </head>
-<body class="bg-dark text-white font-sans min-h-screen flex flex-col">
-
-  <!-- Header -->
-  <header class="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
-    <div class="font-extrabold text-xl tracking-tight">Ani<span class="text-accent">Chan</span></div>
-    <button id="backBtn" class="px-3.5 py-2 rounded-lg text-xs font-semibold border border-border bg-panel text-white hover:border-accent hover:bg-card transition">
-      ← Back
-    </button>
+<body>
+  <header class="app">
+    <div class="brand">Ani<span>Chan</span></div>
+    <button class="btn" id="backBtn">← Back</button>
   </header>
 
-  <!-- Main -->
-  <main class="max-w-xl mx-auto px-4 py-6 w-full flex-1">
-    <h2 class="text-2xl font-bold mb-5">Find Friends</h2>
-    <div id="membersList" class="space-y-2"></div>
+  <main class="container">
+    <div class="glass-panel">
+      <h2><span class="material-symbols-outlined">group</span> Find Friends</h2>
+      <div id="membersList"></div>
+    </div>
   </main>
 
-  <footer class="text-center text-muted text-xs py-4 border-t border-border">AniChan · powered by Supabase</footer>
+  <footer>AniChan · powered by Supabase</footer>
 
 <script>
 (() => {
@@ -87,36 +129,35 @@
 
     const container = $("membersList");
     if (error) {
-      container.innerHTML = '<div class="text-center py-8 text-muted">Failed to load members.</div>';
+      container.innerHTML = '<div class="empty-state">Failed to load members.</div>';
       return;
     }
     if (!users || users.length === 0) {
-      container.innerHTML = '<div class="text-center py-8 text-muted">No other members yet.</div>';
+      container.innerHTML = '<div class="empty-state">No other members yet.</div>';
       return;
     }
 
     container.innerHTML = "";
     users.forEach(user => {
       const card = document.createElement("div");
-      card.className = "flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:border-accent/50 transition-all duration-200";
+      card.className = "member-card";
       card.innerHTML = `
-        <a href="profile.html?user=${user.id}" class="flex-shrink-0">
-          <img class="w-12 h-12 rounded-full object-cover border-2 border-border hover:border-accent transition" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <a href="profile.html?user=${user.id}">
+          <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
         </a>
-        <div class="flex-1 min-w-0">
-          <div class="font-semibold text-base">${user.full_name || user.username}</div>
-          <div class="text-sm text-muted flex items-center gap-1.5 mt-0.5">
+        <div class="member-info">
+          <strong>${user.full_name || user.username}</strong>
+          <span>
             @${user.username}
-            <span class="inline-block w-2 h-2 rounded-full ${user.is_online ? 'bg-success' : 'bg-offline'}"></span>
-            <span class="text-xs">${user.is_online ? 'Online' : 'Offline'}</span>
-          </div>
+            <span class="status-dot ${user.is_online ? 'online' : 'offline'}"></span>
+            ${user.is_online ? 'Online' : 'Offline'}
+          </span>
         </div>
-        <button class="message-btn px-4 py-2 rounded-xl bg-accent text-black text-xs font-bold hover:brightness-110 transition" data-userid="${user.id}">Message</button>
+        <button class="message-btn" data-userid="${user.id}">Message</button>
       `;
       container.appendChild(card);
     });
 
-    // Message button event listeners
     document.querySelectorAll(".message-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherUserId = e.currentTarget.dataset.userid;

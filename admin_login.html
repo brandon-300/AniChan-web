@@ -4,83 +4,130 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AniChan Admin · Login</title>
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- Google Fonts & Material Symbols -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter', 'sans-serif'] },
-        colors: {
-          accent: '#51dad3',
-          dark: '#0d0d0d',
-          card: '#161616',
-          panel: '#1a1a1a',
-          border: '#222222',
-          muted: '#9aa0a6',
-          danger: '#ff4757'
-        }
-      }
-    }
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757;
   }
-  .glass { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    10%,30%,50%,70%,90% { transform: translateX(-4px); }
-    20%,40%,60%,80% { transform: translateX(4px); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:20px;position:relative;overflow:hidden;
+    -webkit-font-smoothing:antialiased;
   }
-  .shake { animation: shake 0.5s ease-in-out; }
+  /* Background radial gradients */
+  .bg-glow{
+    position:absolute;inset:0;z-index:0;
+  }
+  .bg-glow::before,
+  .bg-glow::after{
+    content:'';position:absolute;border-radius:50%;
+    filter:blur(80px);opacity:0.15;
+  }
+  .bg-glow::before{
+    width:500px;height:500px;background:var(--accent);
+    top:-20%;left:-10%;
+  }
+  .bg-glow::after{
+    width:400px;height:400px;background:var(--accent);
+    bottom:-20%;right:-10%;opacity:0.08;
+  }
+  /* Glass card */
+  .login-card{
+    position:relative;z-index:1;width:100%;max-width:420px;
+    background:rgba(26,26,26,.70);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--border);border-radius:24px;padding:32px 28px;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+  }
+  .login-card h1{
+    font-size:26px;font-weight:800;text-align:center;margin-bottom:20px;
+    letter-spacing:-0.3px;
+  }
+  .login-card h1 span{color:var(--accent)}
+  .accent-line{
+    width:48px;height:3px;background:var(--accent);margin:8px auto 28px;
+    border-radius:2px;
+  }
+  .field{margin-bottom:20px;position:relative}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .field input{
+    width:100%;padding:14px 14px 14px 44px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:15px;outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--accent)}
+  .field .icon{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    font-size:18px;color:var(--muted);pointer-events:none;
+  }
+  .pwd-wrap{position:relative}
+  .pwd-wrap input{padding-right:48px}
+  .pwd-wrap .reveal{
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:var(--muted);font-size:20px;
+    cursor:pointer;padding:4px;line-height:1;
+  }
+  .pwd-wrap .reveal:hover{color:var(--text)}
+  .signin-btn{
+    width:100%;padding:14px;border:none;border-radius:12px;
+    background:var(--accent);color:#0a2a28;font-size:16px;font-weight:700;
+    cursor:pointer;transition:filter .15s,transform .1s;
+    margin-top:8px;
+  }
+  .signin-btn:hover{filter:brightness(1.08)}
+  .signin-btn:active{transform:scale(.97)}
+  .err-msg{
+    font-size:13px;color:var(--danger);margin-top:12px;text-align:center;
+    display:none;
+  }
+  .err-msg.show{display:block}
+  .back-link{
+    display:block;text-align:center;margin-top:24px;font-size:14px;
+    color:var(--muted);text-decoration:none;transition:color .15s;
+  }
+  .back-link:hover{color:var(--text)}
+
+  /* Shake animation */
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    10%,30%,50%,70%,90%{transform:translateX(-4px)}
+    20%,40%,60%,80%{transform:translateX(4px)}
+  }
+  .shake{animation:shake .5s ease-in-out}
 </style>
 </head>
-<body class="bg-dark text-white font-sans min-h-screen flex items-center justify-center p-5 relative overflow-hidden">
+<body>
+  <div class="bg-glow"></div>
 
-  <!-- Background radial gradients -->
-  <div class="absolute inset-0 z-0">
-    <div class="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-accent/10 blur-3xl"></div>
-    <div class="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-accent/5 blur-3xl"></div>
-  </div>
+  <div class="login-card" id="loginCard">
+    <h1>Ani<span>Chan</span></h1>
+    <div class="accent-line"></div>
 
-  <!-- Login card -->
-  <div class="relative z-10 w-full max-w-md bg-card/70 glass border border-border rounded-3xl p-8 shadow-2xl">
-    <div class="text-center mb-6">
-      <div class="font-extrabold text-3xl tracking-tight mb-1">Ani<span class="text-accent">Chan</span></div>
-      <div class="w-10 h-1 bg-accent mx-auto rounded-full mt-3"></div>
+    <div class="field">
+      <span class="icon material-symbols-outlined">person</span>
+      <input type="email" id="adminEmail" placeholder="Admin email" autocomplete="email" />
     </div>
 
-    <h1 class="text-xl font-bold text-center mb-6">Admin Login</h1>
-
-    <!-- Email -->
-    <div class="mb-4">
-      <label class="text-xs text-muted mb-1.5 block">Email</label>
-      <input id="adminEmail" type="email" autocomplete="email" placeholder="admin@email.com"
-             class="w-full p-3 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition" />
+    <div class="field">
+      <span class="icon material-symbols-outlined">lock</span>
+      <div class="pwd-wrap">
+        <input type="password" id="adminPassword" placeholder="Password" autocomplete="current-password" />
+        <button type="button" class="reveal" id="revealBtn"><span class="material-symbols-outlined">visibility</span></button>
+      </div>
     </div>
 
-    <!-- Password -->
-    <div class="mb-4 relative">
-      <label class="text-xs text-muted mb-1.5 block">Password</label>
-      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="••••••••"
-             class="w-full p-3 pr-12 rounded-xl bg-panel border border-border text-white text-sm outline-none focus:border-accent transition" />
-      <button id="revealBtn" class="absolute right-3 top-[38px] text-muted hover:text-white transition">
-        <span class="material-symbols-outlined text-xl">visibility</span>
-      </button>
-    </div>
+    <div class="err-msg" id="loginErr"></div>
 
-    <!-- Error -->
-    <div id="loginErr" class="text-xs text-danger mt-2 hidden"></div>
+    <button class="signin-btn" id="signinBtn">Sign In</button>
 
-    <!-- Submit -->
-    <button id="signinBtn" class="w-full mt-6 py-3 rounded-xl bg-accent text-black font-bold text-sm hover:brightness-110 active:scale-95 transition-all duration-200">
-      Sign In
-    </button>
-
-    <!-- Back link -->
-    <a href="index.html" class="block text-center mt-5 text-muted text-sm hover:text-white transition">← Back to Home</a>
+    <a href="index.html" class="back-link">← Back to Home</a>
   </div>
 
 <script>
@@ -92,7 +139,7 @@
 
   const $ = id => document.getElementById(id);
 
-  // Password reveal
+  // Password reveal toggle
   $("revealBtn").addEventListener("click", () => {
     const input = $("adminPassword");
     const icon = $("revealBtn").querySelector('span');
@@ -105,31 +152,31 @@
     }
   });
 
-  // Submit
+  // Sign in
   $("signinBtn").addEventListener("click", async () => {
     const email = $("adminEmail").value.trim();
     const password = $("adminPassword").value;
     const err = $("loginErr");
-    const card = document.querySelector('.glass');
+    const card = $("loginCard");
 
-    err.classList.add("hidden");
+    err.classList.remove("show");
 
     if (!email || !password) {
       err.textContent = "Please enter both email and password.";
-      err.classList.remove("hidden");
+      err.classList.add("show");
       card.classList.add("shake");
       setTimeout(() => card.classList.remove("shake"), 500);
       return;
     }
     if (email.toLowerCase() !== ADMIN_EMAIL) {
       err.textContent = "This email is not authorized for admin access.";
-      err.classList.remove("hidden");
+      err.classList.add("show");
       card.classList.add("shake");
       setTimeout(() => card.classList.remove("shake"), 500);
       return;
     }
 
-    // Scale down effect
+    // Scale effect
     $("signinBtn").style.transform = "scale(0.96)";
     setTimeout(() => $("signinBtn").style.transform = "", 150);
 
@@ -143,7 +190,7 @@
       setTimeout(() => { window.location.href = "admin.html"; }, 300);
     } catch (e) {
       err.textContent = e.message || "Login failed.";
-      err.classList.remove("hidden");
+      err.classList.add("show");
       card.classList.add("shake");
       setTimeout(() => card.classList.remove("shake"), 500);
     }
