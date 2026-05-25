@@ -344,6 +344,7 @@
       // ── Session timeout & tab close detection ──
       const IDLE_LIMIT = 5 * 60 * 1000;   // 5 minutes
       let idleTimer;
+      window.isLoggingOut = false;   // set to true when we deliberately log out
 
       function resetIdleTimer() {
         clearTimeout(idleTimer);
@@ -353,14 +354,17 @@
       function forceLogout() {
         clearTimeout(idleTimer);
         sessionStorage.removeItem('admin_unload');
+        window.isLoggingOut = true;
         sb.auth.signOut().then(() => {
-          window.location.href = "admin_login.html";
+          window.location.replace("admin_login.html");
         });
       }
 
       // Mark that admin left the page (tab close / navigate away)
       window.addEventListener('beforeunload', () => {
-        sessionStorage.setItem('admin_unload', '1');
+        if (!window.isLoggingOut) {
+          sessionStorage.setItem('admin_unload', '1');
+        }
       });
 
       // On load, decide whether to keep the session
@@ -368,14 +372,14 @@
         const unloadFlag = sessionStorage.getItem('admin_unload');
         if (unloadFlag) {
           sessionStorage.removeItem('admin_unload');
-          // Check navigation type: if it was a manual refresh, stay logged in
           const navEntries = performance.getEntriesByType('navigation');
           if (navEntries.length > 0 && navEntries[0].type === 'reload') {
             // Manual refresh – session remains
           } else {
             // Tab close / navigate away → force logout
+            window.isLoggingOut = true;
             sb.auth.signOut().then(() => {
-              window.location.href = "admin_login.html";
+              window.location.replace("admin_login.html");
             });
           }
         }
@@ -428,8 +432,9 @@
       async function handleLogout() {
         clearTimeout(idleTimer);
         sessionStorage.removeItem('admin_unload');
+        window.isLoggingOut = true;
         await sb.auth.signOut();
-        window.location.href = "index.html";
+        window.location.replace("index.html");
       }
       $("logoutBtn").addEventListener("click", handleLogout);
       $("logoutBtnMobile").addEventListener("click", handleLogout);
@@ -849,7 +854,7 @@
         return null;
       }
 
-      // ──────────────── FIX ALL (only incomplete items) ────────────────
+      // ──────────────── FIX ALL (only incomplete items, 4 req/s) ────────────────
       async function fetchAllAnimeNeedingFix() {
         const allIncomplete = [];
         let from = 0, to = 999;
@@ -861,7 +866,6 @@
           if (error) throw error;
           if (!data || data.length === 0) break;
           for (const anime of data) {
-            // Only flag if English or Japanese title missing, status is stale, or main metadata empty
             if (!anime.title_en || !anime.title_jp ||
                 (anime.status === 'Currently Airing' && anime.aired_to && new Date(anime.aired_to) < new Date()) ||
                 anime.score == null || anime.ep_total == null ||
@@ -875,6 +879,27 @@
         }
         return allIncomplete;
       }
+
+      // Simple rate limiter: allows `maxCalls` within `intervalMs` sliding window
+      class RateLimiter {
+        constructor(maxCalls, intervalMs) {
+          this.maxCalls = maxCalls;
+          this.intervalMs = intervalMs;
+          this.calls = [];
+        }
+        async wait() {
+          const now = Date.now();
+          this.calls = this.calls.filter(t => now - t < this.intervalMs);
+          if (this.calls.length >= this.maxCalls) {
+            const oldest = this.calls[0];
+            await new Promise(r => setTimeout(r, oldest + this.intervalMs - now));
+            return this.wait();  // re-check after waiting
+          }
+          this.calls.push(Date.now());
+        }
+      }
+
+      const jikanLimiter = new RateLimiter(4, 1000);   // 4 requests per second
 
       async function fixAll(){
         const btn = $("fixAllBtn"), status = $("bulkStatus");
@@ -903,14 +928,11 @@
         const total = incompleteAnime.length;
         let processed = 0, fixedCount = 0;
         const updatedIds = [];
-        const RATE_LIMIT = 3;
-        let lastBatchTime = 0;
 
         async function processOne(anime) {
           if (cancelFlag) return;
-          const now = Date.now();
-          if (now - lastBatchTime < 1000) await new Promise(r => setTimeout(r, 1000 - (now - lastBatchTime)));
-          lastBatchTime = Date.now();
+          await jikanLimiter.wait();          // enforce rate limit
+          if (cancelFlag) return;
 
           try {
             const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(anime.title)}&limit=1`);
@@ -954,6 +976,7 @@
           }
         }
 
+        // Process sequentially (rate limiter controls speed)
         for (const anime of incompleteAnime) {
           await processOne(anime);
           if (cancelFlag) break;
@@ -989,9 +1012,8 @@
       //  DELETE DUPLICATES – normalised, one‑shot clean
       // ───────────────────────────────────────────────
       function normaliseTitle(str) {
-        // Convert punctuation to spaces, collapse multiple spaces, trim, lowercase
-        return str.replace(/[^\w\s]/g, ' ')    // non‑word, non‑space → space
-                  .replace(/\s+/g, ' ')        // collapse spaces
+        return str.replace(/[^\w\s]/g, ' ')
+                  .replace(/\s+/g, ' ')
                   .trim()
                   .toLowerCase();
       }
@@ -1171,7 +1193,6 @@
         const { data: { session } } = await sb.auth.getSession();
         currentAdminId = session.user.id;
 
-        // Start idle timer once logged in
         resetIdleTimer();
 
         loadBroadcast(); await loadAnimeList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
