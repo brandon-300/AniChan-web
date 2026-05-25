@@ -55,8 +55,11 @@
     position:absolute;bottom:16px;left:16px;right:16px;
     display:flex;align-items:flex-end;gap:12px;
   }
+  /* Poster made larger, wider, and centred */
   .hero-poster{
-    width:90px;height:130px;object-fit:cover;border-radius:12px;
+    width:120px;        /* bigger */
+    height:170px;       /* taller */
+    object-fit:cover;border-radius:12px;
     border:2px solid var(--border);background:var(--panel);
     flex-shrink:0;
   }
@@ -97,15 +100,17 @@
   .meta-row{display:flex;flex-wrap:wrap;gap:4px 8px}
   .meta-label{font-weight:700;font-size:14px;min-width:100px}
   .meta-value{font-size:14px;color:var(--muted)}
-  .accent-value{color:var(--accent);font-weight:600}
+  .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important} /* remove underline from links */
 
   /* Genre chips */
   .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
   .genre-chip{
     padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
     background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.25);
-    color:var(--accent);
+    color:var(--accent);cursor:pointer;transition:background .15s;
+    text-decoration:none;
   }
+  .genre-chip:hover{background:rgba(81,218,211,.25)}
 
   /* Episode grid */
   .episode-grid{
@@ -146,6 +151,19 @@
 
   .admin-edit-btn{
     margin-bottom:16px;display:none;
+  }
+
+  /* Center the poster in the hero content */
+  @media (max-width:500px) {
+    .hero-content{
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+    }
+    .hero-poster{
+      width:100px;
+      height:140px;
+    }
   }
 </style>
 </head>
@@ -303,23 +321,25 @@
           const seasonStr = seasonFromDate(data.aired_from);
           if (!seasonStr) return;
           const [seasonName, year] = seasonStr.split(' ');
-          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="season.html?season=${seasonName}&year=${year}" class="meta-value accent-value" style="text-decoration:underline;">${seasonStr}</a>`;
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="season.html?season=${seasonName}&year=${year}" class="meta-value accent-value">${seasonStr}</a>`;
         } else if (m.typeLink) {
-          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.typeLink}" class="meta-value accent-value" style="text-decoration:underline;">${m.value}</a>`;
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.typeLink}" class="meta-value accent-value">${m.value}</a>`;
         } else {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
         }
         metaContainer.appendChild(row);
       });
 
-      // Genres
+      // Genres – now clickable links
       const genreContainer = $('genreTags');
       genreContainer.innerHTML = '';
       if (data.genres && Array.isArray(data.genres)) {
         data.genres.forEach(g => {
-          const chip = document.createElement('span');
-          chip.className = 'genre-chip'; chip.textContent = g;
-          genreContainer.appendChild(chip);
+          const link = document.createElement('a');
+          link.href = `genre.html?genre=${encodeURIComponent(g)}`;
+          link.className = 'genre-chip';
+          link.textContent = g;
+          genreContainer.appendChild(link);
         });
       }
 
