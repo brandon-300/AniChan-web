@@ -41,7 +41,7 @@
   .logo-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-block;flex-shrink:0;background:var(--panel);}
   .hd-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative}
 
-  /* Menu button */
+  /* Hamburger button */
   .menu-btn{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
@@ -49,27 +49,59 @@
   }
   .menu-btn:hover{border-color:var(--accent);background:var(--card)}
 
-  /* Dropdown menu */
-  .dropdown-menu{
-    position:absolute;top:calc(100% + 8px);right:0;
-    background:var(--card);border:1px solid var(--border);border-radius:14px;
-    padding:8px;min-width:200px;box-shadow:0 12px 30px rgba(0,0,0,.6);
-    display:none;flex-direction:column;gap:4px;z-index:55;
+  /* Full‑width nav dropdown (pushing content down) */
+  .nav-dropdown{
+    display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+    padding:16px 16px 20px;
   }
-  .dropdown-menu.show{display:flex}
-  .dropdown-item{
+  .nav-dropdown.open{display:block}
+  .nav-dropdown .nav-item{
     display:flex;align-items:center;gap:10px;padding:10px 14px;
     border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
     transition:background .15s;cursor:pointer;
   }
-  .dropdown-item:hover{background:var(--panel);color:var(--accent)}
-  .dropdown-item .material-symbols-outlined{font-size:20px}
-  .dropdown-divider{height:1px;background:var(--border);margin:4px 0}
-  .avatar-circle-small{
-    width:32px;height:32px;border-radius:50%;object-fit:cover;
-    border:2px solid var(--border);
+  .nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
+  .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
+  .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+
+  /* Search inside nav dropdown */
+  .nav-search-wrap{position:relative;margin-top:8px}
+  .nav-search-wrap input{
+    width:100%;padding:12px 14px 12px 42px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    font-size:14px;outline:none;
+  }
+  .nav-search-wrap input:focus{border-color:var(--accent)}
+  .nav-search-wrap .ico{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
+    pointer-events:none;
   }
 
+  /* Live search results dropdown (overlay) */
+  .search-results-dropdown{
+    position:absolute;top:100%;left:0;right:0;z-index:70;
+    background:rgba(26,26,26,.95);backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:0 0 14px 14px;
+    max-height:320px;overflow-y:auto;display:none;
+    box-shadow:0 12px 24px rgba(0,0,0,.6);
+  }
+  .search-results-dropdown.show{display:block}
+  .search-result-item{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;
+    cursor:pointer;transition:background .15s;
+  }
+  .search-result-item:hover{background:var(--panel)}
+  .search-thumb{
+    width:40px;height:40px;border-radius:50%;object-fit:cover;
+    background:var(--panel);border:1px solid var(--border);flex-shrink:0;
+  }
+  .search-info{flex:1;min-width:0}
+  .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* Buttons */
   .btn{
     padding:9px 15px;border-radius:12px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
@@ -87,14 +119,7 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  .search{position:relative;margin:14px 0 22px}
-  .search input{width:100%;padding:14px 14px 14px 42px;border-radius:14px;
-    background:var(--card);border:1px solid var(--border);color:var(--text);
-    font-size:14px;outline:none}
-  .search input:focus{border-color:var(--accent)}
-  .search .ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}
-
-  /* Glass panel for latest releases */
+  /* Latest Releases section */
   .section-glass{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:20px;padding:20px;
@@ -106,7 +131,6 @@
   }
   .section-glass h2 .material-symbols-outlined{font-size:24px;color:var(--accent)}
 
-  /* Full-width stacked cards */
   .release-list{display:flex;flex-direction:column;gap:20px}
   .release-card{
     border-radius:18px;overflow:hidden;
@@ -114,9 +138,7 @@
     background:var(--card);
     display:flex;flex-direction:column;
     transition:transform .15s ease,box-shadow .15s ease;
-    cursor:pointer;
-    text-decoration:none;       /* remove underline */
-    color:inherit;
+    cursor:pointer;text-decoration:none;color:inherit;
   }
   .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
   .card-image{
@@ -185,20 +207,28 @@
         <span>Ani<span class="accent">Chan</span></span>
       </div>
       <div class="hd-actions" id="headerActions">
-        <!-- Populated by JS -->
+        <!-- Populated by JS: hamburger button always here, plus admin/login when logged out -->
       </div>
     </div>
   </header>
+
+  <!-- Full‑width navigation dropdown -->
+  <div class="nav-dropdown" id="navDropdown">
+    <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
+    <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
+    <div class="nav-search-wrap" id="navSearchWrap">
+      <span class="ico material-symbols-outlined">search</span>
+      <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
+      <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+    </div>
+    <!-- User menu items inserted here when logged in -->
+    <div id="navUserSection"></div>
+  </div>
 
   <main class="wrap">
     <div class="broadcast hidden" id="broadcast">
       <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
       <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
-    </div>
-
-    <div class="search">
-      <span class="ico material-symbols-outlined">search</span>
-      <input id="searchInput" type="text" :placeholder="t('searchPlaceholder')" autocomplete="off" />
     </div>
 
     <!-- Latest Releases section -->
@@ -246,13 +276,10 @@
   let library = [];
   let currentSession = null;
   let currentPage = 1;
-  let currentSearch = "";
 
   // Translation
   const latestReleasesText = t('latestReleases') === 'latestReleases' ? 'Latest Releases' : t('latestReleases');
-
   $("offline").textContent = t("offline");
-  $("searchInput").placeholder = t("searchPlaceholder");
   $("latestReleasesHeading").textContent = latestReleasesText;
   $("prevPageBtn").textContent = t("previous");
   $("nextPageBtn").textContent = t("next");
@@ -291,57 +318,112 @@
     return data?.avatar_url || null;
   }
 
-  // ── Header rendering ──
-  async function renderHeader() {
+  // ── Header rendering (hamburger always present) ──
+  function renderHeader() {
     const container = $("headerActions");
     container.innerHTML = '';
 
-    if (currentSession) {
-      const avatarUrl = await getUserAvatar();
-      const avatarHtml = avatarUrl
-        ? `<img class="avatar-circle-small" src="${avatarUrl}" alt="Profile" />`
-        : `<span class="material-symbols-outlined" style="font-size:28px">account_circle</span>`;
-
-      container.innerHTML = `
-        <button class="menu-btn" id="menuToggle"><span class="material-symbols-outlined">menu</span></button>
-        <div class="dropdown-menu" id="dropdownMenu">
-          <div class="dropdown-item" id="menuFindFriends">
-            <span class="material-symbols-outlined">group</span> ${t("findFriends")}
-          </div>
-          <div class="dropdown-item" id="menuMessages">
-            <span class="material-symbols-outlined">chat</span> ${t("messages")}
-          </div>
-          <div class="dropdown-divider"></div>
-          <div class="dropdown-item" id="menuProfile">
-            <span class="material-symbols-outlined">person</span> ${t("profile")}
-          </div>
-        </div>
-      `;
-
-      const toggleBtn = $("menuToggle");
-      const dropdown = $("dropdownMenu");
-      toggleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle("show");
-      });
-      document.addEventListener("click", () => {
-        dropdown.classList.remove("show");
-      });
-
-      $("menuFindFriends").addEventListener("click", () => { dropdown.classList.remove("show"); location.href = "find_friends.html"; });
-      $("menuMessages").addEventListener("click", () => { dropdown.classList.remove("show"); openMessagesModal(); });
-      $("menuProfile").addEventListener("click", () => { dropdown.classList.remove("show"); location.href = "profile.html"; });
-
-    } else {
-      container.innerHTML = `
-        <button class="btn" id="adminBtn">${t("admin")}</button>
-        <button class="btn btn-primary" id="loginBtn">${t("login")}</button>
-      `;
-      $("adminBtn").onclick = () => location.href = "admin_login.html";
-      $("loginBtn").onclick = () => location.href = "user_login.html";
+    // Admin / Login buttons (only when logged out)
+    if (!currentSession) {
+      const adminBtn = document.createElement("button");
+      adminBtn.className = "btn";
+      adminBtn.textContent = t("admin");
+      adminBtn.addEventListener("click", () => location.href = "admin_login.html");
+      const loginBtn = document.createElement("button");
+      loginBtn.className = "btn btn-primary";
+      loginBtn.textContent = t("login");
+      loginBtn.addEventListener("click", () => location.href = "user_login.html");
+      container.appendChild(adminBtn);
+      container.appendChild(loginBtn);
     }
+
+    // Hamburger button
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "menu-btn";
+    menuBtn.id = "menuToggle";
+    menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
+    menuBtn.addEventListener("click", () => {
+      $("navDropdown").classList.toggle("open");
+    });
+    container.appendChild(menuBtn);
+
+    // Update user menu section inside nav dropdown
+    renderNavUserSection();
   }
 
+  function renderNavUserSection() {
+    const section = $("navUserSection");
+    section.innerHTML = '';
+    if (!currentSession) return;
+
+    const divider = document.createElement("div");
+    divider.className = "nav-divider";
+    section.appendChild(divider);
+
+    const items = [
+      { id: 'navFindFriends', icon: 'group', text: t('findFriends'), action: () => location.href = 'find_friends.html' },
+      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => openMessagesModal() },
+      { id: 'navProfile', icon: 'person', text: t('profile'), action: () => location.href = 'profile.html' }
+    ];
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "nav-item";
+      div.innerHTML = `<span class="material-symbols-outlined">${item.icon}</span> ${item.text}`;
+      div.addEventListener("click", () => { $("navDropdown").classList.remove("open"); item.action(); });
+      section.appendChild(div);
+    });
+  }
+
+  // ── Navigation dropdown home / anime links ──
+  $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
+  $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
+
+  // ── Live search ──
+  const navSearchInput = $("navSearchInput");
+  const searchResultsDropdown = $("searchResultsDropdown");
+
+  function hideSearchResults() { searchResultsDropdown.classList.remove("show"); searchResultsDropdown.innerHTML = ''; }
+
+  function performSearch(query) {
+    searchResultsDropdown.innerHTML = '';
+    if (!query.trim()) { hideSearchResults(); return; }
+    const q = query.trim().toLowerCase();
+    const matches = library.filter(a => (a.title || "").toLowerCase().includes(q)).slice(0, 12);
+    if (!matches.length) { hideSearchResults(); return; }
+
+    matches.forEach(a => {
+      const item = document.createElement("div");
+      item.className = "search-result-item";
+      item.innerHTML = `
+        <img class="search-thumb" src="${a.image_url || PLACEHOLDER}" onerror="this.src='${PLACEHOLDER}'" />
+        <div class="search-info">
+          <div class="name">${a.title || "Untitled"}</div>
+          <div class="meta">${[a.type, a.year, a.ep_total ? a.ep_total + ' eps' : ''].filter(Boolean).join(" · ")}</div>
+        </div>`;
+      item.addEventListener("click", () => {
+        hideSearchResults();
+        navSearchInput.value = '';
+        $("navDropdown").classList.remove("open");
+        location.href = `anime_info.html?id=${a.id}`;
+      });
+      searchResultsDropdown.appendChild(item);
+    });
+    searchResultsDropdown.classList.add("show");
+  }
+
+  navSearchInput.addEventListener("input", () => performSearch(navSearchInput.value));
+  navSearchInput.addEventListener("focus", () => { if (navSearchInput.value.trim()) performSearch(navSearchInput.value); });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#navSearchWrap")) hideSearchResults();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      hideSearchResults();
+      if ($("messagesModal").classList.contains("show")) closeMessagesModal();
+    }
+  });
+
+  // ── Broadcast ──
   async function renderBroadcast() {
     const el = $("broadcast");
     const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
@@ -350,7 +432,7 @@
     else { el.classList.add("hidden"); }
   }
 
-  // Get the best title for the current language
+  // ── Title / episode helpers ──
   function getDisplayTitle(a) {
     if (currentLang === 'en' && a.title_en) return a.title_en;
     if (currentLang === 'ja' && a.title_jp) return a.title_jp;
@@ -360,100 +442,30 @@
     return a.title || "Untitled";
   }
 
-  // Episode number logic – now also corrects status for display
   function getEpisodeNumber(a) {
-    // Use corrected status (if we already fixed it)
-    const status = a._correctedStatus || a.status;
-    if (status === 'Currently Airing') {
+    if (a.status === 'Currently Airing') {
       if (a.ep_watched != null) return a.ep_watched;
       if (a.ep_total != null) return a.ep_total;
       return '?';
     }
-    // For everything else (Aired, Not yet aired, or corrected old "airing")
     if (a.ep_total != null) return a.ep_total;
     return '?';
   }
 
-  // ══════════════════════════════════════════════════
-  //  LOAD LIBRARY – with fake-status correction + sort
-  // ══════════════════════════════════════════════════
-  async function loadLibrary() {
-    const { data, error } = await sb
-      .from("anime")
-      .select("*")
-      .order("aired_to", { ascending: false, nullsFirst: true })
-      .order("aired_from", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) {
-      library = [];
-      currentPage = 1;
-      renderReleases();
-      return;
-    }
-
-    const now = new Date();
-
-    // Correct status for display: if status === 'Currently Airing' but aired_to is in the past,
-    // we mark it as 'Aired' locally so it doesn't float to the top.
-    const processed = (data || []).map(a => {
-      const corrected = { ...a };
-      if (a.status === 'Currently Airing' && a.aired_to) {
-        const end = new Date(a.aired_to);
-        if (end < now) {
-          corrected._correctedStatus = 'Aired';  // locally override
-        }
-      }
-      return corrected;
-    });
-
-    // Re-sort with the corrected statuses
-    processed.sort((a, b) => {
-      const statusA = a._correctedStatus || a.status;
-      const statusB = b._correctedStatus || b.status;
-
-      // Currently Airing should come first
-      const aIsAiring = statusA === 'Currently Airing' ? 1 : 0;
-      const bIsAiring = statusB === 'Currently Airing' ? 1 : 0;
-      if (aIsAiring !== bIsAiring) return bIsAiring - aIsAiring;
-
-      // Then sort by aired_to descending (nulls last for both)
-      const aEnd = a.aired_to ? new Date(a.aired_to).getTime() : 0;
-      const bEnd = b.aired_to ? new Date(b.aired_to).getTime() : 0;
-      if (aEnd !== bEnd) return bEnd - aEnd;
-
-      // Then by aired_from descending
-      const aStart = a.aired_from ? new Date(a.aired_from).getTime() : 0;
-      const bStart = b.aired_from ? new Date(b.aired_from).getTime() : 0;
-      if (aStart !== bStart) return bStart - aStart;
-
-      // Finally by created_at descending
-      const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return bCreated - aCreated;
-    });
-
-    library = processed;
-    currentPage = 1;
-    renderReleases();
-  }
-
   function renderReleases() {
     const list = $("releaseList");
-    const q = currentSearch.trim().toLowerCase();
-    const items = q ? library.filter(a => (a.title || "").toLowerCase().includes(q)) : library;
-    const totalItems = items.length;
+    const totalItems = library.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages || 1;
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
+    const pageItems = library.slice(start, start + ITEMS_PER_PAGE);
 
     list.innerHTML = "";
-
     if (!pageItems.length) {
       const e = document.createElement("div");
       e.className = "empty";
-      e.textContent = library.length ? (q ? t("noMatches") : t("noItemsPage")) : t("emptyLibrary");
+      e.textContent = library.length ? t("noItemsPage") : t("emptyLibrary");
       list.appendChild(e);
     } else {
       for (const a of pageItems) {
@@ -499,13 +511,23 @@
     }
   }
 
+  async function loadLibrary() {
+    const { data, error } = await sb
+      .from("anime")
+      .select("*")
+      .order("aired_to", { ascending: false, nullsFirst: true })
+      .order("aired_from", { ascending: false })
+      .order("created_at", { ascending: false });
+    library = error ? [] : (data || []);
+    currentPage = 1;
+    renderReleases();
+  }
+
   $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderReleases(); } });
   $("nextPageBtn").addEventListener("click", () => {
-    const items = currentSearch ? library.filter(a => (a.title||"").toLowerCase().includes(currentSearch)) : library;
-    if (currentPage < Math.ceil(items.length / ITEMS_PER_PAGE)) { currentPage++; renderReleases(); }
+    const totalPages = Math.ceil(library.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) { currentPage++; renderReleases(); }
   });
-
-  $("searchInput").addEventListener("input", (e) => { currentSearch = e.target.value; currentPage = 1; renderReleases(); });
 
   function openMessagesModal() { $("messagesModal").classList.add("show"); $("messagesModal").setAttribute("aria-hidden","false"); loadChatRooms(); }
   function closeMessagesModal() { $("messagesModal").classList.remove("show"); $("messagesModal").setAttribute("aria-hidden","true"); }
@@ -557,25 +579,10 @@
     renderBroadcast();
     loadLibrary();
 
-    // ═══ REAL‑TIME: updates the page when the midnight cron job inserts new anime ═══
-    const channel = sb.channel("public-anichan")
-      .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => {
-        loadLibrary();
-      })
-      .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => {
-        renderBroadcast();
-        loadSiteLogo();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Realtime connected – new anime will appear live.');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.warn('Realtime channel error, retrying…');
-          setTimeout(() => channel.subscribe(), 3000);
-        }
-      });
-
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMessagesModal(); });
+    sb.channel("public-anichan")
+      .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => loadLibrary())
+      .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => { renderBroadcast(); loadSiteLogo(); })
+      .subscribe();
   });
 })();
 </script>
