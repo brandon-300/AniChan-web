@@ -455,6 +455,12 @@
         return result;
       }
 
+      // Helper: display title as seen on homepage
+      function getDisplayTitle(anime) {
+        if (anime.title_en && anime.title_en.trim()) return anime.title_en.trim();
+        return (anime.title || '').trim();
+      }
+
       // Smart Auto‑Fetch (search)
       let searchAbort;
       async function runSearch(){
@@ -906,60 +912,75 @@
       }
 
       // ───────────────────────────────────────────────
-      //  DELETE DUPLICATES – NOW FETCHES ALL ROWS
+      //  DELETE DUPLICATES – uses display title + progress
       // ───────────────────────────────────────────────
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
+        const status = $("bulkStatus");
         btn.disabled = true; btn.textContent = "Deleting…";
+        status.textContent = "Fetching all anime…";
 
-        // Fetch every anime in batches of 1000 to overcome the default limit
+        // Fetch all anime in batches
         const allRows = [];
         let from = 0, to = 999;
         try {
           while (true) {
             const { data, error } = await sb
               .from("anime")
-              .select("id, title, created_at")
+              .select("id, title, title_en, created_at")
               .order("created_at", { ascending: true })
               .range(from, to);
             if (error) throw error;
             if (!data || data.length === 0) break;
             allRows.push(...data);
+            status.textContent = `Fetching anime… ${allRows.length} loaded`;
             if (data.length < 1000) break;
             from += 1000;
             to += 1000;
           }
         } catch (e) {
           toast("Failed to fetch anime list: " + e.message);
-          btn.disabled = false;
-          btn.textContent = "Delete Duplicates";
+          btn.disabled = false; btn.textContent = "Delete Duplicates";
+          status.textContent = "";
           return;
         }
 
-        // Deduplicate by main title (case‑insensitive, trimmed)
-        const seen = new Map();   // lowercase title -> id of oldest
+        if (allRows.length === 0) {
+          toast("No anime in database.");
+          btn.disabled = false; btn.textContent = "Delete Duplicates";
+          status.textContent = "";
+          return;
+        }
+
+        status.textContent = "Detecting duplicates…";
+
+        // Deduplicate by display title (English title if present, else main title)
+        const seen = new Map();   // lowercase display title -> id of oldest entry
         const toDelete = [];
 
         for (const a of allRows) {
-          const titleKey = (a.title || '').trim().toLowerCase();
-          if (!titleKey) continue;
-          if (seen.has(titleKey)) {
+          const display = getDisplayTitle(a);
+          const key = display.toLowerCase().trim();
+          if (!key) continue;
+          if (seen.has(key)) {
             toDelete.push(a.id);
           } else {
-            seen.set(titleKey, a.id);
+            seen.set(key, a.id);
           }
         }
 
         if (toDelete.length === 0) {
           toast("No duplicate titles found.");
-          btn.disabled = false;
-          btn.textContent = "Delete Duplicates";
+          btn.disabled = false; btn.textContent = "Delete Duplicates";
+          status.textContent = "";
           return;
         }
 
         // Delete in batches
         const BATCH_SIZE = 100;
         let deletedCount = 0;
+        status.textContent = `Deleting ${toDelete.length} duplicates…`;
+
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
           const batch = toDelete.slice(i, i + BATCH_SIZE);
           const { error: delErr } = await sb.from("anime").delete().in("id", batch);
@@ -968,12 +989,14 @@
             break;
           }
           deletedCount += batch.length;
+          status.textContent = `Deleting duplicates… ${deletedCount}/${toDelete.length}`;
         }
 
         toast(`Deleted ${deletedCount} duplicate titles.`);
         await loadAnimeList();
         btn.disabled = false;
         btn.textContent = "Delete Duplicates";
+        status.textContent = "";
       }
 
       // Member Management
