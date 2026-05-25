@@ -86,7 +86,6 @@
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 0 10px rgba(81,218,211,.55);flex-shrink:0;
   }
-
   .new-chat-btn{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     color:var(--text);padding:10px;margin:8px 16px;
@@ -212,14 +211,17 @@
   .tick-icon{font-size:14px}
   .out .tick-icon.read{color:var(--accent)}
 
+  /* Deleted – aligned to sender side */
   .deleted-note{
     padding:6px 14px;border-radius:20px;
     background:rgba(255,255,255,.05);
     color:var(--muted);font-size:13px;
-    text-align:center;margin:4px auto;
-    max-width:60%;
     border:none;box-shadow:none;
+    max-width:60%;
+    margin:4px 0;
   }
+  .msg-row.out .deleted-note{margin-left:auto}
+  .msg-row.in .deleted-note{margin-right:auto}
 
   .reply-strip{
     background:var(--card);border-top:1px solid var(--border);
@@ -398,7 +400,9 @@
 
 <script>
 /*
-  AniChan Chat – all features restored + unread & presence fixes
+  AniChan Chat – all features restored:
+  swipe‑to‑reply, long‑press, unread counts, correct deletion alignment,
+  reliable sidebar navigation, online presence sync.
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -432,16 +436,11 @@
     return d.toLocaleDateString();
   }
 
-  // ── FIX: presence updates also profiles table ──
   async function presence(status='online'){
     if(!currentUser) return;
     await supabase.from('user_presence').upsert({user_id:currentUser.id, status, last_active:new Date().toISOString()});
-    // Update profiles so other clients see the latest status
     const isOnline = (status === 'online');
-    await supabase.from('profiles').update({
-      is_online: isOnline,
-      last_seen: new Date().toISOString()
-    }).eq('id', currentUser.id);
+    await supabase.from('profiles').update({ is_online: isOnline, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
   }
   async function typing(room, on){
     if(!currentUser) return;
@@ -505,7 +504,6 @@
     if(p){
       $('partnerPic').src=p.avatar_url||DEFAULT_AVATAR;
       $('partnerName').textContent=p.full_name||p.username;
-      // FIX: use is_online from profiles, not presence
       if(p.is_online){
         $('partnerSub').textContent = 'online';
         $('partnerDot').classList.add('live');
@@ -555,11 +553,17 @@
 
   function addMsg(msg){
     const feed=$('msgFeed'), out=msg.sender_id===currentUser.id;
+
     if(msg.is_deleted){
-      const p=document.createElement('div');
+      const row = document.createElement('div');
+      row.className = `msg-row ${out?'out':'in'}`;
+      const p = document.createElement('div');
       p.className='deleted-note'; p.textContent='This message was deleted';
-      feed.appendChild(p); return;
+      row.appendChild(p);
+      feed.appendChild(row);
+      return;
     }
+
     const row=document.createElement('div');
     row.className=`msg-row ${out?'out':'in'}`;
     row.dataset.msgId=msg.id;
@@ -577,50 +581,70 @@
 
     row.innerHTML=`<div class="bubble">${replyHtml}${content}</div>
       <div class="msg-foot"><span>${fmtTimeOnly(msg.created_at)}</span>${out?' <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>':''}</div>`;
+
+    // ── Restored swipe & long‑press ──
+    attachSwipe(row, msg);
+    if(out){
+      row.addEventListener('touchstart', e => startLongPress(e, msg));
+      row.addEventListener('touchend', cancelLongPress);
+      row.addEventListener('touchmove', cancelLongPress);
+    }
+
     feed.appendChild(row);
   }
 
   // ── Swipe reply ──
-  function attachSwipe(el,msg){
-    let sx=0;
-    el.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
-    el.addEventListener('touchend',e=>{if((e.changedTouches[0]?.clientX||sx)-sx>80) setReply(msg);});
+  function attachSwipe(el, msg){
+    let sx = 0;
+    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; });
+    el.addEventListener('touchend', e => {
+      const dx = (e.changedTouches[0]?.clientX || sx) - sx;
+      if(dx > 80) setReply(msg);
+    });
   }
   function setReply(msg){
     if(msg.is_deleted) return;
-    replyTo={id:msg.id,sender:msg.sender_id,content:msg.message||''};
-    $('replyPreview').textContent=replyTo.content.substring(0,60);
+    replyTo = { id: msg.id, sender: msg.sender_id, content: msg.message || '' };
+    $('replyPreview').textContent = replyTo.content.substring(0, 60);
     $('replyStrip').classList.add('open');
     $('msgInput').focus();
   }
-  $('cancelReply').addEventListener('click',()=>{replyTo=null;$('replyStrip').classList.remove('open');});
+  $('cancelReply').addEventListener('click', () => {
+    replyTo = null;
+    $('replyStrip').classList.remove('open');
+  });
 
   // ── Long press ──
-  let longT;
-  function startLong(e,msg){longT=setTimeout(()=>showCtx(e,msg),500);}
-  function cancelLong(){clearTimeout(longT);}
-  function showCtx(e,msg){
+  let longTimer;
+  function startLongPress(e, msg){ longTimer = setTimeout(() => showCtx(e, msg), 500); }
+  function cancelLongPress(){ clearTimeout(longTimer); }
+  function showCtx(e, msg){
     if(msg.is_deleted) return;
-    ctxMsgId=msg.id;
-    const m=$('ctxMenu'), can=(Date.now()-new Date(msg.created_at).getTime())<15*60*1000;
-    $('ctxEdit').style.display=can?'block':'none';
-    m.style.display='block';
-    m.style.left=Math.min(e.touches[0].clientX,window.innerWidth-180)+'px';
-    m.style.top=(e.touches[0].clientY-100)+'px';
+    ctxMsgId = msg.id;
+    const menu = $('ctxMenu');
+    const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
+    $('ctxEdit').style.display = canEdit ? 'block' : 'none';
+    menu.style.display = 'block';
+    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 180) + 'px';
+    menu.style.top = (e.touches[0].clientY - 100) + 'px';
   }
-  document.addEventListener('click',e=>{if(!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display='none';});
-  $('ctxEdit').addEventListener('click',()=>{
-    $('ctxMenu').style.display='none';
-    const c=prompt('Edit message:'); if(!c) return;
-    supabase.from('messages').update({message:c,edited_at:new Date().toISOString()}).eq('id',ctxMsgId).then(({error})=>{if(error)alert('Edit failed');else loadMsgs(activeRoom);});
+  document.addEventListener('click', e => { if(!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none'; });
+  $('ctxEdit').addEventListener('click', () => {
+    $('ctxMenu').style.display = 'none';
+    const c = prompt('Edit message:'); if(!c) return;
+    supabase.from('messages').update({ message: c, edited_at: new Date().toISOString() }).eq('id', ctxMsgId).then(({error}) => {
+      if(error) alert('Edit failed'); else loadMsgs(activeRoom);
+    });
   });
-  $('ctxDelMe').addEventListener('click',()=>{$('ctxMenu').style.display='none';addDel(ctxMsgId);loadMsgs(activeRoom);});
-  $('ctxDelAll').addEventListener('click',()=>{
-    $('ctxMenu').style.display='none';
+  $('ctxDelMe').addEventListener('click', () => { $('ctxMenu').style.display = 'none'; addDel(ctxMsgId); loadMsgs(activeRoom); });
+  $('ctxDelAll').addEventListener('click', () => {
+    $('ctxMenu').style.display = 'none';
     if(!confirm('Delete for everyone?')) return;
-    supabase.from('messages').update({is_deleted:true}).eq('id',ctxMsgId).then(({error})=>{if(error)alert('Delete failed');else loadMsgs(activeRoom);});
+    supabase.from('messages').update({ is_deleted: true }).eq('id', ctxMsgId).then(({error}) => {
+      if(error) alert('Delete failed'); else loadMsgs(activeRoom);
+    });
   });
-  $('ctxCancel').addEventListener('click',()=>$('ctxMenu').style.display='none');
+  $('ctxCancel').addEventListener('click', () => $('ctxMenu').style.display = 'none');
 
   // ── Send ──
   async function sendMsg(){
@@ -658,9 +682,12 @@
           if(!sentIds.has(nm.id)&&!document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)){
             addMsg(nm);
             if(nm.receiver_id===currentUser.id) supabase.from('messages').update({is_read:true}).eq('id',nm.id).then();
-            loadRooms();   // update unread counts
+            loadRooms();
           }
-        }else if(payload.eventType==='UPDATE'){loadMsgs(roomId); loadRooms();}
+        }else if(payload.eventType==='UPDATE'){
+          loadMsgs(roomId);
+          loadRooms();
+        }
       }).subscribe();
   }
 
