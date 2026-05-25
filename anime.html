@@ -72,7 +72,6 @@
     pointer-events:none;
   }
 
-  /* Floating search overlay */
   .search-results-dropdown{
     position:fixed;
     background:#1a1a1a;
@@ -118,7 +117,6 @@
     font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
   }
 
-  /* Alphabetical filter grid */
   .alpha-grid{
     display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;
   }
@@ -132,7 +130,6 @@
     background:var(--accent);color:#0a2a28;border-color:var(--accent);
   }
 
-  /* Full‑width stacked cards */
   .release-list{display:flex;flex-direction:column;gap:16px}
   .release-card{
     border-radius:18px;overflow:hidden;
@@ -203,11 +200,10 @@
       <div class="brand">Ani<span>Chan</span></div>
     </div>
     <div class="header-actions" id="headerActions">
-      <!-- Hamburger button inserted by JS -->
+      <!-- Hamburger inserted by JS -->
     </div>
   </header>
 
-  <!-- Full‑width navigation dropdown -->
   <div class="nav-dropdown" id="navDropdown">
     <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
     <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
@@ -217,10 +213,8 @@
     </div>
   </div>
 
-  <!-- Floating search overlay -->
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
-  <!-- Broadcast banner -->
   <div class="broadcast hidden" id="broadcast">
     <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
     <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
@@ -229,10 +223,7 @@
   <main class="container">
     <div class="glass-panel">
       <h2>Anime Directory</h2>
-
-      <!-- Alphabetical filter grid -->
       <div class="alpha-grid" id="alphaGrid"></div>
-
       <div class="release-list" id="releaseList"></div>
       <div class="pagination" id="paginationControls" style="display:none;">
         <button id="prevPageBtn">← Previous</button>
@@ -254,10 +245,10 @@
   const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
 
   const ITEMS_PER_PAGE = 26;
-  let library = [];           // full anime list
-  let filtered = [];          // filtered by letter
+  let library = [];
+  let filtered = [];
   let currentPage = 1;
-  let activeLetter = null;
+  let activeLetter = 'A';   // start with A
 
   // ── Hamburger menu ──
   (function renderHamburger() {
@@ -274,10 +265,11 @@
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Live search (fuzzy, multilingual) ──
+  // ── Live search ──
   const navSearchInput = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
   const MAX_RESULTS = 15;
+  let searchLibrary = [];
 
   function positionDropdown() {
     const rect = navSearchInput.getBoundingClientRect();
@@ -296,13 +288,13 @@
   function performSearch(query) {
     searchResultsDropdown.innerHTML = '';
     const q = query.trim();
-    if (!q || library.length === 0) { hideSearchResults(); return; }
+    if (!q || searchLibrary.length === 0) { hideSearchResults(); return; }
 
     const lowerQ = q.toLowerCase();
     const words = lowerQ.split(/\s+/).filter(Boolean);
     if (words.length === 0) { hideSearchResults(); return; }
 
-    const scored = library.map(a => {
+    const scored = searchLibrary.map(a => {
       const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
       let matchCount = 0;
       for (const word of words) {
@@ -382,6 +374,7 @@
     letters.forEach(letter => {
       const btn = document.createElement("button");
       btn.className = "alpha-btn";
+      if (letter === activeLetter) btn.classList.add("active");
       btn.textContent = letter;
       btn.addEventListener("click", () => {
         document.querySelectorAll(".alpha-btn").forEach(b => b.classList.remove("active"));
@@ -438,6 +431,7 @@
         overlay.className = "overlay";
         imgDiv.appendChild(overlay);
 
+        // BD/DVD badge (shows if release_type is set)
         const mediaBadge = document.createElement("span");
         mediaBadge.className = "media-badge";
         if (a.release_type) {
@@ -480,7 +474,7 @@
     if (currentPage < totalPages) { currentPage++; renderList(); }
   });
 
-  // ── Load all anime (handles >1000 rows) ──
+  // ── Load all anime ──
   async function loadLibrary() {
     const all = [];
     let from = 0, to = 999;
@@ -498,12 +492,19 @@
       to += 1000;
     }
     library = all;
-    filtered = [...library].sort((a,b) => (a.title || "").localeCompare(b.title || ""));
-    renderList();
+    // Auto‑select 'A' on initial load
+    activeLetter = 'A';
+    buildAlphaGrid();
+    applyFilter();
   }
 
+  // Preload a lighter dataset for search
+  (async function preloadSearch() {
+    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
+    searchLibrary = data || [];
+  })();
+
   document.addEventListener("DOMContentLoaded", async () => {
-    buildAlphaGrid();
     loadBroadcast();
     await loadLibrary();
   });
