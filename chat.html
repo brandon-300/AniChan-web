@@ -132,13 +132,25 @@
     background:var(--panel);color:var(--text);
     border-bottom-left-radius:4px;
   }
+
+  /* Reply snippet inside bubble */
   .reply-snip{
-    font-size:11px;margin-bottom:4px;padding-left:6px;
-    border-left:2px solid rgba(0,0,0,.4);
-    cursor:pointer;
+    margin-bottom:5px;
+    font-size:11px;
   }
-  .out .reply-snip{color:rgba(0,0,0,.6);border-left-color:rgba(0,0,0,.4)}
-  .in .reply-snip{color:var(--muted);border-left-color:var(--accent)}
+  .reply-snip .reply-user{
+    font-weight:600;
+    margin-bottom:2px;
+  }
+  .reply-snip .reply-body{
+    opacity:0.8;
+    padding-left:6px;
+    border-left:2px solid rgba(0,0,0,.4);
+  }
+  .out .reply-snip .reply-user{color:rgba(0,0,0,.7)}
+  .out .reply-snip .reply-body{color:rgba(0,0,0,.6); border-left-color:rgba(0,0,0,.4)}
+  .in .reply-snip .reply-user{color:var(--accent)}
+  .in .reply-snip .reply-body{color:var(--muted); border-left-color:var(--accent)}
 
   .msg-foot{
     display:flex;gap:4px;font-size:11px;color:var(--muted);margin-top:3px;
@@ -147,11 +159,14 @@
   .tick-icon{font-size:14px}
   .out .tick-icon.read{color:var(--accent)}
 
+  /* Deleted message – restyled as flat, translucent, no border */
   .deleted-note{
-    padding:8px 14px;border-radius:12px;background:var(--panel);
-    font-style:italic;color:var(--muted);font-size:13px;
-    text-align:center;margin:8px auto;border:1px dashed var(--border);
+    padding:6px 14px;border-radius:20px;
+    background:rgba(255,255,255,.05);
+    color:var(--muted);font-size:13px;
+    text-align:center;margin:4px auto;
     max-width:60%;
+    border:none;box-shadow:none;
   }
 
   .reply-strip{
@@ -177,6 +192,18 @@
   @keyframes bounce{
     0%,60%,100%{transform:translateY(0)}
     30%{transform:translateY(-6px)}
+  }
+
+  /* Date separator badge */
+  .date-separator{
+    align-self:center;
+    background:rgba(255,255,255,.06);
+    color:var(--muted);
+    font-size:12px;
+    padding:4px 14px;
+    border-radius:12px;
+    margin:8px 0;
+    pointer-events:none;
   }
 
   .compose-area{
@@ -302,8 +329,8 @@
 
 <script>
 /*
-  AniChan Chat – Telegram‑style dual screen
-  Swipe hint and jump button removed, logout replaced with back‑to‑home.
+  AniChan Chat – fixed reply quotes, time-only timestamps, date separators,
+  flat deleted pills, synced online status. No swipe‑to‑reply label.
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -323,11 +350,15 @@
   const sentIds = new Set();
 
   function esc(t){ return t.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]); }
-  function fmtTime(iso){
+  function fmtTimeOnly(iso){
     if(!iso) return '';
-    const d=new Date(iso), n=new Date();
-    if(n-d<86400000 && d.getDate()===n.getDate()) return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  function fmtDate(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
   }
   function fmtChat(iso){
     if(!iso) return '';
@@ -407,9 +438,15 @@
     if(p){
       $('partnerPic').src=p.avatar_url||DEFAULT_AVATAR;
       $('partnerName').textContent=p.full_name||p.username;
-      $('partnerSub').textContent=p.is_online?'Online':(p.last_seen?`last-seen ${fmtChat(p.last_seen)}`:'Offline');
+      // Synced online status
+      if(p.is_online){
+        $('partnerSub').textContent = 'online';
+        $('partnerDot').classList.add('live');
+      } else {
+        $('partnerSub').textContent = p.last_seen ? `last-seen ${fmtChat(p.last_seen)}` : 'Offline';
+        $('partnerDot').classList.remove('live');
+      }
       $('partnerLink').href=`profile.html?user=${otherId}`;
-      $('partnerDot').classList.toggle('live',p.is_online);
     }
     renderRooms(filteredRooms);
     await loadMsgs(roomId);
@@ -423,7 +460,7 @@
   }
   $('backArrow').addEventListener('click',closeRoom);
 
-  // ── Messages ──
+  // ── Messages (with date separators) ──
   async function loadMsgs(roomId){
     const {data,error}=await supabase.from('messages').select('*').eq('room_id',roomId).order('created_at',{ascending:true});
     if(error){console.error(error);return;}
@@ -436,7 +473,18 @@
   function renderMsgs(msgs){
     $('msgFeed').innerHTML='';
     const del=getDel();
-    msgs.filter(m=>!del.has(m.id)).forEach(addMsg);
+    let lastDate = '';
+    msgs.filter(m=>!del.has(m.id)).forEach(msg => {
+      const msgDate = fmtDate(msg.created_at);
+      if (msgDate && msgDate !== lastDate) {
+        const sep = document.createElement('div');
+        sep.className = 'date-separator';
+        sep.textContent = msgDate;
+        $('msgFeed').appendChild(sep);
+        lastDate = msgDate;
+      }
+      addMsg(msg);
+    });
   }
 
   function addMsg(msg){
@@ -454,35 +502,20 @@
     if(msg.reply_to){
       const orig=document.querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
       const txt=orig?orig.querySelector('.bubble')?.textContent?.trim()||'Message':'Message';
-      replyHtml=`<div class="reply-snip" data-reply-to="${msg.reply_to}">${esc(txt)}</div>`;
+      const quotedUser = orig ? orig.querySelector('.msg-foot')?.textContent?.trim() || '' : '';
+      replyHtml=`<div class="reply-snip"><div class="reply-user">${esc(quotedUser)}</div><div class="reply-body">${esc(txt)}</div></div>`;
     }
 
     let content=esc(msg.message||'');
     if(msg.edited_at) content+=' <small style="opacity:0.7">(edited)</small>';
 
     row.innerHTML=`<div class="bubble">${replyHtml}${content}</div>
-      <div class="msg-foot"><span>${fmtTime(msg.created_at)}</span>${out?' <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>':''}</div>`;
+      <div class="msg-foot"><span>${fmtTimeOnly(msg.created_at)}</span>${out?' <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>':''}</div>`;
 
-    const rDiv=row.querySelector('.reply-snip');
-    if(rDiv){
-      rDiv.addEventListener('click',e=>{
-        e.stopPropagation();
-        const tid=rDiv.dataset.replyTo;
-        const t=document.querySelector(`.msg-row[data-msg-id="${tid}"]`);
-        if(t){t.scrollIntoView({behavior:'smooth',block:'center'});t.style.background='var(--panel)';setTimeout(()=>t.style.background='',1500);}
-      });
-    }
-
-    attachSwipe(row,msg);
-    if(out){
-      row.addEventListener('touchstart',e=>startLong(e,msg));
-      row.addEventListener('touchend',cancelLong);
-      row.addEventListener('touchmove',cancelLong);
-    }
     feed.appendChild(row);
   }
 
-  // ── Swipe reply (functionality kept, label removed) ──
+  // ── Swipe reply (function kept, label removed) ──
   function attachSwipe(el,msg){
     let sx=0;
     el.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
@@ -543,7 +576,7 @@
     if(error){foot.innerHTML='<span style="color:var(--danger)">not sent</span>';}
     else if(ins){
       sentIds.add(ins.id);row.dataset.msgId=ins.id;
-      foot.innerHTML=`<span>${fmtTime(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
+      foot.innerHTML=`<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
       await supabase.from('chat_rooms').update({last_message:txt,last_message_time:new Date().toISOString()}).eq('id',activeRoom);
       loadRooms();
     }
@@ -627,7 +660,7 @@
     $('sendBtn').addEventListener('click',sendMsg);
     $('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 
-    // ── Back to Home button (replaces logout) ──
+    // ── Back to Home button ──
     const homeBtn = document.createElement('button');
     homeBtn.textContent = '← Back to Home';
     homeBtn.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text);padding:6px 14px;border-radius:10px;cursor:pointer;margin-left:auto;font-size:13px;font-weight:600;';
