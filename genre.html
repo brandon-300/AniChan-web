@@ -48,8 +48,8 @@
     font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
   }
 
-  .release-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-
+  /* Full-width stacked cards – exactly like index.html */
+  .release-list{display:flex;flex-direction:column;gap:20px}
   .release-card{
     border-radius:18px;overflow:hidden;
     border:1px solid var(--border);
@@ -102,7 +102,7 @@
   <main class="container">
     <div class="glass-panel">
       <h2 id="pageTitle">Anime by Genre</h2>
-      <div class="release-grid" id="releaseGrid"></div>
+      <div class="release-list" id="releaseList"></div>
       <div class="pagination" id="paginationControls" style="display:none;">
         <button id="prevPageBtn">← Previous</button>
         <span class="page-indicator" id="pageIndicator">1 / 1</span>
@@ -127,7 +127,7 @@
   let currentPage = 1;
 
   const params = new URLSearchParams(window.location.search);
-  const genre = params.get('genre');  // e.g. "Action", "Comedy"
+  const genre = params.get('genre');  // e.g. "Action"
 
   if (!genre) {
     alert('No genre specified');
@@ -138,7 +138,6 @@
   $('pageTitle').textContent = `Genre: ${genre}`;
 
   async function loadGenreAnime() {
-    // Supabase array containment: filter rows where genres array contains the specified genre
     const { data, error } = await sb
       .from('anime')
       .select('*')
@@ -146,32 +145,27 @@
       .order('aired_from', { ascending: false })
       .order('title', { ascending: true });
 
-    if (error) {
-      console.error(error);
-      library = [];
-    } else {
-      library = data || [];
-    }
+    if (error) { console.error(error); library = []; }
+    else { library = data || []; }
     currentPage = 1;
-    renderGrid();
+    renderList();
   }
 
-  function renderGrid() {
-    const grid = $('releaseGrid');
-    const items = library;
-    const totalItems = items.length;
+  function renderList() {
+    const list = $('releaseList');
+    const totalItems = library.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages || 1;
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
+    const pageItems = library.slice(start, start + ITEMS_PER_PAGE);
 
-    grid.innerHTML = '';
+    list.innerHTML = '';
     if (!pageItems.length) {
       const e = document.createElement('div');
-      e.className = 'empty'; e.style.gridColumn = 'span 2';
+      e.className = 'empty';
       e.textContent = 'No anime found for this genre.';
-      grid.appendChild(e);
+      list.appendChild(e);
     } else {
       for (const a of pageItems) {
         const card = document.createElement('a');
@@ -198,7 +192,7 @@
         infoDiv.appendChild(epSpan);
         card.appendChild(infoDiv);
 
-        grid.appendChild(card);
+        list.appendChild(card);
       }
     }
 
@@ -206,9 +200,8 @@
     const prevBtn = $('prevPageBtn');
     const nextBtn = $('nextPageBtn');
     const indicator = $('pageIndicator');
-    if (totalPages <= 1) {
-      pagination.style.display = 'none';
-    } else {
+    if (totalPages <= 1) { pagination.style.display = 'none'; }
+    else {
       pagination.style.display = 'flex';
       prevBtn.disabled = currentPage <= 1;
       nextBtn.disabled = currentPage >= totalPages;
@@ -216,10 +209,10 @@
     }
   }
 
-  $('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderGrid(); } });
+  $('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderList(); } });
   $('nextPageBtn').addEventListener('click', () => {
     const totalPages = Math.ceil(library.length / ITEMS_PER_PAGE);
-    if (currentPage < totalPages) { currentPage++; renderGrid(); }
+    if (currentPage < totalPages) { currentPage++; renderList(); }
   });
 
   loadGenreAnime();
