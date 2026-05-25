@@ -190,6 +190,13 @@
   .pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
   .page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
 
+  /* Scroll to top button – identical to index page */
+  #toTop{position:fixed;right:18px;bottom:18px;width:46px;height:46px;border-radius:50%;
+    background:var(--accent);color:#0a2a28;font-size:20px;font-weight:800;
+    box-shadow:0 12px 28px rgba(81,218,211,.30);opacity:0;pointer-events:none;
+    transition:opacity .25s ease,transform .25s ease;z-index:40;transform:translateY(20px)}
+  #toTop.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
 </head>
@@ -233,6 +240,9 @@
     </div>
   </main>
 
+  <!-- Scroll to top button -->
+  <button id="toTop" aria-label="Scroll to top">↑</button>
+
   <footer>AniChan · powered by Supabase</footer>
 
 <script>
@@ -248,7 +258,19 @@
   let library = [];
   let filtered = [];
   let currentPage = 1;
-  let activeLetter = 'A';   // start with A
+  let activeLetter = 'A';
+
+  // ── Scroll to top button ──
+  let lastScrollY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY;
+    const btn = $("toTop");
+    if (y < lastScrollY && y > 200) btn.classList.add("visible");
+    else if (y <= 200) btn.classList.remove("visible");
+    else if (y > lastScrollY) btn.classList.remove("visible");
+    lastScrollY = y;
+  }, { passive: true });
+  $("toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
   // ── Hamburger menu ──
   (function renderHamburger() {
@@ -431,7 +453,6 @@
         overlay.className = "overlay";
         imgDiv.appendChild(overlay);
 
-        // BD/DVD badge (shows if release_type is set)
         const mediaBadge = document.createElement("span");
         mediaBadge.className = "media-badge";
         if (a.release_type) {
@@ -492,13 +513,11 @@
       to += 1000;
     }
     library = all;
-    // Auto‑select 'A' on initial load
     activeLetter = 'A';
     buildAlphaGrid();
     applyFilter();
   }
 
-  // Preload a lighter dataset for search
   (async function preloadSearch() {
     const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
     searchLibrary = data || [];
