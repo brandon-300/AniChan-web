@@ -40,7 +40,7 @@
 
   .container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
 
-  /* ── Hero section – poster centred, no text inside ── */
+  /* Hero section – poster centred, no text inside */
   .hero{
     position:relative;width:100%;aspect-ratio:16/9;
     background-size:cover;background-position:center;
@@ -61,7 +61,7 @@
     box-shadow:0 8px 24px rgba(0,0,0,.6);
   }
 
-  /* ── Title section (outside hero) ── */
+  /* Title section (outside hero) */
   .title-section{
     text-align:center;
     padding:20px 16px 10px;
@@ -104,6 +104,10 @@
   .meta-label{font-weight:700;font-size:14px;min-width:100px}
   .meta-value{font-size:14px;color:var(--muted)}
   .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important}
+  /* Underlined links (for status) */
+  .accent-value.underlined{
+    text-decoration:underline !important;
+  }
 
   /* Genre chips */
   .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
@@ -288,7 +292,7 @@
       metaItems.push(
         { label: 'Type',    value: data.type || '—', accent: true, typeLink: data.type ? `type.html?type=${encodeURIComponent(data.type)}` : null },
         { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
-        { label: 'Status',  value: data.status || '—', accent: true },
+        { label: 'Status',  value: data.status || '—', accent: true, statusLink: data.status ? `status.html?status=${encodeURIComponent(data.status)}` : null },
         { label: 'Aired',   value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
         { label: 'Season',  value: seasonFromDate(data.aired_from) || '—', accent: true, link: true },
         { label: 'Studios', value: data.studio || '—' },
@@ -308,6 +312,8 @@
           row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="season.html?season=${seasonName}&year=${year}" class="meta-value accent-value">${seasonStr}</a>`;
         } else if (m.typeLink) {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.typeLink}" class="meta-value accent-value">${m.value}</a>`;
+        } else if (m.statusLink) {
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.statusLink}" class="meta-value accent-value underlined">${m.value}</a>`;
         } else {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
         }
