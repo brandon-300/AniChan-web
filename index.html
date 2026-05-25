@@ -47,7 +47,6 @@
   }
   .menu-btn:hover{border-color:var(--accent);background:var(--card)}
 
-  /* Navigation dropdown (still pushes content down) */
   .nav-dropdown{
     display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
     -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
@@ -75,12 +74,12 @@
     pointer-events:none;
   }
 
-  /* Floating search overlay – fixed, no internal scroll */
+  /* Floating search overlay */
   .search-results-dropdown{
     position:fixed;
     background:#1a1a1a;
     border:1px solid var(--border);border-radius:12px;
-    overflow:hidden;   /* no scrollbar */
+    overflow:hidden;
     display:none;
     box-shadow:0 12px 24px rgba(0,0,0,.6);
     z-index:99999;
@@ -100,10 +99,7 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
 
-  .no-results{
-    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
-    background:#1a1a1a;
-  }
+  .no-results{padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;background:#1a1a1a}
 
   .btn{
     padding:9px 15px;border-radius:12px;font-size:13px;font-weight:600;
@@ -122,7 +118,6 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  /* Latest Releases section */
   .section-glass{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:20px;padding:20px;
@@ -155,7 +150,6 @@
     background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 50%, transparent 100%);
     pointer-events:none;
   }
-
   .card-title-overlay{
     position:absolute;bottom:0;left:0;right:0;
     padding:12px 16px;
@@ -167,7 +161,6 @@
     overflow:hidden;
     z-index:2;
   }
-
   .media-badge{
     position:absolute;top:10px;left:10px;
     background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
@@ -179,7 +172,6 @@
     display:none;
   }
   .media-badge.show{display:block}
-
   .ep-badge-overlay{
     position:absolute;bottom:10px;right:10px;
     background:var(--accent);color:#0a2a28;
@@ -202,24 +194,6 @@
     box-shadow:0 12px 28px rgba(81,218,211,.30);opacity:0;pointer-events:none;
     transition:opacity .25s ease,transform .25s ease;z-index:40;transform:translateY(20px)}
   #toTop.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
-
-  .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-    padding:18px;background:rgba(0,0,0,.60);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-  .modal.show{display:flex}
-  .modal .panel{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);
-    border-radius:20px;padding:24px;box-shadow:0 30px 60px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
-  .modal h3{margin:0 0 4px;font-size:18px;font-weight:700}
-  .modal .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-  .modal .close{color:var(--muted);font-size:22px;line-height:1;cursor:pointer}
-
-  .chat-room-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
-  .chat-room-item:hover{background:var(--panel)}
-  .room-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
-  .chat-room-item .info{flex:1;min-width:0}
-  .chat-room-item .name{font-weight:600;font-size:14px}
-  .chat-room-item .preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chat-room-item .meta{text-align:right;flex-shrink:0}
-  .chat-room-item .time{font-size:11px;color:var(--muted)}
 
   footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
 </style>
@@ -250,7 +224,7 @@
     <div id="navUserSection"></div>
   </div>
 
-  <!-- Floating search overlay (outside nav dropdown) -->
+  <!-- Floating search results (outside nav dropdown) -->
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
   <main class="wrap">
@@ -275,15 +249,7 @@
 
   <button id="toTop" aria-label="Scroll to top">↑</button>
 
-  <div class="modal" id="messagesModal" aria-hidden="true">
-    <div class="panel" role="dialog" aria-modal="true">
-      <div class="head">
-        <h3 id="messagesModalTitle">Messages</h3>
-        <button class="close" id="messagesModalClose" aria-label="Close">×</button>
-      </div>
-      <div id="messagesList"></div>
-    </div>
-  </div>
+  <!-- No messages modal here – it's completely removed -->
 
   <footer>AniChan · powered by Supabase</footer>
 
@@ -309,7 +275,6 @@
   $("latestReleasesHeading").textContent = latestReleasesText;
   $("prevPageBtn").textContent = t("previous");
   $("nextPageBtn").textContent = t("next");
-  $("messagesModalTitle").textContent = t("messages");
   $("toTop").textContent = t("backToTop");
 
   let lastScrollY = window.scrollY;
@@ -383,14 +348,15 @@
 
     const items = [
       { id: 'navFindFriends', icon: 'group', text: t('findFriends'), action: () => location.href = 'find_friends.html' },
-      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => openMessagesModal() },
-      { id: 'navProfile', icon: 'person', text: t('profile'), action: () => location.href = 'profile.html' }
+      // ★ Messages now goes directly to chat.html – NO modal
+      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat.html'; } },
+      { id: 'navProfile', icon: 'person', text: t('profile'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'profile.html'; } }
     ];
     items.forEach(item => {
       const div = document.createElement("div");
       div.className = "nav-item";
       div.innerHTML = `<span class="material-symbols-outlined">${item.icon}</span> ${item.text}`;
-      div.addEventListener("click", () => { $("navDropdown").classList.remove("open"); item.action(); });
+      div.addEventListener("click", () => { item.action(); });
       section.appendChild(div);
     });
   }
@@ -398,18 +364,15 @@
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Fuzzy live search – fixed overlay, no scroll ──
+  // ── Live search ──
   const navSearchInput = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
-  const MAX_RESULTS = 15;   // enough to fill the viewport without scrolling
 
   function positionDropdown() {
     const rect = navSearchInput.getBoundingClientRect();
     searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
     searchResultsDropdown.style.left = rect.left + 'px';
     searchResultsDropdown.style.width = rect.width + 'px';
-
-    // calculate available space below the input
     const spaceBelow = window.innerHeight - rect.bottom - 8;
     searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
   }
@@ -424,32 +387,27 @@
     const q = query.trim();
     if (!q) { hideSearchResults(); return; }
 
-    const lowerQ = q.toLowerCase();
-    const words = lowerQ.split(/\s+/).filter(Boolean);
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
     if (words.length === 0) { hideSearchResults(); return; }
 
     const scored = library.map(a => {
-      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr]
-        .filter(f => f != null);
+      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
       let matchCount = 0;
       for (const word of words) {
         if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
       }
-
       if (words.length === 1 && matchCount === 0) return null;
       if (words.length > 1 && matchCount < 2) return null;
 
       let score = matchCount;
-
       for (const f of fields) {
-        if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
+        if (f.toLowerCase().startsWith(q)) { score += 200; break; }
       }
       if (score < 200) {
         for (const f of fields) {
-          if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
+          if (f.toLowerCase().includes(q)) { score += 100; break; }
         }
       }
-
       return { anime: a, score };
     }).filter(Boolean);
 
@@ -463,11 +421,7 @@
       return;
     }
 
-    const matches = scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS)
-      .map(s => s.anime);
-
+    const matches = scored.sort((a,b) => b.score - a.score).slice(0, 15).map(s => s.anime);
     matches.forEach(a => {
       const item = document.createElement("div");
       item.className = "search-result-item";
@@ -497,10 +451,7 @@
     }
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      hideSearchResults();
-      if ($("messagesModal").classList.contains("show")) closeMessagesModal();
-    }
+    if (e.key === "Escape") hideSearchResults();
   });
   window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
   window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
@@ -617,44 +568,6 @@
     const totalPages = Math.ceil(library.length / ITEMS_PER_PAGE);
     if (currentPage < totalPages) { currentPage++; renderReleases(); }
   });
-
-  function openMessagesModal() { $("messagesModal").classList.add("show"); $("messagesModal").setAttribute("aria-hidden","false"); loadChatRooms(); }
-  function closeMessagesModal() { $("messagesModal").classList.remove("show"); $("messagesModal").setAttribute("aria-hidden","true"); }
-  $("messagesModalClose").addEventListener("click", closeMessagesModal);
-  $("messagesModal").addEventListener("click", (e) => { if (e.target.id === "messagesModal") closeMessagesModal(); });
-
-  async function loadChatRooms() {
-    const list = $("messagesList"); list.innerHTML = "Loading...";
-    if (!currentSession) return;
-    const { data, error } = await sb.from("chat_rooms")
-      .select(`id, last_message, last_message_time, user_one_id, user_two_id,
-        user_one:profiles!chat_rooms_user_one_id_fkey(id, username, full_name, avatar_url, is_online),
-        user_two:profiles!chat_rooms_user_two_id_fkey(id, username, full_name, avatar_url, is_online)`)
-      .or(`user_one_id.eq.${currentSession.user.id},user_two_id.eq.${currentSession.user.id}`)
-      .order('last_message_time', { ascending: false });
-    if (error) { list.innerHTML = "Failed to load."; return; }
-    if (!data?.length) { list.innerHTML = `<div style="padding:16px;color:var(--muted);text-align:center">${t("noConversations")}</div>`; return; }
-    list.innerHTML = "";
-    data.forEach(room => {
-      const isUserOne = room.user_one_id === currentSession.user.id;
-      const partner = isUserOne ? room.user_two : room.user_one;
-      const div = document.createElement("div");
-      div.className = "chat-room-item";
-      div.innerHTML = `
-        <img class="room-avatar" src="${partner.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        <div class="info"><div class="name">${partner.full_name || partner.username}</div><div class="preview">${room.last_message || ""}</div></div>
-        <div class="meta"><div class="time">${formatChatTime(room.last_message_time)}</div></div>`;
-      div.addEventListener("click", () => { closeMessagesModal(); location.href = "chat.html?room=" + room.id; });
-      list.appendChild(div);
-    });
-  }
-
-  function formatChatTime(iso) {
-    if (!iso) return '';
-    const d = new Date(iso), now = new Date();
-    if (now - d < 86400000 && d.getDate() === now.getDate()) return d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    return d.toLocaleDateString();
-  }
 
   document.addEventListener("DOMContentLoaded", async () => {
     syncOffline();
