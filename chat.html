@@ -400,9 +400,12 @@
 
 <script>
 /*
-  AniChan Chat – all features restored:
-  swipe‑to‑reply, long‑press, unread counts, correct deletion alignment,
-  reliable sidebar navigation, online presence sync.
+  AniChan Chat – full restoration + critical fixes:
+  - Real‑time profile status (green dot + last seen) via Supabase subscription
+  - Reliable sidebar → chat navigation
+  - Dynamic unread counts
+  - Swipe‑to‑reply, long‑press context menu
+  - Deleted messages aligned to sender side
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -416,7 +419,7 @@
 
   let currentUser = null, activeRoom = null, partnerId = null;
   let rooms = [], filteredRooms = [];
-  let messageSub = null, presenceSub = null;
+  let messageSub = null, presenceSub = null, profilesSub = null;
   let replyTo = null, ctxMsgId = null, sending = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
   const sentIds = new Set();
@@ -436,6 +439,7 @@
     return d.toLocaleDateString();
   }
 
+  // ── Presence sync (profiles + user_presence) ──
   async function presence(status='online'){
     if(!currentUser) return;
     await supabase.from('user_presence').upsert({user_id:currentUser.id, status, last_active:new Date().toISOString()});
@@ -447,7 +451,7 @@
     await supabase.from('user_presence').upsert({user_id:currentUser.id, typing_in_room_id:on?room:null});
   }
 
-  // ── Sidebar ──
+  // ── Sidebar rendering ──
   function filterRooms(q){
     const t=q.trim().toLowerCase();
     filteredRooms = t ? rooms.filter(r => (r.other_user.full_name||r.other_user.username).toLowerCase().includes(t)) : [...rooms];
@@ -478,8 +482,8 @@
     if(!currentUser) return;
     const {data,error}=await supabase.from('chat_rooms')
       .select(`id,last_message,last_message_time,user_one_id,user_two_id,
-        user_one:profiles!chat_rooms_user_one_id_fkey(id,username,full_name,avatar_url,is_online),
-        user_two:profiles!chat_rooms_user_two_id_fkey(id,username,full_name,avatar_url,is_online)`)
+        user_one:profiles!chat_rooms_user_one_id_fkey(id,username,full_name,avatar_url,is_online,last_seen),
+        user_two:profiles!chat_rooms_user_two_id_fkey(id,username,full_name,avatar_url,is_online,last_seen)`)
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
       .order('last_message_time',{ascending:false});
     if(error){ console.error(error); return; }
@@ -488,10 +492,39 @@
       const partner=room.user_one_id===currentUser.id?room.user_two:room.user_one;
       const {count}=await supabase.from('messages').select('*',{count:'exact',head:true})
         .eq('room_id',room.id).eq('receiver_id',currentUser.id).eq('is_read',false);
-      enriched.push({id:room.id,last_message:room.last_message,last_message_time:room.last_message_time,other_user:partner,unread_count:count||0});
+      enriched.push({
+        id:room.id,
+        last_message:room.last_message,
+        last_message_time:room.last_message_time,
+        other_user:partner,
+        unread_count:count||0
+      });
     }
     rooms=enriched;
     filterRooms($('searchInput').value);
+  }
+
+  // ── Real‑time profile updates for sidebar status ──
+  function subscribeToProfiles(){
+    if(profilesSub) supabase.removeChannel(profilesSub);
+    // Build filter for all partner IDs currently in rooms (plus potential new ones)
+    const partnerIds = rooms.map(r => r.other_user.id);
+    if(!partnerIds.length) return;
+    profilesSub = supabase.channel('profiles-changes')
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter: `id=in.(${partnerIds.join(',')})` }, payload => {
+        const updated = payload.new;
+        // Find all rooms where this user is the partner and update cached data
+        let changed = false;
+        rooms.forEach(room => {
+          if(room.other_user.id === updated.id){
+            room.other_user.is_online = updated.is_online;
+            room.other_user.last_seen = updated.last_seen;
+            changed = true;
+          }
+        });
+        if(changed) renderRooms(filteredRooms);
+      })
+      .subscribe();
   }
 
   // ── Open room ──
@@ -517,11 +550,13 @@
     await loadMsgs(roomId);
     subMsgs(roomId);
     $('typingAnim').classList.remove('on');
+    // Mobile: switch to chat screen
     if(window.innerWidth<=768) $('appRoot').classList.add('chat-open');
   }
 
   function closeRoom(){
     $('appRoot').classList.remove('chat-open');
+    // On mobile, we stay on sidebar, keep activeRoom so conversation remains highlighted
   }
   $('backArrow').addEventListener('click', closeRoom);
 
@@ -672,7 +707,7 @@
     sending=false;
   }
 
-  // ── Realtime ──
+  // ── Realtime messages ──
   function subMsgs(roomId){
     if(messageSub) supabase.removeChannel(messageSub);
     messageSub=supabase.channel(`room:${roomId}`)
@@ -682,7 +717,7 @@
           if(!sentIds.has(nm.id)&&!document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)){
             addMsg(nm);
             if(nm.receiver_id===currentUser.id) supabase.from('messages').update({is_read:true}).eq('id',nm.id).then();
-            loadRooms();
+            loadRooms();   // unread update
           }
         }else if(payload.eventType==='UPDATE'){
           loadMsgs(roomId);
@@ -691,7 +726,7 @@
       }).subscribe();
   }
 
-  // ── Typing ──
+  // ── Typing indicator ──
   let typingTO;
   $('msgInput').addEventListener('input',()=>{
     if(!activeRoom) return;
@@ -781,6 +816,8 @@
     currentUser=session.user;
     await presence('online');
     await loadRooms();
+    // Start listening to profile changes so online dots update in real time
+    subscribeToProfiles();
 
     const rp=new URLSearchParams(window.location.search).get('room');
     if(rp){
