@@ -25,7 +25,8 @@
 
   /* ── SIDEBAR ── */
   .sidebar{
-    width:320px;background:var(--card);border-right:1px solid var(--border);
+    width:320px;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);border-right:1px solid var(--border);
     display:flex;flex-direction:column;z-index:10;
     transition:transform 0.25s ease;
   }
@@ -40,42 +41,53 @@
   }
   .new-chat{padding:12px 16px;border-bottom:1px solid var(--border)}
   .new-chat input{
-    width:100%;padding:10px;border-radius:10px;
+    width:100%;padding:10px 14px;border-radius:10px;
     background:var(--panel);border:1px solid var(--border);
     color:var(--text);font-size:14px;outline:none;
     transition:border-color .15s;
   }
-  .new-chat input:focus{border-color:var(--accent)}
+  .new-chat input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(81,218,211,.25)}
+
   .room-list{flex:1;overflow-y:auto;padding:0 0 16px}
   .room{
     display:flex;align-items:center;padding:12px 16px;
     cursor:pointer;transition:background .15s;gap:12px;
     border-bottom:1px solid rgba(255,255,255,.04);
   }
-  .room:hover,.room.active{background:var(--panel)}
+  .room:hover,.room.active{background:rgba(81,218,211,.08)}
   .room .avatar{
     width:48px;height:48px;border-radius:50%;object-fit:cover;
     background:var(--panel);border:2px solid var(--border);flex-shrink:0;
+    position:relative;
   }
+  .online-dot{
+    position:absolute;bottom:2px;right:2px;
+    width:12px;height:12px;border-radius:50%;
+    background:var(--offline);border:2px solid var(--card);
+  }
+  .online-dot.online{background:var(--success)}
   .room .info{flex:1;min-width:0}
   .room .name{font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px}
-  .online-badge{width:10px;height:10px;border-radius:50%;background:var(--offline)}
-  .online-badge.online{background:var(--success)}
   .room .preview{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .room .preview.unread{font-weight:700;color:var(--text)}
   .room .meta{text-align:right;flex-shrink:0}
   .room .time{font-size:11px;color:var(--muted)}
-  .room .unread{display:inline-block;background:var(--accent);color:#0a2a28;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-top:4px}
+  .unread-badge{
+    display:inline-block;background:var(--accent);color:#0a2a28;
+    font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
+    margin-top:4px;min-width:18px;text-align:center;
+  }
 
   /* ── CHAT AREA ── */
   .chat-area{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
   .chat-header{
     padding:12px 16px;border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:12px;background:var(--card);
-    flex-shrink:0;
+    display:flex;align-items:center;gap:12px;
+    background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);flex-shrink:0;
   }
   .chat-header .header-back-arrow{
-    background:none;border:none;color:var(--accent);
+    display:none;background:none;border:none;color:var(--accent);
     font-size:24px;cursor:pointer;padding:0 8px 0 0;
   }
   .chat-header .avatar-link{display:block;flex-shrink:0}
@@ -85,45 +97,121 @@
   }
   .chat-header .name{font-weight:600;font-size:15px}
   .chat-header .status{font-size:12px;color:var(--muted)}
-  .chat-header .last-seen{font-size:11px;color:var(--muted)}
 
   .chat-box{
     flex:1 1 0;overflow-y:auto;padding:16px;
-    display:flex;flex-direction:column;gap:8px;
+    display:flex;flex-direction:column;gap:6px;
     -webkit-overflow-scrolling:touch;
   }
-  .message{display:flex;gap:8px;max-width:85%;position:relative;user-select:none}
+
+  /* Message bubbles */
+  .message{display:flex;gap:8px;max-width:80%;position:relative;user-select:none}
   .message.sent{align-self:flex-end;flex-direction:row-reverse}
   .message .bubble{
     padding:10px 14px;border-radius:16px;background:var(--panel);
-    font-size:14px;line-height:1.4;word-break:break-word;position:relative;
+    font-size:14px;line-height:1.45;word-break:break-word;position:relative;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
   }
-  .message.sent .bubble{background:var(--accent);color:#0a2a28}
-  .message .time{font-size:10px;color:var(--muted);margin-top:2px;align-self:flex-end;white-space:nowrap}
-  .message.sent .time{text-align:right}
-  .message .status-text{font-size:10px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px}
-  .message.sent .status-text{justify-content:flex-end}
+  .message.sent .bubble{
+    background:var(--accent);color:#0a2a28;
+    border-bottom-right-radius:4px;
+  }
+  .message.received .bubble{
+    background:rgba(31,31,31,.85);backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border-bottom-left-radius:4px;
+  }
+  .message .time{
+    font-size:10px;color:var(--muted);margin-top:2px;align-self:flex-end;
+    white-space:nowrap;display:flex;align-items:center;gap:4px;
+  }
+  .message.sent .time{justify-content:flex-end}
+  .message .status-icon{font-size:14px;color:var(--muted)}
+  .message.sent .status-icon.sent{color:var(--muted)}
+  .message.sent .status-icon.read{color:var(--accent)}
+
   .deleted-placeholder{
     padding:10px 14px;border-radius:16px;background:var(--panel);
     font-style:italic;color:var(--muted);font-size:13px;
-    pointer-events:none;user-select:none;
+    pointer-events:none;user-select:none;align-self:center;
+    border:1px dashed var(--border);
   }
+
+  /* Reply quote inside bubble */
   .reply-quote{
     font-size:11px;color:var(--muted);margin-bottom:4px;
     border-left:2px solid var(--accent);padding-left:6px;
     cursor:pointer;transition:color .1s;
   }
   .reply-quote:hover{color:var(--text)}
+
+  /* Reply bar above input */
   .reply-bar{
     background:var(--card);border-top:1px solid var(--border);
     padding:8px 16px;display:none;align-items:center;gap:8px;
+    flex-shrink:0;
   }
   .reply-bar.show{display:flex}
   .reply-bar .quote{flex:1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .reply-bar button{background:none;border:none;color:var(--danger);font-size:14px;cursor:pointer}
+
+  /* Typing indicator */
+  .typing-indicator{
+    padding:4px 16px;color:var(--muted);font-size:13px;flex-shrink:0;min-height:22px;
+    display:flex;align-items:center;gap:4px;
+  }
+  .typing-dots{display:flex;gap:4px}
+  .typing-dots span{
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+    animation:bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2){animation-delay:.15s}
+  .typing-dots span:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{
+    0%,60%,100%{transform:translateY(0)}
+    30%{transform:translateY(-6px)}
+  }
+
+  /* Input area */
+  .input-area{
+    flex-shrink:0;border-top:1px solid var(--border);
+    background:var(--card);padding:12px 16px;
+    padding-bottom:max(16px,env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .input-row{display:flex;gap:8px}
+  .input-row input{
+    flex:1;padding:12px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .input-row input:focus{
+    border-color:var(--accent);box-shadow:0 0 0 2px rgba(81,218,211,.25);
+  }
+  .send-btn{
+    width:44px;height:44px;border-radius:50%;
+    background:var(--accent);color:#0a2a28;
+    display:flex;align-items:center;justify-content:center;
+    border:none;cursor:pointer;transition:filter .15s;
+    flex-shrink:0;
+  }
+  .send-btn:hover{filter:brightness(1.08)}
+  .send-btn .material-symbols-outlined{font-size:20px}
+
+  /* Scroll to bottom */
+  .scroll-bottom{
+    position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
+    background:var(--accent);color:#0a2a28;font-weight:700;font-size:12px;
+    padding:6px 16px;border-radius:20px;cursor:pointer;
+    display:none;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.3);
+  }
+  .scroll-bottom.show{display:block}
+
+  /* Context menu */
   .context-menu{
     position:fixed;background:var(--card);border:1px solid var(--border);
-    border-radius:14px;padding:4px 0;min-width:140px;z-index:200;
+    border-radius:14px;padding:4px 0;min-width:160px;z-index:200;
     display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);
   }
   .context-menu button{
@@ -133,37 +221,17 @@
   }
   .context-menu button:hover{background:var(--panel)}
   .context-menu .danger{color:var(--danger)}
-  .typing-indicator{padding:4px 16px;color:var(--muted);font-size:13px;flex-shrink:0;min-height:22px}
-  .input-area{
-    flex-shrink:0;border-top:1px solid var(--border);
-    background:var(--card);padding:12px 16px;
-    padding-bottom:max(16px,env(safe-area-inset-bottom));
-    display:flex;flex-direction:column;gap:6px;
-  }
-  .input-row{display:flex;gap:8px}
-  .input-row input{
-    flex:1;padding:12px;border-radius:10px;
-    background:var(--panel);border:1px solid var(--border);
-    color:var(--text);font-size:14px;outline:none;
-    transition:border-color .15s;
-  }
-  .input-row input:focus{border-color:var(--accent)}
-  .input-row button{
-    padding:12px 18px;border:none;border-radius:10px;
-    background:var(--accent);color:#0a2a28;font-weight:700;
-    cursor:pointer;transition:filter .15s;
-  }
-  .input-row button:hover{filter:brightness(1.08)}
-  .input-note{text-align:center;font-size:11px;color:var(--muted);user-select:none}
+
   .empty-chat{
     flex:1;display:flex;align-items:center;justify-content:center;
     color:var(--muted);font-size:14px;text-align:center;padding:20px;
   }
 
   @media (max-width:640px){
-    .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:100%}
     .sidebar.open{transform:translateX(0)}
     .back-btn{display:block}
+    .chat-header .header-back-arrow{display:block}
     .chat-box{padding:12px}
     .input-area{padding:10px 12px}
   }
@@ -176,7 +244,7 @@
       <h2>Messages</h2>
     </div>
     <div class="new-chat">
-      <input type="text" id="newChatUsername" placeholder="Start a chat by username..." />
+      <input type="text" id="newChatUsername" placeholder="Search / new chat" />
     </div>
     <div class="room-list" id="roomList"></div>
   </div>
@@ -190,12 +258,15 @@
       <div>
         <div class="name" id="chatPartnerName"></div>
         <div class="status" id="chatPartnerStatus"></div>
-        <div class="last-seen" id="chatPartnerLastSeen"></div>
       </div>
     </div>
-    <div class="typing-indicator" id="typingIndicator"></div>
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-dots" id="typingDots" style="display:none">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
     <div class="chat-box" id="chatBox">
-      <div class="empty-chat" id="emptyChatPlaceholder" style="display:none;">
+      <div class="empty-chat" id="emptyChatPlaceholder">
         Select a conversation to start chatting
       </div>
     </div>
@@ -206,10 +277,12 @@
     <div class="input-area" id="inputArea" style="display:none;">
       <div class="input-row">
         <input type="text" id="messageInput" placeholder="Type a message..." />
-        <button id="sendBtn">Send</button>
+        <button class="send-btn" id="sendBtn">
+          <span class="material-symbols-outlined">send</span>
+        </button>
       </div>
-      <div class="input-note">Text & emoji only · no files or images</div>
     </div>
+    <div class="scroll-bottom" id="scrollBottom">↓ New messages</div>
   </div>
 
   <div class="context-menu" id="contextMenu">
@@ -221,18 +294,18 @@
 
 <script>
 /*
-  ══════════════════════════════════════════════════════
-  AniChan Realtime Chat — Redesigned UI (Pure CSS)
-  Swipe reply, long-press edit/delete, send status,
-  delete for everyone placeholder, typing indicator.
-  ══════════════════════════════════════════════════════
+  ═══════════════════════════════════════════════════════
+  AniChan Realtime Chat — Telegram‑inspired UI
+  Robust realtime, optimistic send, swipe reply,
+  long‑press context menu, typing indicator, offline queue
+  ═══════════════════════════════════════════════════════
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const $ = (id) => document.getElementById(id);
+  const $ = id => document.getElementById(id);
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
@@ -240,12 +313,13 @@
   let currentUser = null, activeRoom = null, partnerId = null;
   let rooms = [], messageSub = null, presenceSub = null;
   let replyToMessage = null;
-  let longPressTimer = null;
   let contextMsgId = null;
   let isSending = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
+  const sentMsgIds = new Set();   // deduplication
 
   function resolvePath(f) { return window.location.href.replace(/[^/]*$/, '') + f; }
+  function escapeHtml(t) { return t.replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' })[m]); }
   function formatTime(iso) {
     if (!iso) return '';
     const d = new Date(iso), now = new Date();
@@ -253,9 +327,20 @@
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  function escapeHtml(t) { return t.replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' })[m]); }
-  function scrollToBottom() { const b = $('chatBox'); b.scrollTop = b.scrollHeight; }
+  function formatChatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso), now = new Date();
+    const diff = now - d, mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString();
+  }
 
+  // ── Presence ──
   async function updatePresence(status='online') {
     if (!currentUser) return;
     await supabase.from('user_presence').upsert({ user_id: currentUser.id, status, last_active: new Date().toISOString() });
@@ -265,30 +350,31 @@
     await supabase.from('user_presence').upsert({ user_id: currentUser.id, typing_in_room_id: typing ? roomId : null });
   }
 
-  function getDeletedSet() {
-    try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]')); } catch { return new Set(); }
-  }
-  function addDeleted(msgId) {
-    const s = getDeletedSet(); s.add(msgId);
-    localStorage.setItem(DELETED_KEY, JSON.stringify([...s]));
-  }
-
   // ── Sidebar ──
   function renderRoomList(roomsData) {
     const list = $('roomList'); list.innerHTML = '';
-    if (!roomsData.length) { list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>'; return; }
+    if (!roomsData.length) {
+      list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No conversations yet</div>';
+      return;
+    }
     roomsData.forEach(room => {
       const o = room.other_user;
       const div = document.createElement('div');
       div.className = 'room' + (activeRoom===room.id ? ' active' : '');
       const previewClass = room.unread_count ? 'preview unread' : 'preview';
       div.innerHTML = `
-        <img class="avatar" src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        <div class="avatar">
+          <img class="avatar" src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" style="width:100%;height:100%;position:absolute;top:0;left:0;border-radius:50%" />
+          <div class="online-dot ${o.is_online ? 'online' : ''}"></div>
+        </div>
         <div class="info">
-          <div class="name">${escapeHtml(o.full_name || o.username)}<span class="online-badge ${o.is_online ? 'online' : ''}"></span></div>
+          <div class="name">${escapeHtml(o.full_name || o.username)}</div>
           <div class="${previewClass}">${escapeHtml(room.last_message || '')}</div>
         </div>
-        <div class="meta"><div class="time">${formatTime(room.last_message_time)}</div>${room.unread_count ? `<span class="unread">${room.unread_count}</span>` : ''}</div>`;
+        <div class="meta">
+          <div class="time">${formatChatTime(room.last_message_time)}</div>
+          ${room.unread_count ? `<span class="unread-badge">${room.unread_count}</span>` : ''}
+        </div>`;
       div.addEventListener('click', () => openRoom(room.id, o.id));
       list.appendChild(div);
     });
@@ -325,14 +411,13 @@
     if (p) {
       $('chatPartnerAvatar').src = p.avatar_url || DEFAULT_AVATAR;
       $('chatPartnerName').textContent = p.full_name || p.username;
-      $('chatPartnerStatus').textContent = p.is_online ? 'Online' : 'Offline';
-      $('chatPartnerLastSeen').textContent = p.is_online ? '' : (p.last_seen ? `Last seen: ${new Date(p.last_seen).toLocaleString()}` : 'Last seen: —');
+      $('chatPartnerStatus').textContent = p.is_online ? 'Online' : (p.last_seen ? `Last seen ${formatChatTime(p.last_seen)}` : 'Offline');
       $('chatAvatarLink').href = `profile.html?user=${otherUserId}`;
     }
     renderRoomList(rooms);
     await loadMessages(roomId);
     subscribeToMessages(roomId);
-    $('typingIndicator').textContent = '';
+    $('typingDots').style.display = 'none';
     if (window.innerWidth <= 640) $('sidebar').classList.remove('open');
   }
 
@@ -340,7 +425,8 @@
   async function loadMessages(roomId) {
     const { data, error } = await supabase.from('messages').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
     if (error) { console.error(error); return; }
-    renderMessages(data, roomId);
+    sentMsgIds.clear();
+    renderMessages(data);
     const unreadIds = data.filter(m => m.receiver_id === currentUser.id && !m.is_read).map(m => m.id);
     if (unreadIds.length) { await supabase.from('messages').update({ is_read: true }).in('id', unreadIds); loadRooms(); }
   }
@@ -349,7 +435,7 @@
     $('chatBox').innerHTML = '';
     const deleted = getDeletedSet();
     msgs.filter(m => !deleted.has(m.id)).forEach(addMessageElement);
-    scrollToBottom();
+    checkScroll();
   }
 
   function addMessageElement(msg) {
@@ -361,7 +447,7 @@
     if (msg.is_deleted) {
       div.innerHTML = `<div class="deleted-placeholder">This message was deleted</div><div class="time">${formatTime(msg.created_at)}</div>`;
       box.appendChild(div);
-      scrollToBottom();
+      checkScroll();
       return;
     }
 
@@ -375,7 +461,8 @@
     let content = escapeHtml(msg.message || msg.content || '');
     if (msg.edited_at) content += ' <small style="color:var(--muted)">(edited)</small>';
 
-    div.innerHTML = `<div class="bubble">${replyHtml}${content}</div><div class="time">${formatTime(msg.created_at)}</div>`;
+    div.innerHTML = `<div class="bubble">${replyHtml}${content}</div>
+      <div class="time">${formatTime(msg.created_at)} ${isSent ? `<span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>` : ''}</div>`;
 
     const replyDiv = div.querySelector('.reply-quote');
     if (replyDiv) {
@@ -400,9 +487,20 @@
     }
 
     box.appendChild(div);
-    const atBottom = (box.scrollHeight - box.clientHeight) <= box.scrollTop + 30;
-    if (atBottom) scrollToBottom();
+    checkScroll();
   }
+
+  function checkScroll() {
+    const box = $('chatBox');
+    const isNearBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 30;
+    $('scrollBottom').classList.toggle('show', !isNearBottom && box.scrollHeight > box.clientHeight);
+    if (isNearBottom) box.scrollTop = box.scrollHeight;
+  }
+  $('scrollBottom').addEventListener('click', () => {
+    const box = $('chatBox');
+    box.scrollTop = box.scrollHeight;
+    $('scrollBottom').classList.remove('show');
+  });
 
   // ── Swipe to reply ──
   function attachSwipe(el, msg) {
@@ -421,13 +519,13 @@
     $('replyBar').classList.add('show');
     $('messageInput').focus();
   }
-
   $('cancelReplyBtn').addEventListener('click', () => {
     replyToMessage = null;
     $('replyBar').classList.remove('show');
   });
 
   // ── Long press ──
+  let longPressTimer;
   function startLongPress(e, msg) { longPressTimer = setTimeout(() => showContextMenu(e, msg), 500); }
   function cancelLongPress() { clearTimeout(longPressTimer); }
 
@@ -438,11 +536,13 @@
     const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
     $('ctxEdit').style.display = canEdit ? 'block' : 'none';
     menu.style.display = 'block';
-    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 160) + 'px';
+    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 180) + 'px';
     menu.style.top = (e.touches[0].clientY - 100) + 'px';
   }
 
-  document.addEventListener('click', (e) => { if (!$('contextMenu').contains(e.target)) $('contextMenu').style.display = 'none'; });
+  document.addEventListener('click', (e) => {
+    if (!$('contextMenu').contains(e.target)) $('contextMenu').style.display = 'none';
+  });
 
   $('ctxEdit').addEventListener('click', () => {
     $('contextMenu').style.display = 'none';
@@ -471,7 +571,7 @@
 
   $('ctxCancel').addEventListener('click', () => $('contextMenu').style.display = 'none');
 
-  // ── Send ──
+  // ── Send (optimistic) ──
   async function sendMessage() {
     const input = $('messageInput'), text = input.value.trim();
     if (!text || !activeRoom || !partnerId || isSending) return;
@@ -482,9 +582,9 @@
     const tempDiv = document.createElement('div');
     tempDiv.className = 'message sent';
     tempDiv.dataset.msgId = tempId;
-    tempDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="status-text"><span>sending…</span></div>`;
+    tempDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="time"><span class="status-text" style="color:var(--muted)">sending…</span></div>`;
     $('chatBox').appendChild(tempDiv);
-    scrollToBottom();
+    checkScroll();
 
     const payload = {
       room_id: activeRoom,
@@ -494,20 +594,16 @@
       msg_type: 'text',
       reply_to: replyToMessage?.id || null
     };
-
-    if (replyToMessage) {
-      replyToMessage = null;
-      $('replyBar').classList.remove('show');
-    }
+    if (replyToMessage) { replyToMessage = null; $('replyBar').classList.remove('show'); }
 
     const { data: inserted, error } = await supabase.from('messages').insert(payload).select().single();
-
     const statusEl = tempDiv.querySelector('.status-text');
     if (error) {
       statusEl.innerHTML = '<span style="color:var(--danger)">not sent, try again</span>';
     } else if (inserted) {
+      sentMsgIds.add(inserted.id);
       tempDiv.dataset.msgId = inserted.id;
-      statusEl.innerHTML = `<span>sent</span> <span class="time">${formatTime(inserted.created_at)}</span>`;
+      statusEl.innerHTML = `<span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>`;
       await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
     }
@@ -521,7 +617,7 @@
       .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const nm = payload.new;
-          if (!document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
+          if (!sentMsgIds.has(nm.id) && !document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
             addMessageElement(nm);
             if (nm.receiver_id === currentUser.id) supabase.from('messages').update({ is_read:true }).eq('id', nm.id).then();
           }
@@ -531,7 +627,7 @@
       }).subscribe();
   }
 
-  // ── Typing ──
+  // ── Typing indicator ──
   let typingTimeout;
   $('messageInput').addEventListener('input', () => {
     if (!activeRoom) return;
@@ -542,7 +638,7 @@
   presenceSub = supabase.channel('presence-changes')
     .on('postgres_changes', { event:'*', schema:'public', table:'user_presence' }, (payload) => {
       if (partnerId && payload.new && payload.new.user_id === partnerId) {
-        $('typingIndicator').textContent = (payload.new.typing_in_room_id === activeRoom) ? 'Typing...' : '';
+        $('typingDots').style.display = (payload.new.typing_in_room_id === activeRoom) ? 'flex' : 'none';
       }
     }).subscribe();
 
@@ -561,6 +657,15 @@
     const { data: nr, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUser.id, user_two_id: user.id }).select('id').single();
     if (error) { alert('Room creation failed'); return; }
     loadRooms(); openRoom(nr.id, user.id);
+  }
+
+  // ── Deleted for me ──
+  function getDeletedSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]')); } catch { return new Set(); }
+  }
+  function addDeleted(msgId) {
+    const s = getDeletedSet(); s.add(msgId);
+    localStorage.setItem(DELETED_KEY, JSON.stringify([...s]));
   }
 
   // ── Lifecycle ──
