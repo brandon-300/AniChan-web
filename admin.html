@@ -234,14 +234,13 @@
               </div>
             </div>
 
-            <!-- Add/Edit Anime Form (all language titles) -->
+            <!-- Add/Edit Anime Form (all language titles + release type) -->
             <div id="anime-form-section" class="glass-panel span-2">
               <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the main title is required.</p>
               <input type="hidden" id="editId" />
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div style="grid-column:span 2"><label for="titleInput">Title *</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
-                <div><label for="titleEnInput">English</label><input id="titleEnInput" type="text" placeholder="English title" /></div>
+                <div style="grid-column:span 2"><label for="titleInput">Title (English) *</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
                 <div><label for="titleJpInput">Japanese</label><input id="titleJpInput" type="text" placeholder="日本語タイトル" /></div>
                 <div><label for="titleZhInput">Chinese</label><input id="titleZhInput" type="text" placeholder="中文标题" /></div>
                 <div><label for="titleDeInput">German</label><input id="titleDeInput" type="text" placeholder="Deutscher Titel" /></div>
@@ -260,6 +259,14 @@
                 <div>
                   <label for="typeInput">Type</label>
                   <select id="typeInput"><option value="">— None —</option><option value="TV">TV</option><option value="Movie">Movie</option><option value="OVA">OVA</option><option value="ONA">ONA</option><option value="Special">Special</option><option value="Music">Music</option></select>
+                </div>
+                <div>
+                  <label for="releaseTypeInput">Release Type</label>
+                  <select id="releaseTypeInput">
+                    <option value="">— None —</option>
+                    <option value="BD">BD (Blu‑ray)</option>
+                    <option value="DVD">DVD</option>
+                  </select>
                 </div>
                 <div><label for="scoreInput">Score (1–10)</label><input id="scoreInput" type="number" min="1" max="10" step="0.1" placeholder="—" /></div>
                 <div><label>Rating</label><div class="star-rating" id="starRating"></div></div>
@@ -342,9 +349,9 @@
       let memberAction = null, selectedUserId = null;
 
       // ── Session timeout & tab close detection ──
-      const IDLE_LIMIT = 5 * 60 * 1000;   // 5 minutes
+      const IDLE_LIMIT = 5 * 60 * 1000;
       let idleTimer;
-      window.isLoggingOut = false;   // set to true when we deliberately log out
+      window.isLoggingOut = false;
 
       function resetIdleTimer() {
         clearTimeout(idleTimer);
@@ -360,14 +367,12 @@
         });
       }
 
-      // Mark that admin left the page (tab close / navigate away)
       window.addEventListener('beforeunload', () => {
         if (!window.isLoggingOut) {
           sessionStorage.setItem('admin_unload', '1');
         }
       });
 
-      // On load, decide whether to keep the session
       window.addEventListener('load', () => {
         const unloadFlag = sessionStorage.getItem('admin_unload');
         if (unloadFlag) {
@@ -376,7 +381,6 @@
           if (navEntries.length > 0 && navEntries[0].type === 'reload') {
             // Manual refresh – session remains
           } else {
-            // Tab close / navigate away → force logout
             window.isLoggingOut = true;
             sb.auth.signOut().then(() => {
               window.location.replace("admin_login.html");
@@ -385,7 +389,6 @@
         }
       });
 
-      // Activity listeners reset the idle timer
       ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
         document.addEventListener(evt, resetIdleTimer, { passive: true })
       );
@@ -562,16 +565,15 @@
       }
 
       function fillFormFromJikan(a, imgSrc){
-        $("titleInput").value = a.title || "";
         const langTitles = extractLanguageTitles(a);
-        $("titleEnInput").value = langTitles.en || "";
+        $("titleInput").value = langTitles.en || a.title || "";
         $("titleJpInput").value = langTitles.jp || "";
         $("titleZhInput").value = langTitles.zh || "";
         $("titleDeInput").value = langTitles.de || "";
         $("titleFrInput").value = langTitles.fr || "";
-
         $("imageInput").value = imgSrc || "";
         $("typeInput").value = normalizeType(a.type);
+        $("releaseTypeInput").value = "";   // Jikan doesn't provide BD/DVD info
         const yr = a.year || (a.aired && a.aired.from ? new Date(a.aired.from).getFullYear() : null);
         $("yearInput").value = yr || "";
         $("epTotalInput").value = (a.episodes != null) ? a.episodes : "";
@@ -584,8 +586,7 @@
 
       function setEditMode(item){
         $("editId").value = item.id;
-        $("titleInput").value = item.title || "";
-        $("titleEnInput").value = item.title_en || "";
+        $("titleInput").value = item.title_en || item.title || "";
         $("titleJpInput").value = item.title_jp || "";
         $("titleZhInput").value = item.title_zh || "";
         $("titleDeInput").value = item.title_de || "";
@@ -593,6 +594,7 @@
         $("imageInput").value = item.image_url || "";
         $("statusInput").value = item.status || "";
         $("typeInput").value = normalizeType(item.type);
+        $("releaseTypeInput").value = item.release_type || "";
         $("scoreInput").value = item.score != null ? item.score : "";
         updateStarRating(item.score);
         $("epTotalInput").value = item.ep_total != null ? item.ep_total : "";
@@ -609,8 +611,8 @@
 
       function clearForm(){
         $("editId").value = "";
-        for (const id of ["titleInput","titleEnInput","titleJpInput","titleZhInput","titleDeInput","titleFrInput",
-                          "imageInput","statusInput","typeInput","scoreInput","epTotalInput","yearInput",
+        for (const id of ["titleInput","titleJpInput","titleZhInput","titleDeInput","titleFrInput",
+                          "imageInput","statusInput","typeInput","releaseTypeInput","scoreInput","epTotalInput","yearInput",
                           "genresInput","studioInput","notesInput"]) $(id).value = "";
         updateStarRating(null);
         renderGenreChips();
@@ -621,11 +623,11 @@
 
       async function saveItem(){
         const id = $("editId").value;
-        const title = $("titleInput").value.trim();
-        if (!title) { toast("Title is required"); $("titleInput").focus(); return; }
+        const titleEn = $("titleInput").value.trim();
+        if (!titleEn) { toast("Title (English) is required"); $("titleInput").focus(); return; }
         const payload = {
-          title,
-          title_en: $("titleEnInput").value.trim() || null,
+          title: titleEn,
+          title_en: titleEn,
           title_jp: $("titleJpInput").value.trim() || null,
           title_zh: $("titleZhInput").value.trim() || null,
           title_de: $("titleDeInput").value.trim() || null,
@@ -633,6 +635,7 @@
           image_url: $("imageInput").value.trim() || null,
           status: $("statusInput").value || null,
           type: normalizeType($("typeInput").value) || null,
+          release_type: $("releaseTypeInput").value || null,
           score: numOrNull($("scoreInput").value),
           ep_total: numOrNull($("epTotalInput").value),
           year: numOrNull($("yearInput").value),
@@ -751,7 +754,7 @@
         }
       });
 
-      // Bulk Import (checks all language titles)
+      // Bulk Import (checks all language titles, includes release_type)
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…";
@@ -821,9 +824,16 @@
               const aired_to   = a.aired?.to   ? new Date(a.aired.to).toISOString()   : null;
 
               const newEntry = {
-                title: mainTitle, title_en: lang.en, title_jp: lang.jp, title_zh: lang.zh, title_de: lang.de, title_fr: lang.fr,
+                title: lang.en || mainTitle,
+                title_en: lang.en,
+                title_jp: lang.jp,
+                title_zh: lang.zh,
+                title_de: lang.de,
+                title_fr: lang.fr,
                 image_url, type, year, genres, studio, score, ep_total,
-                status: airingStatus || 'Not yet aired', aired_from, aired_to
+                status: airingStatus || 'Not yet aired',
+                release_type: null,   // Jikan doesn't provide this
+                aired_from, aired_to
               };
 
               insertsAccum.push(newEntry);
@@ -861,7 +871,7 @@
         while (true) {
           const { data, error } = await sb
             .from("anime")
-            .select("id, title, status, title_en, title_jp, title_zh, title_de, title_fr, aired_from, aired_to, score, ep_total, genres, studio")
+            .select("id, title, status, title_en, title_jp, title_zh, title_de, title_fr, aired_from, aired_to, score, ep_total, genres, studio, release_type")
             .range(from, to);
           if (error) throw error;
           if (!data || data.length === 0) break;
@@ -880,7 +890,6 @@
         return allIncomplete;
       }
 
-      // Simple rate limiter: allows `maxCalls` within `intervalMs` sliding window
       class RateLimiter {
         constructor(maxCalls, intervalMs) {
           this.maxCalls = maxCalls;
@@ -893,13 +902,13 @@
           if (this.calls.length >= this.maxCalls) {
             const oldest = this.calls[0];
             await new Promise(r => setTimeout(r, oldest + this.intervalMs - now));
-            return this.wait();  // re-check after waiting
+            return this.wait();
           }
           this.calls.push(Date.now());
         }
       }
 
-      const jikanLimiter = new RateLimiter(4, 1000);   // 4 requests per second
+      const jikanLimiter = new RateLimiter(4, 1000);
 
       async function fixAll(){
         const btn = $("fixAllBtn"), status = $("bulkStatus");
@@ -931,7 +940,7 @@
 
         async function processOne(anime) {
           if (cancelFlag) return;
-          await jikanLimiter.wait();          // enforce rate limit
+          await jikanLimiter.wait();
           if (cancelFlag) return;
 
           try {
@@ -942,6 +951,7 @@
             if (!match) return;
 
             const updates = {};
+
             const jikanStatus = mapAiringStatus(match.status);
             if (jikanStatus && jikanStatus !== anime.status) updates.status = jikanStatus;
 
@@ -963,20 +973,16 @@
             if ((!anime.studio || anime.studio.trim() === "") && match.studios && match.studios.length) {
               updates.studio = match.studios.map(s => s.name).join(", ");
             }
+            // release_type is not updated from Jikan because it's not provided
 
             if (Object.keys(updates).length) {
               const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
               if (!updErr) { fixedCount++; updatedIds.push(anime.id); }
             }
           } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
-          finally {
-            processed++;
-            const pct = Math.round((processed / total) * 100);
-            status.textContent = `Fixing ${processed}/${total} (${pct}%)`;
-          }
+          finally { processed++; const pct = Math.round((processed / total) * 100); status.textContent = `Fixing ${processed}/${total} (${pct}%)`; }
         }
 
-        // Process sequentially (rate limiter controls speed)
         for (const anime of incompleteAnime) {
           await processOne(anime);
           if (cancelFlag) break;
@@ -988,10 +994,8 @@
             const orig = incompleteAnime.find(a => a.id === id);
             if (orig) {
               await sb.from("anime").update({
-                status: orig.status,
-                title_en: orig.title_en, title_jp: orig.title_jp, title_zh: orig.title_zh,
-                title_de: orig.title_de, title_fr: orig.title_fr,
-                aired_from: orig.aired_from, aired_to: orig.aired_to,
+                status: orig.status, title_en: orig.title_en, title_jp: orig.title_jp, title_zh: orig.title_zh,
+                title_de: orig.title_de, title_fr: orig.title_fr, aired_from: orig.aired_from, aired_to: orig.aired_to,
                 score: orig.score, ep_total: orig.ep_total, genres: orig.genres, studio: orig.studio
               }).eq("id", id);
             }
@@ -1008,9 +1012,7 @@
         status.textContent = "";
       }
 
-      // ───────────────────────────────────────────────
-      //  DELETE DUPLICATES – normalised, one‑shot clean
-      // ───────────────────────────────────────────────
+      // Delete Duplicates
       function normaliseTitle(str) {
         return str.replace(/[^\w\s]/g, ' ')
                   .replace(/\s+/g, ' ')
@@ -1052,7 +1054,7 @@
         }
 
         status.textContent = "Detecting duplicates…";
-        const seen = new Map();   // normalised key → id of oldest
+        const seen = new Map();
         const toDelete = [];
 
         for (const a of allRows) {
