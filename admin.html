@@ -905,30 +905,44 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // DELETE DUPLICATES – aggressive version based on main title only
+      // ───────────────────────────────────────────────
+      //  DELETE DUPLICATES – NOW FETCHES ALL ROWS
+      // ───────────────────────────────────────────────
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true; btn.textContent = "Deleting…";
 
-        // Fetch all anime, keep the oldest first
-        const { data: all, error } = await sb
-          .from("anime")
-          .select("id, title, created_at")
-          .order("created_at", { ascending: true });
-
-        if (error) {
-          toast("Failed to fetch anime.");
-          btn.disabled = false; btn.textContent = "Delete Duplicates";
+        // Fetch every anime in batches of 1000 to overcome the default limit
+        const allRows = [];
+        let from = 0, to = 999;
+        try {
+          while (true) {
+            const { data, error } = await sb
+              .from("anime")
+              .select("id, title, created_at")
+              .order("created_at", { ascending: true })
+              .range(from, to);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            allRows.push(...data);
+            if (data.length < 1000) break;
+            from += 1000;
+            to += 1000;
+          }
+        } catch (e) {
+          toast("Failed to fetch anime list: " + e.message);
+          btn.disabled = false;
+          btn.textContent = "Delete Duplicates";
           return;
         }
 
+        // Deduplicate by main title (case‑insensitive, trimmed)
         const seen = new Map();   // lowercase title -> id of oldest
         const toDelete = [];
 
-        for (const a of all) {
+        for (const a of allRows) {
           const titleKey = (a.title || '').trim().toLowerCase();
           if (!titleKey) continue;
-
           if (seen.has(titleKey)) {
             toDelete.push(a.id);
           } else {
@@ -943,6 +957,7 @@
           return;
         }
 
+        // Delete in batches
         const BATCH_SIZE = 100;
         let deletedCount = 0;
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
