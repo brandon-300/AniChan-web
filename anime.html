@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AniChan · Season</title>
+<title>AniChan · Anime Directory</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -72,6 +72,7 @@
     pointer-events:none;
   }
 
+  /* Floating search overlay */
   .search-results-dropdown{
     position:fixed;
     background:#1a1a1a;
@@ -117,6 +118,21 @@
     font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
   }
 
+  /* Alphabetical filter grid */
+  .alpha-grid{
+    display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;
+  }
+  .alpha-btn{
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);border-radius:10px;
+    background:var(--panel);color:var(--text);font-weight:600;font-size:13px;
+    cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+  }
+  .alpha-btn.active{
+    background:var(--accent);color:#0a2a28;border-color:var(--accent);
+  }
+
+  /* Full‑width stacked cards */
   .release-list{display:flex;flex-direction:column;gap:16px}
   .release-card{
     border-radius:18px;overflow:hidden;
@@ -187,10 +203,11 @@
       <div class="brand">Ani<span>Chan</span></div>
     </div>
     <div class="header-actions" id="headerActions">
-      <!-- Hamburger inserted by JS -->
+      <!-- Hamburger button inserted by JS -->
     </div>
   </header>
 
+  <!-- Full‑width navigation dropdown -->
   <div class="nav-dropdown" id="navDropdown">
     <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
     <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
@@ -200,8 +217,10 @@
     </div>
   </div>
 
+  <!-- Floating search overlay -->
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
+  <!-- Broadcast banner -->
   <div class="broadcast hidden" id="broadcast">
     <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
     <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
@@ -209,7 +228,11 @@
 
   <main class="container">
     <div class="glass-panel">
-      <h2 id="pageTitle">Seasonal Anime</h2>
+      <h2>Anime Directory</h2>
+
+      <!-- Alphabetical filter grid -->
+      <div class="alpha-grid" id="alphaGrid"></div>
+
       <div class="release-list" id="releaseList"></div>
       <div class="pagination" id="paginationControls" style="display:none;">
         <button id="prevPageBtn">← Previous</button>
@@ -231,23 +254,12 @@
   const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
 
   const ITEMS_PER_PAGE = 26;
-  let library = [];
+  let library = [];           // full anime list
+  let filtered = [];          // filtered by letter
   let currentPage = 1;
+  let activeLetter = null;
 
-  const params = new URLSearchParams(window.location.search);
-  const season = params.get('season');
-  const year   = parseInt(params.get('year'));
-  if (!season || !year) { alert('Invalid season'); history.back(); }
-
-  const seasonMonths = {
-    'Winter': [0, 1, 2],
-    'Spring': [3, 4, 5],
-    'Summer': [6, 7, 8],
-    'Fall':   [9, 10, 11]
-  };
-  $('pageTitle').textContent = `${season} ${year}`;
-
-  // ── Hamburger ──
+  // ── Hamburger menu ──
   (function renderHamburger() {
     const container = $("headerActions");
     const menuBtn = document.createElement("button");
@@ -262,11 +274,10 @@
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Live search (reuses library from the page) ──
+  // ── Live search (fuzzy, multilingual) ──
   const navSearchInput = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
   const MAX_RESULTS = 15;
-  let searchLibrary = [];
 
   function positionDropdown() {
     const rect = navSearchInput.getBoundingClientRect();
@@ -285,13 +296,13 @@
   function performSearch(query) {
     searchResultsDropdown.innerHTML = '';
     const q = query.trim();
-    if (!q || searchLibrary.length === 0) { hideSearchResults(); return; }
+    if (!q || library.length === 0) { hideSearchResults(); return; }
 
     const lowerQ = q.toLowerCase();
     const words = lowerQ.split(/\s+/).filter(Boolean);
     if (words.length === 0) { hideSearchResults(); return; }
 
-    const scored = searchLibrary.map(a => {
+    const scored = library.map(a => {
       const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
       let matchCount = 0;
       for (const word of words) {
@@ -363,76 +374,85 @@
     else { $("broadcast").classList.add("hidden"); }
   }
 
-  // ── Season data ──
-  async function loadSeasonAnime() {
-    const months = seasonMonths[season];
-    if (!months) return;
+  // ── Alphabetical filter ──
+  function buildAlphaGrid() {
+    const grid = $("alphaGrid");
+    grid.innerHTML = '';
+    const letters = ['#', ...Array.from({length:26}, (_,i) => String.fromCharCode(65+i))];
+    letters.forEach(letter => {
+      const btn = document.createElement("button");
+      btn.className = "alpha-btn";
+      btn.textContent = letter;
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".alpha-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeLetter = letter;
+        currentPage = 1;
+        applyFilter();
+      });
+      grid.appendChild(btn);
+    });
+  }
 
-    const startDate = new Date(year, months[0], 1).toISOString();
-    const endDate = new Date(year, months[2] + 1, 1).toISOString();
-
-    const { data, error } = await sb
-      .from('anime')
-      .select('*')
-      .gte('aired_from', startDate)
-      .lt('aired_from', endDate)
-      .order('aired_from', { ascending: true })
-      .order('title', { ascending: true });
-
-    library = error ? [] : (data || []);
-    currentPage = 1;
+  function applyFilter() {
+    if (!activeLetter) {
+      filtered = [...library].sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+    } else if (activeLetter === '#') {
+      filtered = library.filter(a => /^[^a-zA-Z]/.test(a.title || ''))
+                        .sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+    } else {
+      const letter = activeLetter.toLowerCase();
+      filtered = library.filter(a => (a.title || "").toLowerCase().startsWith(letter))
+                        .sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+    }
     renderList();
   }
 
-  // Also load full library for search (optional, can reuse season data)
-  (async function preloadSearchLibrary() {
-    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
-    searchLibrary = data || [];
-  })();
-
   function renderList() {
-    const list = $('releaseList');
-    const totalItems = library.length;
+    const list = $("releaseList");
+    const totalItems = filtered.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages || 1;
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = library.slice(start, start + ITEMS_PER_PAGE);
+    const pageItems = filtered.slice(start, start + ITEMS_PER_PAGE);
 
-    list.innerHTML = '';
+    list.innerHTML = "";
     if (!pageItems.length) {
-      const e = document.createElement('div');
-      e.className = 'empty';
-      e.textContent = 'No anime found for this season.';
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "No anime found for this letter.";
       list.appendChild(e);
     } else {
       for (const a of pageItems) {
-        const card = document.createElement('a');
-        card.className = 'release-card';
+        const card = document.createElement("a");
+        card.className = "release-card";
         card.href = `anime_info.html?id=${a.id}`;
+        card.title = a.title || "Untitled";
 
-        const imgDiv = document.createElement('div');
-        imgDiv.className = 'card-image';
+        const imgDiv = document.createElement("div");
+        imgDiv.className = "card-image";
         imgDiv.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
-        const overlay = document.createElement('div');
-        overlay.className = 'overlay';
+
+        const overlay = document.createElement("div");
+        overlay.className = "overlay";
         imgDiv.appendChild(overlay);
 
-        const mediaBadge = document.createElement('span');
-        mediaBadge.className = 'media-badge';
+        const mediaBadge = document.createElement("span");
+        mediaBadge.className = "media-badge";
         if (a.release_type) {
           mediaBadge.textContent = a.release_type;
-          mediaBadge.classList.add('show');
+          mediaBadge.classList.add("show");
         }
         imgDiv.appendChild(mediaBadge);
 
-        const titleOverlay = document.createElement('span');
-        titleOverlay.className = 'card-title-overlay';
-        titleOverlay.textContent = a.title || 'Untitled';
+        const titleOverlay = document.createElement("span");
+        titleOverlay.className = "card-title-overlay";
+        titleOverlay.textContent = a.title || "Untitled";
         imgDiv.appendChild(titleOverlay);
 
-        const epBadge = document.createElement('span');
-        epBadge.className = 'ep-badge-overlay';
+        const epBadge = document.createElement("span");
+        epBadge.className = "ep-badge-overlay";
         epBadge.textContent = a.ep_total != null ? a.ep_total : '?';
         imgDiv.appendChild(epBadge);
 
@@ -441,27 +461,52 @@
       }
     }
 
-    const pagination = $('paginationControls');
-    const prevBtn = $('prevPageBtn');
-    const nextBtn = $('nextPageBtn');
-    const indicator = $('pageIndicator');
-    if (totalPages <= 1) { pagination.style.display = 'none'; }
+    const pagination = $("paginationControls");
+    const prevBtn = $("prevPageBtn");
+    const nextBtn = $("nextPageBtn");
+    const indicator = $("pageIndicator");
+    if (totalPages <= 1) { pagination.style.display = "none"; }
     else {
-      pagination.style.display = 'flex';
+      pagination.style.display = "flex";
       prevBtn.disabled = currentPage <= 1;
       nextBtn.disabled = currentPage >= totalPages;
       indicator.textContent = `${currentPage} / ${totalPages}`;
     }
   }
 
-  $('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderList(); } });
-  $('nextPageBtn').addEventListener('click', () => {
-    const totalPages = Math.ceil(library.length / ITEMS_PER_PAGE);
+  $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderList(); } });
+  $("nextPageBtn").addEventListener("click", () => {
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
     if (currentPage < totalPages) { currentPage++; renderList(); }
   });
 
-  loadSeasonAnime();
-  loadBroadcast();
+  // ── Load all anime (handles >1000 rows) ──
+  async function loadLibrary() {
+    const all = [];
+    let from = 0, to = 999;
+    while (true) {
+      const { data, error } = await sb
+        .from("anime")
+        .select("*")
+        .order("title", { ascending: true })
+        .range(from, to);
+      if (error) break;
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < 1000) break;
+      from += 1000;
+      to += 1000;
+    }
+    library = all;
+    filtered = [...library].sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+    renderList();
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    buildAlphaGrid();
+    loadBroadcast();
+    await loadLibrary();
+  });
 })();
 </script>
 </body>

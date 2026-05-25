@@ -23,7 +23,6 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* Header */
   header.app{
     background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);padding:12px 16px;
@@ -32,10 +31,80 @@
   }
   .brand{font-weight:800;font-size:20px}
   .brand span{color:var(--accent)}
+  .header-left{display:flex;align-items:center;gap:12px}
   .back-btn{
     background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
     padding:0 8px;line-height:1;
   }
+  .header-actions{display:flex;align-items:center;gap:8px}
+
+  .menu-btn{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
+    transition:background .15s,border-color .15s;
+  }
+  .menu-btn:hover{border-color:var(--accent);background:var(--card)}
+
+  .nav-dropdown{
+    display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+    padding:16px 16px 20px;
+  }
+  .nav-dropdown.open{display:block}
+  .nav-dropdown .nav-item{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;
+    border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
+    transition:background .15s;cursor:pointer;
+  }
+  .nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
+  .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
+  .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+
+  .nav-search-wrap{margin-top:8px;position:relative}
+  .nav-search-wrap input{
+    width:100%;padding:12px 14px 12px 44px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    font-size:14px;outline:none;
+  }
+  .nav-search-wrap input:focus{border-color:var(--accent)}
+  .nav-search-wrap .ico{
+    position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
+    pointer-events:none;
+  }
+
+  .search-results-dropdown{
+    position:fixed;
+    background:#1a1a1a;
+    border:1px solid var(--border);border-radius:12px;
+    overflow:hidden;
+    display:none;
+    box-shadow:0 12px 24px rgba(0,0,0,.6);
+    z-index:99999;
+  }
+  .search-results-dropdown.show{display:block}
+  .search-result-item{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;
+    cursor:pointer;transition:background .15s;
+  }
+  .search-result-item:hover{background:var(--panel)}
+  .search-thumb{
+    width:42px;height:42px;border-radius:50%;object-fit:cover;
+    background:var(--panel);border:1px solid var(--border);flex-shrink:0;
+  }
+  .search-info{flex:1;min-width:0}
+  .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .no-results{
+    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
+    background:#1a1a1a;
+  }
+
+  .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
+    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;gap:12px;align-items:flex-start}
+  .broadcast.hidden{display:none}
 
   .container{max-width:1100px;margin:24px auto;padding:0 16px;width:100%;flex:1}
 
@@ -48,18 +117,17 @@
     font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
   }
 
-  /* Full-width stacked cards – exactly like index.html */
-  .release-list{display:flex;flex-direction:column;gap:20px}
+  .release-list{display:flex;flex-direction:column;gap:16px}
   .release-card{
     border-radius:18px;overflow:hidden;
     border:1px solid var(--border);
     background:var(--card);
     display:flex;flex-direction:column;
     transition:transform .15s ease,box-shadow .15s ease;
-    cursor:pointer;
-    text-decoration:none;color:inherit;
+    cursor:pointer;text-decoration:none;color:inherit;
   }
   .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
+
   .card-image{
     width:100%;aspect-ratio:16/9;
     background-size:cover;background-position:center;
@@ -67,17 +135,37 @@
   }
   .card-image .overlay{
     position:absolute;inset:0;
-    background:linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 60%);
+    background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 50%, transparent 100%);
+    pointer-events:none;
   }
-  .card-info{
-    background:rgba(0,0,0,.8);padding:12px 16px;
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  .card-title-overlay{
+    position:absolute;bottom:0;left:0;right:0;
+    padding:12px 16px;
+    font-size:15px;font-weight:700;line-height:1.4;
+    color:#fff;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    z-index:2;
   }
-  .card-title{color:#fff;font-size:15px;font-weight:700;line-height:1.4;flex:1}
-  .ep-badge{
-    background:rgba(81,218,211,.15);color:var(--accent);
-    font-size:14px;font-weight:700;padding:4px 14px;border-radius:20px;
-    white-space:nowrap;flex-shrink:0;
+  .media-badge{
+    position:absolute;top:10px;left:10px;
+    background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    color:var(--accent);font-size:12px;font-weight:700;
+    padding:3px 10px;border-radius:6px;
+    text-transform:uppercase;letter-spacing:.5px;
+    z-index:2;
+    display:none;
+  }
+  .media-badge.show{display:block}
+  .ep-badge-overlay{
+    position:absolute;bottom:10px;right:10px;
+    background:var(--accent);color:#0a2a28;
+    font-size:14px;font-weight:700;
+    padding:4px 14px;border-radius:20px;
+    z-index:2;
   }
 
   .empty{padding:32px;text-align:center;color:var(--muted);
@@ -94,10 +182,30 @@
 </head>
 <body>
   <header class="app">
-    <button class="back-btn" onclick="history.back()">←</button>
-    <div class="brand">Ani<span>Chan</span></div>
-    <div></div> <!-- spacer -->
+    <div class="header-left">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <div class="brand">Ani<span>Chan</span></div>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <!-- Hamburger inserted by JS -->
+    </div>
   </header>
+
+  <div class="nav-dropdown" id="navDropdown">
+    <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
+    <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
+    <div class="nav-search-wrap" id="navSearchWrap">
+      <span class="ico material-symbols-outlined">search</span>
+      <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
+    </div>
+  </div>
+
+  <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+
+  <div class="broadcast hidden" id="broadcast">
+    <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
+    <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
+  </div>
 
   <main class="container">
     <div class="glass-panel">
@@ -125,17 +233,121 @@
   const ITEMS_PER_PAGE = 26;
   let library = [];
   let currentPage = 1;
+  let searchLibrary = [];
 
   const params = new URLSearchParams(window.location.search);
-  const genre = params.get('genre');  // e.g. "Action"
+  const genre = params.get('genre');
+  if (!genre) { alert('No genre specified'); history.back(); return; }
+  $('pageTitle').textContent = `Genre: ${genre}`;
 
-  if (!genre) {
-    alert('No genre specified');
-    history.back();
-    return;
+  (function renderHamburger() {
+    const container = $("headerActions");
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "menu-btn";
+    menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
+    menuBtn.addEventListener("click", () => { $("navDropdown").classList.toggle("open"); });
+    container.appendChild(menuBtn);
+  })();
+
+  $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
+  $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
+
+  // Live search
+  const navSearchInput = $("navSearchInput");
+  const searchResultsDropdown = $("searchResultsDropdown");
+  const MAX_RESULTS = 15;
+
+  function positionDropdown() {
+    const rect = navSearchInput.getBoundingClientRect();
+    searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
+    searchResultsDropdown.style.left = rect.left + 'px';
+    searchResultsDropdown.style.width = rect.width + 'px';
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
+  }
+  function hideSearchResults() {
+    searchResultsDropdown.classList.remove("show");
+    searchResultsDropdown.innerHTML = '';
   }
 
-  $('pageTitle').textContent = `Genre: ${genre}`;
+  function performSearch(query) {
+    searchResultsDropdown.innerHTML = '';
+    const q = query.trim();
+    if (!q || searchLibrary.length === 0) { hideSearchResults(); return; }
+
+    const lowerQ = q.toLowerCase();
+    const words = lowerQ.split(/\s+/).filter(Boolean);
+    if (words.length === 0) { hideSearchResults(); return; }
+
+    const scored = searchLibrary.map(a => {
+      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
+      let matchCount = 0;
+      for (const word of words) {
+        if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
+      }
+      if (words.length === 1 && matchCount === 0) return null;
+      if (words.length > 1 && matchCount < 2) return null;
+
+      let score = matchCount;
+      for (const f of fields) {
+        if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
+      }
+      if (score < 200) {
+        for (const f of fields) {
+          if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
+        }
+      }
+      return { anime: a, score };
+    }).filter(Boolean);
+
+    if (scored.length === 0) {
+      const noRes = document.createElement("div");
+      noRes.className = "no-results";
+      noRes.textContent = "No results found";
+      searchResultsDropdown.appendChild(noRes);
+      positionDropdown();
+      searchResultsDropdown.classList.add("show");
+      return;
+    }
+
+    const matches = scored.sort((a,b) => b.score - a.score).slice(0, MAX_RESULTS).map(s => s.anime);
+    matches.forEach(a => {
+      const item = document.createElement("div");
+      item.className = "search-result-item";
+      item.innerHTML = `
+        <img class="search-thumb" src="${a.image_url || ''}" onerror="this.style.display='none'" />
+        <div class="search-info">
+          <div class="name">${a.title || "Untitled"}</div>
+          <div class="meta">${[a.type, a.year, a.ep_total ? a.ep_total + ' eps' : ''].filter(Boolean).join(" · ")}</div>
+        </div>`;
+      item.addEventListener("click", () => {
+        hideSearchResults();
+        navSearchInput.value = '';
+        $("navDropdown").classList.remove("open");
+        location.href = `anime_info.html?id=${a.id}`;
+      });
+      searchResultsDropdown.appendChild(item);
+    });
+    positionDropdown();
+    searchResultsDropdown.classList.add("show");
+  }
+
+  navSearchInput.addEventListener("input", () => performSearch(navSearchInput.value));
+  navSearchInput.addEventListener("focus", () => { if (navSearchInput.value.trim()) performSearch(navSearchInput.value); });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#navSearchWrap") && !e.target.closest("#searchResultsDropdown")) hideSearchResults();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideSearchResults(); });
+  window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
+  window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
+
+  // Broadcast
+  async function loadBroadcast() {
+    const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
+    const msg = (data && data.value || "").trim();
+    if (msg) { $("broadcastMsg").textContent = msg; $("broadcast").classList.remove("hidden"); }
+    else { $("broadcast").classList.add("hidden"); }
+  }
 
   async function loadGenreAnime() {
     const { data, error } = await sb
@@ -144,12 +356,15 @@
       .contains('genres', [genre])
       .order('aired_from', { ascending: false })
       .order('title', { ascending: true });
-
-    if (error) { console.error(error); library = []; }
-    else { library = data || []; }
+    library = error ? [] : (data || []);
     currentPage = 1;
     renderList();
   }
+
+  (async function preloadSearch() {
+    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
+    searchLibrary = data || [];
+  })();
 
   function renderList() {
     const list = $('releaseList');
@@ -178,20 +393,26 @@
         const overlay = document.createElement('div');
         overlay.className = 'overlay';
         imgDiv.appendChild(overlay);
+
+        const mediaBadge = document.createElement('span');
+        mediaBadge.className = 'media-badge';
+        if (a.release_type) {
+          mediaBadge.textContent = a.release_type;
+          mediaBadge.classList.add('show');
+        }
+        imgDiv.appendChild(mediaBadge);
+
+        const titleOverlay = document.createElement('span');
+        titleOverlay.className = 'card-title-overlay';
+        titleOverlay.textContent = a.title || 'Untitled';
+        imgDiv.appendChild(titleOverlay);
+
+        const epBadge = document.createElement('span');
+        epBadge.className = 'ep-badge-overlay';
+        epBadge.textContent = a.ep_total != null ? a.ep_total : '?';
+        imgDiv.appendChild(epBadge);
+
         card.appendChild(imgDiv);
-
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'card-info';
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'card-title';
-        titleSpan.textContent = a.title || 'Untitled';
-        const epSpan = document.createElement('span');
-        epSpan.className = 'ep-badge';
-        epSpan.textContent = a.ep_total != null ? a.ep_total : '?';
-        infoDiv.appendChild(titleSpan);
-        infoDiv.appendChild(epSpan);
-        card.appendChild(infoDiv);
-
         list.appendChild(card);
       }
     }
@@ -216,6 +437,7 @@
   });
 
   loadGenreAnime();
+  loadBroadcast();
 })();
 </script>
 </body>

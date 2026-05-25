@@ -47,6 +47,7 @@
   }
   .menu-btn:hover{border-color:var(--accent);background:var(--card)}
 
+  /* Navigation dropdown (still pushes content down) */
   .nav-dropdown{
     display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
     -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
@@ -74,20 +75,19 @@
     pointer-events:none;
   }
 
-  /* Floating search dropdown – taller and only shows relevant matches */
+  /* Floating search overlay – fixed, no internal scroll */
   .search-results-dropdown{
     position:fixed;
     background:#1a1a1a;
     border:1px solid var(--border);border-radius:12px;
-    max-height:70vh;          /* uses most of the screen height */
-    overflow-y:auto;display:none;
+    overflow:hidden;   /* no scrollbar */
+    display:none;
     box-shadow:0 12px 24px rgba(0,0,0,.6);
     z-index:99999;
-    width:auto; left:0; right:0;
   }
   .search-results-dropdown.show{display:block}
   .search-result-item{
-    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;padding:10px 14px;
     cursor:pointer;transition:background .15s;
   }
   .search-result-item:hover{background:var(--panel)}
@@ -250,7 +250,7 @@
     <div id="navUserSection"></div>
   </div>
 
-  <!-- Floating search results -->
+  <!-- Floating search overlay (outside nav dropdown) -->
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
   <main class="wrap">
@@ -398,15 +398,20 @@
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Live search – strict word match, tall dropdown ──
+  // ── Fuzzy live search – fixed overlay, no scroll ──
   const navSearchInput = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
+  const MAX_RESULTS = 15;   // enough to fill the viewport without scrolling
 
   function positionDropdown() {
     const rect = navSearchInput.getBoundingClientRect();
     searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
     searchResultsDropdown.style.left = rect.left + 'px';
     searchResultsDropdown.style.width = rect.width + 'px';
+
+    // calculate available space below the input
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
   }
 
   function hideSearchResults() {
@@ -423,14 +428,32 @@
     const words = lowerQ.split(/\s+/).filter(Boolean);
     if (words.length === 0) { hideSearchResults(); return; }
 
-    // Only keep anime where EVERY query word appears in at least one title field
-    const strictMatches = library.filter(a => {
+    const scored = library.map(a => {
       const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr]
         .filter(f => f != null);
-      return words.every(word => fields.some(f => f.toLowerCase().includes(word)));
-    });
+      let matchCount = 0;
+      for (const word of words) {
+        if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
+      }
 
-    if (strictMatches.length === 0) {
+      if (words.length === 1 && matchCount === 0) return null;
+      if (words.length > 1 && matchCount < 2) return null;
+
+      let score = matchCount;
+
+      for (const f of fields) {
+        if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
+      }
+      if (score < 200) {
+        for (const f of fields) {
+          if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
+        }
+      }
+
+      return { anime: a, score };
+    }).filter(Boolean);
+
+    if (scored.length === 0) {
       const noRes = document.createElement("div");
       noRes.className = "no-results";
       noRes.textContent = "No results found";
@@ -440,28 +463,9 @@
       return;
     }
 
-    // Now score the strict matches to push exact / prefix matches to the top
-    const scored = strictMatches.map(a => {
-      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr]
-        .filter(f => f != null);
-      let score = 0;
-
-      // Bonus: any field starts with the full query
-      if (fields.some(f => f.toLowerCase().startsWith(lowerQ))) score += 200;
-      // Bonus: any field contains the full query as a substring
-      else if (fields.some(f => f.toLowerCase().includes(lowerQ))) score += 100;
-
-      // Base score: count how many words appear across all fields
-      for (const word of words) {
-        if (fields.some(f => f.toLowerCase().includes(word))) score += 1;
-      }
-
-      return { anime: a, score };
-    });
-
     const matches = scored
       .sort((a, b) => b.score - a.score)
-      .slice(0, 20)
+      .slice(0, MAX_RESULTS)
       .map(s => s.anime);
 
     matches.forEach(a => {

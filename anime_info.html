@@ -32,15 +32,89 @@
   }
   .brand{font-weight:800;font-size:20px}
   .brand span{color:var(--accent)}
+  .header-left{display:flex;align-items:center;gap:12px}
   .back-btn{
     background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
     padding:0 8px;line-height:1;
   }
   .header-actions{display:flex;align-items:center;gap:8px}
 
+  /* Hamburger menu button */
+  .menu-btn{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
+    transition:background .15s,border-color .15s;
+  }
+  .menu-btn:hover{border-color:var(--accent);background:var(--card)}
+
+  /* Full‑width navigation dropdown */
+  .nav-dropdown{
+    display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+    padding:16px 16px 20px;
+  }
+  .nav-dropdown.open{display:block}
+  .nav-dropdown .nav-item{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;
+    border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
+    transition:background .15s;cursor:pointer;
+  }
+  .nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
+  .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
+  .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+
+  /* Search inside nav dropdown */
+  .nav-search-wrap{margin-top:8px;position:relative}
+  .nav-search-wrap input{
+    width:100%;padding:12px 14px 12px 44px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    font-size:14px;outline:none;
+  }
+  .nav-search-wrap input:focus{border-color:var(--accent)}
+  .nav-search-wrap .ico{
+    position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
+    pointer-events:none;
+  }
+
+  /* Floating search overlay */
+  .search-results-dropdown{
+    position:fixed;
+    background:#1a1a1a;
+    border:1px solid var(--border);border-radius:12px;
+    overflow:hidden;
+    display:none;
+    box-shadow:0 12px 24px rgba(0,0,0,.6);
+    z-index:99999;
+  }
+  .search-results-dropdown.show{display:block}
+  .search-result-item{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;
+    cursor:pointer;transition:background .15s;
+  }
+  .search-result-item:hover{background:var(--panel)}
+  .search-thumb{
+    width:42px;height:42px;border-radius:50%;object-fit:cover;
+    background:var(--panel);border:1px solid var(--border);flex-shrink:0;
+  }
+  .search-info{flex:1;min-width:0}
+  .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .no-results{
+    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
+    background:#1a1a1a;
+  }
+
+  /* Broadcast banner */
+  .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
+    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;gap:12px;align-items:flex-start}
+  .broadcast.hidden{display:none}
+
   .container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
 
-  /* Hero section – poster centred, no text inside */
+  /* Hero section – poster centred */
   .hero{
     position:relative;width:100%;aspect-ratio:16/9;
     background-size:cover;background-position:center;
@@ -89,7 +163,6 @@
     content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;
     background:var(--accent);border-radius:2px 2px 0 0;
   }
-
   .tab-content{display:none}
   .tab-content.active{display:block}
 
@@ -104,10 +177,6 @@
   .meta-label{font-weight:700;font-size:14px;min-width:100px}
   .meta-value{font-size:14px;color:var(--muted)}
   .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important}
-  /* Underlined links (for status) */
-  .accent-value.underlined{
-    text-decoration:underline !important;
-  }
 
   /* Genre chips */
   .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
@@ -156,48 +225,72 @@
   }
   .ext-link:hover{background:var(--card)}
 
-  .admin-edit-btn{ margin-bottom:16px;display:none; }
+  .admin-edit-btn{display:flex;justify-content:center;margin-bottom:16px}
+
+  @media (max-width:500px) {
+    .hero-poster{
+      width:100px;
+      height:140px;
+    }
+  }
 </style>
 </head>
 <body>
   <header class="app">
-    <button class="back-btn" onclick="history.back()">←</button>
-    <div class="brand">Ani<span>Chan</span></div>
-    <div class="header-actions" id="headerActions"><!-- admin edit button here --></div>
+    <div class="header-left">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <div class="brand">Ani<span>Chan</span></div>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <!-- Hamburger button inserted by JS -->
+    </div>
   </header>
 
-  <!-- HERO: background + centred poster only -->
+  <!-- Full‑width navigation dropdown -->
+  <div class="nav-dropdown" id="navDropdown">
+    <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
+    <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
+    <div class="nav-search-wrap" id="navSearchWrap">
+      <span class="ico material-symbols-outlined">search</span>
+      <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
+    </div>
+  </div>
+
+  <!-- Floating search overlay -->
+  <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+
+  <!-- Broadcast banner -->
+  <div class="broadcast hidden" id="broadcast">
+    <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
+    <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
+  </div>
+
   <div class="hero" id="heroBg">
     <div class="hero-overlay"></div>
     <img class="hero-poster" id="heroPoster" src="" alt="Poster" />
   </div>
 
-  <!-- Title outside the hero -->
   <div class="title-section">
     <h1 id="heroTitle"></h1>
     <div class="jp-title" id="heroJpTitle"></div>
   </div>
 
   <main class="container">
-    <!-- Tabs -->
     <div class="tabs">
       <div class="tab active" data-tab="summary">Summary</div>
       <div class="tab" data-tab="recommendations">Recommendations</div>
     </div>
 
-    <!-- Summary -->
     <div class="tab-content active" id="summaryTab">
       <div class="synopsis-text" id="synopsis">Loading synopsis...</div>
-
       <div class="meta-list" id="metaList"></div>
       <div class="genres" id="genreTags"></div>
       <div class="external-links" id="extLinks"></div>
-
+      <div class="admin-edit-btn" id="adminEditBtn"></div>
       <h3 style="margin-bottom:12px;font-size:16px">Episodes</h3>
       <div class="episode-grid" id="episodeGrid"></div>
     </div>
 
-    <!-- Recommendations -->
     <div class="tab-content" id="recommendationsTab">
       <h3 style="margin-bottom:16px;font-weight:700;font-size:18px">ANIME YOU MIGHT LIKE</h3>
       <div class="rec-list" id="recList"></div>
@@ -222,8 +315,130 @@
 
     let animeData = null;
     let user = null;
+    let library = []; // for live search
 
-    // Tab switching
+    // ── Hamburger menu ──
+    (function renderHamburger() {
+      const container = $("headerActions");
+      const menuBtn = document.createElement("button");
+      menuBtn.className = "menu-btn";
+      menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
+      menuBtn.addEventListener("click", () => {
+        $("navDropdown").classList.toggle("open");
+      });
+      container.appendChild(menuBtn);
+    })();
+
+    $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
+    $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
+
+    // ── Live search (fuzzy, multilingual) ──
+    const navSearchInput = $("navSearchInput");
+    const searchResultsDropdown = $("searchResultsDropdown");
+    const MAX_RESULTS = 15;
+
+    function positionDropdown() {
+      const rect = navSearchInput.getBoundingClientRect();
+      searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
+      searchResultsDropdown.style.left = rect.left + 'px';
+      searchResultsDropdown.style.width = rect.width + 'px';
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
+    }
+
+    function hideSearchResults() {
+      searchResultsDropdown.classList.remove("show");
+      searchResultsDropdown.innerHTML = '';
+    }
+
+    function performSearch(query) {
+      searchResultsDropdown.innerHTML = '';
+      const q = query.trim();
+      if (!q || library.length === 0) { hideSearchResults(); return; }
+
+      const lowerQ = q.toLowerCase();
+      const words = lowerQ.split(/\s+/).filter(Boolean);
+      if (words.length === 0) { hideSearchResults(); return; }
+
+      const scored = library.map(a => {
+        const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
+        let matchCount = 0;
+        for (const word of words) {
+          if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
+        }
+        if (words.length === 1 && matchCount === 0) return null;
+        if (words.length > 1 && matchCount < 2) return null;
+
+        let score = matchCount;
+        for (const f of fields) {
+          if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
+        }
+        if (score < 200) {
+          for (const f of fields) {
+            if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
+          }
+        }
+        return { anime: a, score };
+      }).filter(Boolean);
+
+      if (scored.length === 0) {
+        const noRes = document.createElement("div");
+        noRes.className = "no-results";
+        noRes.textContent = "No results found";
+        searchResultsDropdown.appendChild(noRes);
+        positionDropdown();
+        searchResultsDropdown.classList.add("show");
+        return;
+      }
+
+      const matches = scored.sort((a,b) => b.score - a.score).slice(0, MAX_RESULTS).map(s => s.anime);
+      matches.forEach(a => {
+        const item = document.createElement("div");
+        item.className = "search-result-item";
+        item.innerHTML = `
+          <img class="search-thumb" src="${a.image_url || ''}" onerror="this.style.display='none'" />
+          <div class="search-info">
+            <div class="name">${a.title || "Untitled"}</div>
+            <div class="meta">${[a.type, a.year, a.ep_total ? a.ep_total + ' eps' : ''].filter(Boolean).join(" · ")}</div>
+          </div>`;
+        item.addEventListener("click", () => {
+          hideSearchResults();
+          navSearchInput.value = '';
+          $("navDropdown").classList.remove("open");
+          location.href = `anime_info.html?id=${a.id}`;
+        });
+        searchResultsDropdown.appendChild(item);
+      });
+      positionDropdown();
+      searchResultsDropdown.classList.add("show");
+    }
+
+    navSearchInput.addEventListener("input", () => performSearch(navSearchInput.value));
+    navSearchInput.addEventListener("focus", () => { if (navSearchInput.value.trim()) performSearch(navSearchInput.value); });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#navSearchWrap") && !e.target.closest("#searchResultsDropdown")) hideSearchResults();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hideSearchResults();
+    });
+    window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
+    window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
+
+    // Preload library for search
+    (async function preloadLibrary() {
+      const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
+      library = data || [];
+    })();
+
+    // ── Broadcast ──
+    async function loadBroadcast() {
+      const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
+      const msg = (data && data.value || "").trim();
+      if (msg) { $("broadcastMsg").textContent = msg; $("broadcast").classList.remove("hidden"); }
+      else { $("broadcast").classList.add("hidden"); }
+    }
+
+    // ── Tab switching ──
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -266,15 +481,11 @@
       if (error || !data) { alert('Anime not found'); history.back(); return; }
       animeData = data;
 
-      // Hero background
       $('heroBg').style.backgroundImage = `url('${data.image_url || DEFAULT_AVATAR}')`;
       $('heroPoster').src = data.image_url || DEFAULT_AVATAR;
-
-      // Title section (outside hero)
       $('heroTitle').textContent = data.title || 'Untitled';
       $('heroJpTitle').textContent = data.title_jp || '';
 
-      // Synopsis
       let synopsis = data.synopsis || data.notes || null;
       if (!synopsis) {
         synopsis = await fetchSynopsisFromJikan(data.title);
@@ -282,7 +493,6 @@
       }
       $('synopsis').textContent = synopsis || 'No synopsis available.';
 
-      // Metadata
       const metaItems = [];
       if (data.title_jp) metaItems.push({ label: 'Japanese', value: data.title_jp });
       if (data.title_en) metaItems.push({ label: 'English', value: data.title_en });
@@ -313,14 +523,13 @@
         } else if (m.typeLink) {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.typeLink}" class="meta-value accent-value">${m.value}</a>`;
         } else if (m.statusLink) {
-          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.statusLink}" class="meta-value accent-value underlined">${m.value}</a>`;
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.statusLink}" class="meta-value accent-value" style="text-decoration:underline">${m.value}</a>`;
         } else {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
         }
         metaContainer.appendChild(row);
       });
 
-      // Genres (clickable)
       const genreContainer = $('genreTags');
       genreContainer.innerHTML = '';
       if (data.genres && Array.isArray(data.genres)) {
@@ -333,7 +542,6 @@
         });
       }
 
-      // External links
       const query = encodeURIComponent(data.title);
       const extLinks = [
         { name: 'AniList', url: `https://anilist.co/search/anime?search=${query}` },
@@ -348,6 +556,17 @@
         a.className = 'ext-link'; a.href = link.url; a.target = '_blank'; a.textContent = link.name;
         extContainer.appendChild(a);
       });
+
+      // Admin edit button (inside content)
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user.email === ADMIN_EMAIL) {
+        const editBtn = document.createElement('a');
+        editBtn.className = 'btn';
+        editBtn.href = `admin.html#anime-form-section`;
+        editBtn.textContent = 'Edit in Admin';
+        editBtn.style.cssText = 'padding:6px 12px;font-size:12px;';
+        $('adminEditBtn').appendChild(editBtn);
+      }
 
       // Episode grid
       const epTotal = data.ep_total || 0;
@@ -398,17 +617,6 @@
       }
 
       loadRecommendations();
-
-      // Admin edit button
-      const { data: { session } } = await sb.auth.getSession();
-      if (session && session.user.email === ADMIN_EMAIL) {
-        const editBtn = document.createElement('a');
-        editBtn.className = 'btn';
-        editBtn.href = `admin.html#anime-form-section`;
-        editBtn.textContent = 'Edit in Admin';
-        editBtn.style.cssText = 'margin-left:auto;padding:6px 12px;font-size:12px;';
-        $('headerActions').appendChild(editBtn);
-      }
     }
 
     async function loadRecommendations() {
@@ -452,7 +660,8 @@
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { session } } = await sb.auth.getSession();
       user = session?.user || null;
-      await loadAnime();
+      loadBroadcast();
+      loadAnime();
     });
   })();
   </script>
