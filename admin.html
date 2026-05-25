@@ -55,7 +55,7 @@
 
   .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto}
 
-  /* Mobile top bar – fixed full width */
+  /* Mobile top bar */
   .top-bar-mobile{
     display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
     align-items:center;justify-content:space-between;
@@ -191,7 +191,6 @@
     </aside>
 
     <div class="main-area">
-      <!-- Mobile top bar with logout button -->
       <div class="top-bar-mobile">
         <div class="brand">Ani<span class="accent">Chan</span></div>
         <button class="logout-btn-mobile" id="logoutBtnMobile"><span class="material-symbols-outlined">logout</span> Logout</button>
@@ -209,7 +208,7 @@
         <div class="content">
           <div class="bento-grid">
 
-            <!-- Broadcast (span 2) -->
+            <!-- Broadcast -->
             <div id="broadcast-section" class="glass-panel span-2">
               <h3><span class="material-symbols-outlined">campaign</span> Broadcast</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Shown to everyone on the homepage. Leave empty and save to clear.</p>
@@ -227,12 +226,11 @@
               <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
                 <img id="currentLogoPreview" src="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
               </div>
-              <div id="currentLogoUrl" style="display:none;"></div>
               <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
               <button class="btn btn-primary" id="uploadLogoBtn">Upload & Save</button>
             </div>
 
-            <!-- Smart Auto‑Fetch (span 2) -->
+            <!-- Auto‑Fetch -->
             <div id="autofetch-section" class="glass-panel span-2">
               <h3><span class="material-symbols-outlined">search</span> Smart Auto‑Fetch</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Search the Jikan API and click a result to auto‑fill the form below.</p>
@@ -255,7 +253,7 @@
               </div>
             </div>
 
-            <!-- Add/Edit Anime Form (Add to Latest Releases, star rating) -->
+            <!-- Add/Edit Anime Form -->
             <div id="anime-form-section" class="glass-panel span-2">
               <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
               <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the title is required.</p>
@@ -318,11 +316,11 @@
               </div>
             </div>
 
-          </div><!-- bento-grid -->
-        </div><!-- content -->
-      </div><!-- app -->
-    </div><!-- main-area -->
-  </div><!-- app-layout -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Suspend/Delete dialog -->
   <div class="modal" id="memberModal" aria-hidden="true">
@@ -339,7 +337,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ── Back‑button prevention (always asks to log out) ──
     (function() {
       if (window.history && window.history.pushState) {
         window.history.pushState('forward', null, '');
@@ -360,19 +357,16 @@
       const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const $ = id => document.getElementById(id);
-      const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'
-      );
-      const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
-      );
+      const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+      const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
 
       const ADMIN_ITEMS_PER_PAGE = 20;
-      let totalAnimeCount = 0;   // will be set after first fetch
+      let totalAnimeCount = 0;
       let adminPage = 1;
       let cancelFlag = false;
+      let currentAdminId = null;
+      let memberAction = null, selectedUserId = null;
 
-      // Star rating helper
       function updateStarRating(score) {
         const container = $('starRating');
         if (!container) return;
@@ -386,7 +380,6 @@
         }
       }
 
-      // Gate
       async function gate(){
         $("gate").style.display = "flex";
         const { data: { session } } = await sb.auth.getSession();
@@ -404,7 +397,6 @@
         return true;
       }
 
-      // Toast
       let toastTimer;
       function toast(msg){
         const t = $("toast");
@@ -414,7 +406,6 @@
         toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
       }
 
-      // Logout
       async function handleLogout() {
         await sb.auth.signOut();
         window.onpopstate = null;
@@ -434,7 +425,32 @@
         else toast(value ? "Broadcast saved" : "Broadcast cleared");
       }
 
-      // Smart Auto-Fetch (unchanged)
+      // Logo
+      async function loadCurrentLogo(){
+        const { data, error } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
+        if (error) return;
+        const url = data && data.value ? data.value : "";
+        $("currentLogoPreview").src = url || DEFAULT_AVATAR;
+      }
+      async function uploadAndSaveLogo(file){
+        if (!file) { toast("Please select an image file."); return; }
+        const btn = $("uploadLogoBtn"); const origText = btn.textContent;
+        btn.disabled = true; btn.textContent = "Uploading…";
+        try {
+          const { error: uploadError } = await sb.storage.from("avatars").upload("site-logo/logo.png", file, { upsert: true });
+          if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+          const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
+          const newUrl = urlData?.publicUrl;
+          if (!newUrl) throw new Error("Could not get public URL.");
+          const { error: upsertError } = await sb.from("settings").upsert({ key: "site_logo", value: newUrl });
+          if (upsertError) throw new Error("Settings update failed: " + upsertError.message);
+          $("currentLogoPreview").src = newUrl + '?t=' + Date.now();
+          toast("Logo updated successfully!");
+        } catch (e) { toast(e.message); }
+        finally { btn.disabled = false; btn.textContent = origText; }
+      }
+
+      // Smart Auto‑Fetch
       let searchAbort;
       async function runSearch(){
         const q = $("searchQ").value.trim();
@@ -476,7 +492,6 @@
         } catch (err) { if (err.name === "AbortError") return; status.textContent = "Search failed. Try again."; }
       }
 
-      // Form helpers
       const STATUS_LABELS = {
         "Aired": "Finished Airing",
         "Currently Airing": "Currently Airing",
@@ -490,7 +505,6 @@
           const c = document.createElement("span"); c.className = "chip"; c.textContent = g; host.appendChild(c);
         }
       }
-
       function getBestTitle(a){
         const lang = (navigator.language || 'en').split('-')[0];
         if (lang === 'ja' && a.title_japanese) return a.title_japanese;
@@ -571,18 +585,12 @@
         clearForm(); await loadAnimeList();
       }
 
-      // ────────────────────────────────────────
-      //  REVAMPED COLLECTION LIST WITH TRUE COUNT
-      // ────────────────────────────────────────
+      // ── Collection (with true count and server‑side pagination) ──
       async function loadAnimeList() {
-        // Get total count
         const { count, error: countErr } = await sb
           .from("anime")
           .select("*", { count: "exact", head: true });
-        if (countErr) {
-          console.error(countErr);
-          return;
-        }
+        if (countErr) { toast("Failed to get collection count."); return; }
         totalAnimeCount = count || 0;
 
         const totalPages = Math.ceil(totalAnimeCount / ADMIN_ITEMS_PER_PAGE);
@@ -597,20 +605,14 @@
           .select("*")
           .order("created_at", { ascending: false })
           .range(start, end);
+        if (error) { toast("Failed to load collection page."); return; }
 
-        if (error) {
-          toast("Failed to load collection.");
-          return;
-        }
-
-        // Render badge
         const badge = $("countBadge");
         badge.style.display = "inline-block";
         badge.textContent = totalAnimeCount;
 
         const list = $("list");
         list.innerHTML = "";
-
         if (!pageItems || pageItems.length === 0) {
           list.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:12px">No items on this page.</div>';
         } else {
@@ -660,14 +662,10 @@
           }
         }
 
-        // Pagination
         const pagination = $("paginationControls");
-        const prevBtn = $("prevPageBtn");
-        const nextBtn = $("nextPageBtn");
-        const indicator = $("pageIndicator");
-        if (totalPages <= 1) {
-          pagination.style.display = "none";
-        } else {
+        const prevBtn = $("prevPageBtn"); const nextBtn = $("nextPageBtn"); const indicator = $("pageIndicator");
+        if (totalPages <= 1) { pagination.style.display = "none"; }
+        else {
           pagination.style.display = "flex";
           prevBtn.disabled = adminPage <= 1;
           nextBtn.disabled = adminPage >= totalPages;
@@ -683,14 +681,8 @@
         if (adminPage < totalPages) { adminPage++; loadAnimeList(); }
       });
 
-      // Cancel button helper
-      function showCancelButton() {
-        $("cancelOperationBtn").style.display = "inline-flex";
-        cancelFlag = false;
-      }
-      function hideCancelButton() {
-        $("cancelOperationBtn").style.display = "none";
-      }
+      function showCancelButton() { $("cancelOperationBtn").style.display = "inline-flex"; cancelFlag = false; }
+      function hideCancelButton() { $("cancelOperationBtn").style.display = "none"; }
       $("cancelOperationBtn").addEventListener("click", () => {
         if (confirm("Are you sure you want to cancel the operation?")) {
           cancelFlag = true;
@@ -699,20 +691,19 @@
         }
       });
 
-      // Bulk Import (unchanged)
+      // Bulk Import (unchanged, works)
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
         showCancelButton();
 
-        const { data: existingData, error: existErr } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
+        const { data: existingData } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
         const existing = existingData || [];
         const existingDisplayTitles = new Set(existing.map(a => getDisplayTitleForDedup(a)));
 
         const maxAttempts = 50; let attempts = 0;
         let insertsAccum = [];
-
         try {
           while (attempts < maxAttempts && !cancelFlag && insertsAccum.length < 50) {
             attempts++; const p1 = bulkPage, p2 = bulkPage + 1;
@@ -780,9 +771,6 @@
         }
       }
 
-      // ──────────────────────────────────────────
-      //  FIX ALL – REWRITTEN FOR SPEED & ACCURACY
-      // ──────────────────────────────────────────
       function mapAiringStatus(jikanStatus){
         if (!jikanStatus) return null;
         const s = jikanStatus.toLowerCase();
@@ -792,14 +780,14 @@
         return null;
       }
 
-      // Fetch all anime (handles >1000 by paginating)
+      // Fast Fix All (concurrent, always updates status)
       async function fetchAllAnime() {
         const all = [];
         let from = 0, to = 999;
         while (true) {
           const { data, error } = await sb
             .from("anime")
-            .select("id, status, title_en, title_jp, title_zh, title_de, title_fr, aired_from, aired_to, score, ep_total, genres, studio, title")
+            .select("id, title, status, title_en, title_jp, title_zh, title_de, title_fr, aired_from, aired_to, score, ep_total, genres, studio")
             .range(from, to);
           if (error) throw error;
           if (!data || data.length === 0) break;
@@ -834,7 +822,6 @@
           return;
         }
 
-        // Store originals for rollback
         const originals = allAnime.map(a => ({
           id: a.id,
           status: a.status,
@@ -849,20 +836,16 @@
         let processed = 0, fixedCount = 0;
         const updatedIds = [];
 
-        // Concurrency-limited queue
         const CONCURRENCY = 3;
         const queue = [...allAnime];
-        const workers = [];
 
         async function processOne(anime) {
           if (cancelFlag) return;
           try {
-            // Jikan rate limit: ~3 req/s – we'll use a small pause between each worker
-            await new Promise(r => setTimeout(r, 350)); // ~2.8 req/s
+            await new Promise(r => setTimeout(r, 350));
             if (cancelFlag) return;
 
-            const q = encodeURIComponent(anime.title);
-            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${q}&limit=1`);
+            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(anime.title)}&limit=1`);
             if (!res.ok) return;
             const json = await res.json();
             const match = json.data && json.data[0];
@@ -870,7 +853,6 @@
 
             const updates = {};
 
-            // ALWAYS update status if Jikan gives a valid one and it differs
             const jikanStatus = mapAiringStatus(match.status);
             if (jikanStatus && jikanStatus !== anime.status) {
               updates.status = jikanStatus;
@@ -907,16 +889,14 @@
                 updatedIds.push(anime.id);
               }
             }
-          } catch (e) {
-            console.warn(`Failed to fix ${anime.title}`, e);
-          } finally {
+          } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
+          finally {
             processed++;
             const pct = Math.round((processed / total) * 100);
             status.textContent = `Fixing ${processed}/${total} (${pct}%)`;
           }
         }
 
-        // Worker loop
         async function worker() {
           while (queue.length && !cancelFlag) {
             const anime = queue.shift();
@@ -924,11 +904,10 @@
           }
         }
 
-        // Start workers
+        const workers = [];
         for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
         await Promise.all(workers);
 
-        // Cancel / final
         if (cancelFlag) {
           status.textContent = "Cancelling and reverting changes…";
           const revertList = originals.filter(o => updatedIds.includes(o.id));
@@ -956,7 +935,7 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // Delete Duplicates (unchanged)
+      // Delete Duplicates
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true; btn.textContent = "Deleting…";
@@ -985,36 +964,124 @@
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
           const batch = toDelete.slice(i, i + BATCH_SIZE);
           const { error: delErr } = await sb.from("anime").delete().in("id", batch);
-          if (delErr) {
-            toast("Error deleting duplicates: " + delErr.message);
-            btn.disabled = false; btn.textContent = "Delete Duplicates"; return;
-          }
+          if (delErr) { toast("Error: " + delErr.message); break; }
           deletedCount += batch.length;
         }
-
-        toast(`Deleted ${deletedCount} duplicate titles.`);
+        toast(`Deleted ${deletedCount} duplicates.`);
         await loadAnimeList();
         btn.disabled = false; btn.textContent = "Delete Duplicates";
       }
 
-      // Member Management (unchanged)
-      function formatLastSeen(iso){ /* ... same as before ... */ }
-      // (I'll keep the member code identical for brevity — no changes needed)
-      // Copy your existing memberList, openMemberModal, etc. exactly as they were.
-      // For space I'm not re-pasting the full member code here; it's the same as your original.
-      // --- placeholder for member code ---
-      // Make sure you include it from your previous file.
+      // Member Management
+      function formatLastSeen(iso){
+        if (!iso) return "Never";
+        const d = new Date(iso), now = new Date();
+        const diff = now - d, mins = Math.floor(diff / 60000);
+        if (mins < 1) return "Just now";
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        if (days < 7) return `${days}d ago`;
+        return d.toLocaleDateString();
+      }
 
-      // Site Logo (unchanged)
-      async function loadCurrentLogo(){ /* same as original */ }
-      async function uploadAndSaveLogo(file){ /* same as original */ }
+      function openMemberModal(action, userId, username){
+        memberAction = action; selectedUserId = userId;
+        $("memberModalTitle").textContent = action === 'suspend' ? `Suspend @${username}` : `Delete @${username}`;
+        let content = '';
+        if (action === 'suspend') {
+          content = `<div style="margin-bottom:12px"><label>Duration</label><input type="number" id="suspendDuration" min="1" max="30" value="1" /><select id="suspendUnit" style="margin-top:6px"><option value="hours">Hours</option><option value="days">Days</option></select></div>`;
+        }
+        content += `<div><label>Admin note (required)</label><textarea id="adminNote" rows="2" placeholder="Reason..."></textarea></div>`;
+        $("memberModalContent").innerHTML = content;
+        $("memberModal").classList.add("show");
+      }
+      function closeMemberModal(){ $("memberModal").classList.remove("show"); memberAction = null; selectedUserId = null; }
+      $("memberModalCancel").addEventListener("click", closeMemberModal);
+      $("memberModalConfirm").addEventListener("click", async () => {
+        const note = document.getElementById("adminNote").value.trim();
+        if (!note) { toast("Admin note is required."); return; }
+        if (memberAction === 'suspend') {
+          const dur = parseInt(document.getElementById("suspendDuration").value), unit = document.getElementById("suspendUnit").value;
+          if (isNaN(dur) || dur < 1) { toast("Invalid duration."); return; }
+          let until = new Date(); if (unit === 'hours') until.setHours(until.getHours() + dur); else until.setDate(until.getDate() + dur);
+          const { error } = await sb.from("profiles").update({ is_suspended: true, suspended_until: until.toISOString(), admin_note: note }).eq("id", selectedUserId);
+          if (error) { toast("Failed: " + error.message); return; }
+          await sb.from("admin_actions").insert({ admin_id: currentAdminId, target_user_id: selectedUserId, action: 'suspend', admin_note: note });
+          toast("User suspended."); closeMemberModal(); renderMemberList(); renderActionLog();
+        } else if (memberAction === 'delete') {
+          const { error } = await sb.from("profiles").update({ is_pending_delete: true, deleted_at: new Date().toISOString(), admin_note: note }).eq("id", selectedUserId);
+          if (error) { toast("Failed: " + error.message); return; }
+          await sb.from("admin_actions").insert({ admin_id: currentAdminId, target_user_id: selectedUserId, action: 'delete', admin_note: note });
+          toast("User marked for deletion (2-hour grace)."); closeMemberModal(); renderMemberList(); renderActionLog();
+        }
+      });
+
+      async function unsuspendUser(userId){
+        const { error } = await sb.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", userId);
+        if (error) { toast("Unsuspend failed."); return; }
+        await sb.from("admin_actions").insert({ admin_id: currentAdminId, target_user_id: userId, action: 'unsuspend', admin_note: '' });
+        toast("User unsuspended."); renderMemberList(); renderActionLog();
+      }
+
+      async function renderMemberList(){
+        const container = $("memberList"); container.innerHTML = "Loading...";
+        const { data: users, error } = await sb.from("profiles").select("*").order("username");
+        if (error) { container.innerHTML = "Error loading members."; return; }
+        container.innerHTML = "";
+        users.forEach(user => {
+          const row = document.createElement("div");
+          row.className = "member-item";
+          let statusHtml = user.is_online
+            ? '<span class="badge online">Online</span>'
+            : `<span class="badge offline">Offline since ${formatLastSeen(user.last_seen)}</span>`;
+          if (user.is_suspended) statusHtml += ' <span class="badge suspended">Suspended</span>';
+          if (user.is_pending_delete) statusHtml += ' <span class="badge pending">Pending delete</span>';
+          row.innerHTML = `
+            <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+            <div style="flex:1;min-width:0">
+              <strong>@${user.username}</strong> ${statusHtml}
+              <div style="font-size:11px;color:var(--muted)">${user.full_name || ''}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <a class="btn" href="profile.html?user=${user.id}" target="_blank">View</a>
+              ${user.is_suspended
+                ? `<button class="btn" onclick="window.unsuspendUser('${user.id}')">Unsuspend</button>`
+                : `<button class="btn" onclick="window.openMemberModal('suspend','${user.id}','${user.username}')">Suspend</button>`}
+              <button class="btn btn-danger" onclick="window.openMemberModal('delete','${user.id}','${user.username}')">Delete</button>
+            </div>`;
+          container.appendChild(row);
+        });
+      }
+
+      async function renderActionLog(){
+        const container = $("actionLog");
+        const { data, error } = await sb.from("admin_actions").select("*").order("created_at", { ascending: false }).limit(20);
+        if (error) { container.innerHTML = "Could not load log."; return; }
+        container.innerHTML = "";
+        data.forEach(log => {
+          const div = document.createElement("div");
+          div.style.cssText = "padding:4px 0;border-bottom:1px solid var(--border);font-size:12px";
+          div.innerHTML = `<span style="color:var(--accent);font-weight:500">${log.action}</span> user ${log.target_user_id} — ${log.admin_note} (${new Date(log.created_at).toLocaleString()})`;
+          container.appendChild(div);
+        });
+      }
+
+      window.unsuspendUser = unsuspendUser;
+      window.openMemberModal = openMemberModal;
 
       // Init
       document.addEventListener("DOMContentLoaded", async () => {
         const ok = await gate(); if (!ok) return;
         const { data: { session } } = await sb.auth.getSession();
         currentAdminId = session.user.id;
-        loadBroadcast(); await loadAnimeList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
+        loadBroadcast();
+        await loadAnimeList();
+        renderMemberList();
+        renderActionLog();
+        loadCurrentLogo();
+
         $("broadcastSave").addEventListener("click", () => saveBroadcast($("broadcastInput").value.trim()));
         $("broadcastClear").addEventListener("click", () => { $("broadcastInput").value = ""; saveBroadcast(""); });
         $("searchBtn").addEventListener("click", runSearch);
