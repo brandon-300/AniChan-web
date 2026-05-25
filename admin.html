@@ -324,19 +324,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    (function() {
-      if (window.history && window.history.pushState) {
-        window.history.pushState('forward', null, '');
-        window.addEventListener('popstate', function(e) {
-          if (confirm('You must log out before leaving. Log out now?')) {
-            document.getElementById('logoutBtn').click();
-          } else {
-            window.history.pushState('forward', null, '');
-          }
-        });
-      }
-    })();
-
     (() => {
       const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
@@ -353,6 +340,52 @@
       let cancelFlag = false;
       let currentAdminId = null;
       let memberAction = null, selectedUserId = null;
+
+      // ── Session timeout & tab close detection ──
+      const IDLE_LIMIT = 5 * 60 * 1000; // 5 minutes
+      let idleTimer;
+
+      function resetIdleTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(forceLogout, IDLE_LIMIT);
+      }
+
+      function forceLogout() {
+        clearTimeout(idleTimer);
+        sb.auth.signOut().then(() => {
+          window.location.href = "admin_login.html";
+        });
+      }
+
+      // On beforeunload, store a timestamp so we know the page was left.
+      window.addEventListener('beforeunload', () => {
+        localStorage.setItem('admin_unload_ts', Date.now());
+      });
+
+      // On load, check if we returned from a close/navigation (not a manual refresh)
+      window.addEventListener('load', () => {
+        const unloadTs = localStorage.getItem('admin_unload_ts');
+        if (unloadTs && Date.now() - parseInt(unloadTs) < 5000) {
+          // Detect navigation type
+          const navEntries = performance.getEntriesByType('navigation');
+          const navType = navEntries.length > 0 ? navEntries[0].type : '';
+          if (navType !== 'reload') {
+            // It was a tab close or navigate away → force logout
+            localStorage.removeItem('admin_unload_ts');
+            sb.auth.signOut().then(() => {
+              window.location.href = "admin_login.html";
+            });
+          } else {
+            // Manual refresh – keep session, clear the flag
+            localStorage.removeItem('admin_unload_ts');
+          }
+        }
+      });
+
+      // Idle activity listeners
+      ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
+        document.addEventListener(evt, resetIdleTimer, { passive: true })
+      );
 
       function updateStarRating(score) {
         const container = $('starRating');
@@ -394,9 +427,9 @@
       }
 
       async function handleLogout() {
+        clearTimeout(idleTimer);
         await sb.auth.signOut();
-        window.onpopstate = null;
-        location.href = "index.html";
+        window.location.href = "index.html";
       }
       $("logoutBtn").addEventListener("click", handleLogout);
       $("logoutBtnMobile").addEventListener("click", handleLogout);
@@ -816,9 +849,7 @@
         return null;
       }
 
-      // ───────────────────────────────────────────────
-      //  FAST FIX ALL – only fixes anime that need it
-      // ───────────────────────────────────────────────
+      // Fast Fix All (only fixes anime that need it)
       async function fetchAllAnimeNeedingFix() {
         const allIncomplete = [];
         let from = 0, to = 999;
@@ -830,7 +861,6 @@
           if (error) throw error;
           if (!data || data.length === 0) break;
           for (const anime of data) {
-            // Check if any language title is missing OR status needs fixing
             if (!anime.title_en || !anime.title_jp || !anime.title_zh || !anime.title_de || !anime.title_fr ||
                 (anime.status === 'Currently Airing' && anime.aired_to && new Date(anime.aired_to) < new Date())) {
               allIncomplete.push(anime);
@@ -856,38 +886,26 @@
         showCancelButton();
 
         let incompleteAnime;
-        try {
-          incompleteAnime = await fetchAllAnimeNeedingFix();
-        } catch (e) {
-          toast("Failed to scan anime list.");
-          btn.disabled = false; btn.textContent = origText;
-          hideCancelButton(); return;
-        }
+        try { incompleteAnime = await fetchAllAnimeNeedingFix(); }
+        catch (e) { toast("Failed to scan anime list."); btn.disabled = false; btn.textContent = origText; hideCancelButton(); return; }
 
         if (incompleteAnime.length === 0) {
           toast("All anime are already complete — nothing to fix.");
           btn.disabled = false; btn.textContent = origText;
-          hideCancelButton();
-          status.textContent = "";
-          return;
+          hideCancelButton(); status.textContent = ""; return;
         }
 
         status.textContent = `Fixing ${incompleteAnime.length} incomplete anime…`;
         const total = incompleteAnime.length;
         let processed = 0, fixedCount = 0;
         const updatedIds = [];
-
-        // Rate‑limiter: 3 requests per second
-        const RATE_LIMIT = 3; // requests per second
+        const RATE_LIMIT = 3;
         let lastBatchTime = 0;
 
         async function processOne(anime) {
           if (cancelFlag) return;
-          // Throttle: wait if we've already sent 3 requests in the last second
           const now = Date.now();
-          if (now - lastBatchTime < 1000) {
-            await new Promise(r => setTimeout(r, 1000 - (now - lastBatchTime)));
-          }
+          if (now - lastBatchTime < 1000) await new Promise(r => setTimeout(r, 1000 - (now - lastBatchTime)));
           lastBatchTime = Date.now();
 
           try {
@@ -898,7 +916,6 @@
             if (!match) return;
 
             const updates = {};
-
             const jikanStatus = mapAiringStatus(match.status);
             if (jikanStatus && jikanStatus !== anime.status) updates.status = jikanStatus;
 
@@ -933,7 +950,6 @@
           }
         }
 
-        // Process sequentially because we throttle by time
         for (const anime of incompleteAnime) {
           await processOne(anime);
           if (cancelFlag) break;
@@ -965,7 +981,14 @@
         status.textContent = "";
       }
 
-      // Delete Duplicates
+      // ───────────────────────────────────────────────
+      //  AGGRESSIVE DELETE DUPLICATES – normalised key
+      // ───────────────────────────────────────────────
+      function normaliseTitle(str) {
+        // Remove all punctuation, collapse whitespace, lower case
+        return str.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      }
+
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn"), status = $("bulkStatus");
         btn.disabled = true; btn.textContent = "Deleting…";
@@ -1000,17 +1023,21 @@
         }
 
         status.textContent = "Detecting duplicates…";
-        function getDisplayTitle(anime) {
-          if (anime.title_en && anime.title_en.trim()) return anime.title_en.trim();
-          return (anime.title || '').trim();
-        }
-        const seen = new Map(), toDelete = [];
+
+        const seen = new Map();   // normalised key -> id of oldest
+        const toDelete = [];
+
         for (const a of allRows) {
-          const display = getDisplayTitle(a);
-          const key = display.toLowerCase().trim();
+          // Prefer English title for display, otherwise main title
+          const raw = (a.title_en && a.title_en.trim()) ? a.title_en : a.title;
+          const key = normaliseTitle(raw || '');
           if (!key) continue;
-          if (seen.has(key)) { toDelete.push(a.id); }
-          else { seen.set(key, a.id); }
+
+          if (seen.has(key)) {
+            toDelete.push(a.id);
+          } else {
+            seen.set(key, a.id);
+          }
         }
 
         if (toDelete.length === 0) {
@@ -1022,6 +1049,7 @@
         const BATCH_SIZE = 100;
         let deletedCount = 0;
         status.textContent = `Deleting ${toDelete.length} duplicates…`;
+
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
           const batch = toDelete.slice(i, i + BATCH_SIZE);
           const { error: delErr } = await sb.from("anime").delete().in("id", batch);
@@ -1029,6 +1057,7 @@
           deletedCount += batch.length;
           status.textContent = `Deleting duplicates… ${deletedCount}/${toDelete.length}`;
         }
+
         toast(`Deleted ${deletedCount} duplicate titles.`);
         await loadAnimeList();
         btn.disabled = false; btn.textContent = "Delete Duplicates";
@@ -1137,6 +1166,10 @@
         const ok = await gate(); if (!ok) return;
         const { data: { session } } = await sb.auth.getSession();
         currentAdminId = session.user.id;
+
+        // Start idle timer after successful login
+        resetIdleTimer();
+
         loadBroadcast(); await loadAnimeList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
 
         $("broadcastSave").addEventListener("click", () => saveBroadcast($("broadcastInput").value.trim()));
