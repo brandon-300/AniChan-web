@@ -282,7 +282,7 @@
       if (data.title_de) metaItems.push({ label: 'German', value: data.title_de });
       if (data.title_fr) metaItems.push({ label: 'French', value: data.title_fr });
       metaItems.push(
-        { label: 'Type',    value: data.type || '—', accent: true },
+        { label: 'Type',    value: data.type || '—', accent: true, typeLink: data.type ? `type.html?type=${encodeURIComponent(data.type)}` : null },
         { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
         { label: 'Status',  value: data.status || '—', accent: true },
         { label: 'Aired',   value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
@@ -304,6 +304,8 @@
           if (!seasonStr) return;
           const [seasonName, year] = seasonStr.split(' ');
           row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="season.html?season=${seasonName}&year=${year}" class="meta-value accent-value" style="text-decoration:underline;">${seasonStr}</a>`;
+        } else if (m.typeLink) {
+          row.innerHTML = `<span class="meta-label">${m.label}:</span><a href="${m.typeLink}" class="meta-value accent-value" style="text-decoration:underline;">${m.value}</a>`;
         } else {
           row.innerHTML = `<span class="meta-label">${m.label}:</span><span class="meta-value ${m.accent ? 'accent-value' : ''}">${m.value}</span>`;
         }
