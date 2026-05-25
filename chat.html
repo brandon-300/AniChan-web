@@ -178,7 +178,6 @@
     0%,60%,100%{transform:translateY(0)}
     30%{transform:translateY(-6px)}
   }
-  .swipe-label{font-size:11px;color:var(--muted)}
 
   .compose-area{
     flex-shrink:0;border-top:1px solid var(--border);
@@ -205,14 +204,6 @@
   }
   .send-circle:hover{filter:brightness(1.1)}
   .send-circle .material-symbols-outlined{font-size:20px}
-
-  .jump-btn{
-    position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
-    background:var(--accent);color:#0a2a28;font-weight:700;font-size:12px;
-    padding:6px 16px;border-radius:20px;cursor:pointer;
-    display:none;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.3);
-  }
-  .jump-btn.visible{display:block}
 
   .ctx-menu{
     position:fixed;background:var(--card);border:1px solid var(--border);
@@ -279,7 +270,6 @@
       <div class="typing-anim" id="typingAnim">
         <span></span><span></span><span></span>
       </div>
-      <div class="swipe-label">Swipe to-reply ↶</div>
     </div>
     <div class="msg-feed" id="msgFeed">
       <div class="empty-state" id="emptyState">
@@ -298,7 +288,6 @@
         </button>
       </div>
     </div>
-    <div class="jump-btn" id="jumpBtn">↓ New messages</div>
   </div>
 </div>
 
@@ -314,7 +303,7 @@
 <script>
 /*
   AniChan Chat – Telegram‑style dual screen
-  Fixed message row layout, reply colors, timestamps, centering.
+  Swipe hint and jump button removed, logout replaced with back‑to‑home.
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -448,7 +437,6 @@
     $('msgFeed').innerHTML='';
     const del=getDel();
     msgs.filter(m=>!del.has(m.id)).forEach(addMsg);
-    checkScroll();
   }
 
   function addMsg(msg){
@@ -456,7 +444,7 @@
     if(msg.is_deleted){
       const p=document.createElement('div');
       p.className='deleted-note';p.textContent='This message was deleted';
-      feed.appendChild(p);checkScroll();return;
+      feed.appendChild(p);return;
     }
     const row=document.createElement('div');
     row.className=`msg-row ${out?'out':'in'}`;
@@ -492,17 +480,9 @@
       row.addEventListener('touchmove',cancelLong);
     }
     feed.appendChild(row);
-    checkScroll();
   }
 
-  function checkScroll(){
-    const b=$('msgFeed'), near=b.scrollHeight-b.clientHeight<=b.scrollTop+30;
-    $('jumpBtn').classList.toggle('visible',!near&&b.scrollHeight>b.clientHeight);
-    if(near) b.scrollTop=b.scrollHeight;
-  }
-  $('jumpBtn').addEventListener('click',()=>{const b=$('msgFeed');b.scrollTop=b.scrollHeight;$('jumpBtn').classList.remove('visible');});
-
-  // ── Swipe reply ──
+  // ── Swipe reply (functionality kept, label removed) ──
   function attachSwipe(el,msg){
     let sx=0;
     el.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
@@ -553,7 +533,7 @@
     const row=document.createElement('div');
     row.className='msg-row out';row.dataset.msgId=tmp;
     row.innerHTML=`<div class="bubble">${esc(txt)}</div><div class="msg-foot"><span style="color:var(--muted)">sending…</span></div>`;
-    $('msgFeed').appendChild(row);checkScroll();
+    $('msgFeed').appendChild(row);
 
     const payload={room_id:activeRoom,sender_id:currentUser.id,receiver_id:partnerId,message:txt,msg_type:'text',reply_to:replyTo?.id||null};
     if(replyTo){replyTo=null;$('replyStrip').classList.remove('open');}
@@ -630,8 +610,6 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden)presence('idle');else{presence('online');loadRooms();}});
   setInterval(loadRooms,30000);
 
-  async function logout(){await presence('offline');await supabase.auth.signOut();window.location.href='index.html';}
-
   async function init(){
     const {data:{session}}=await supabase.auth.getSession();
     if(!session){window.location.href='user_login.html';return;}
@@ -649,10 +627,12 @@
     $('sendBtn').addEventListener('click',sendMsg);
     $('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 
-    const lb=document.createElement('button');lb.textContent='Logout';
-    lb.style.cssText='background:transparent;border:1px solid rgba(255,71,87,.25);color:var(--danger);padding:6px 12px;border-radius:10px;cursor:pointer;margin-left:auto;font-size:13px;font-weight:600;';
-    lb.addEventListener('click',logout);
-    document.querySelector('.screen-a-inner').appendChild(lb);
+    // ── Back to Home button (replaces logout) ──
+    const homeBtn = document.createElement('button');
+    homeBtn.textContent = '← Back to Home';
+    homeBtn.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text);padding:6px 14px;border-radius:10px;cursor:pointer;margin-left:auto;font-size:13px;font-weight:600;';
+    homeBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+    document.querySelector('.screen-a-inner').appendChild(homeBtn);
   }
 
   document.addEventListener('DOMContentLoaded',init);
