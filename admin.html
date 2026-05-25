@@ -437,14 +437,6 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
-      // ─── Helper: display title as seen on homepage (English first, then main) ───
-      function getDisplayTitleForDedup(anime) {
-        // Use English title if present, else fallback to main title.
-        // This matches what most users see on the homepage.
-        if (anime.title_en && anime.title_en.trim()) return anime.title_en.trim();
-        return (anime.title || '').trim();
-      }
-
       // Helper: extract language titles from Jikan's "titles" array
       function extractLanguageTitles(jikanAnime) {
         const titles = jikanAnime.titles || [];
@@ -458,7 +450,6 @@
             case 'Chinese':  result.zh = t.title; break;
           }
         }
-        // Fallback to direct fields if titles array is missing
         if (!result.en && jikanAnime.title_english) result.en = jikanAnime.title_english;
         if (!result.jp && jikanAnime.title_japanese) result.jp = jikanAnime.title_japanese;
         return result;
@@ -710,21 +701,14 @@
         }
       });
 
-      // ───────────────────────────────────────────────
-      //  BULK IMPORT – continuous scan, 5‑language titles
-      // ───────────────────────────────────────────────
+      // Bulk Import (continuous scan, 5‑language titles)
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Fetching existing titles…";
         showCancelButton();
 
-        // Build a Set of display titles already in DB
-        const { data: existingData } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
-        const existingTitlesSet = new Set();
-        (existingData || []).forEach(a => {
-          const key = getDisplayTitleForDedup(a).toLowerCase();
-          if (key) existingTitlesSet.add(key);
-        });
+        const { data: existingData } = await sb.from("anime").select("title");
+        const existingTitlesSet = new Set((existingData || []).map(a => (a.title || '').trim().toLowerCase()));
 
         const BATCH_SIZE = 50;
         let insertsAccum = [];
@@ -745,23 +729,11 @@
               if (cancelFlag || insertsAccum.length >= BATCH_SIZE) break;
 
               const mainTitle = (a.title || '').trim();
+              const titleKey = mainTitle.toLowerCase();
+              if (!titleKey || existingTitlesSet.has(titleKey)) continue;
+              if (insertsAccum.some(x => (x.title || '').trim().toLowerCase() === titleKey)) continue;
+
               const lang = extractLanguageTitles(a);
-
-              // Build a dummy object to compute display title as seen on homepage
-              const candidate = {
-                title: mainTitle,
-                title_en: lang.en,
-                title_jp: lang.jp,
-                title_zh: lang.zh,
-                title_de: lang.de,
-                title_fr: lang.fr
-              };
-              const candidateKey = getDisplayTitleForDedup(candidate).toLowerCase();
-              if (!candidateKey || existingTitlesSet.has(candidateKey)) continue;
-
-              // Check within current batch
-              if (insertsAccum.some(x => getDisplayTitleForDedup(x).toLowerCase() === candidateKey)) continue;
-
               const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
               const type = normalizeType(a.type) || null;
               const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
@@ -786,7 +758,7 @@
               };
 
               insertsAccum.push(newEntry);
-              existingTitlesSet.add(candidateKey);
+              existingTitlesSet.add(titleKey);
             }
 
             page++;
@@ -933,9 +905,7 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // ───────────────────────────────────────────────
-      //  DELETE DUPLICATES – uses display title logic
-      // ───────────────────────────────────────────────
+      // DELETE DUPLICATES – aggressive version based on main title only
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true; btn.textContent = "Deleting…";
@@ -943,7 +913,7 @@
         // Fetch all anime, keep the oldest first
         const { data: all, error } = await sb
           .from("anime")
-          .select("id, title, title_en, title_jp, title_zh, title_de, title_fr, created_at")
+          .select("id, title, created_at")
           .order("created_at", { ascending: true });
 
         if (error) {
@@ -952,18 +922,17 @@
           return;
         }
 
-        const seen = new Map();   // lowercase display title -> id of first (oldest) entry
+        const seen = new Map();   // lowercase title -> id of oldest
         const toDelete = [];
 
         for (const a of all) {
-          const display = getDisplayTitleForDedup(a);
-          const key = display.toLowerCase().trim();
-          if (!key) continue;
+          const titleKey = (a.title || '').trim().toLowerCase();
+          if (!titleKey) continue;
 
-          if (seen.has(key)) {
-            toDelete.push(a.id);   // this is a newer duplicate
+          if (seen.has(titleKey)) {
+            toDelete.push(a.id);
           } else {
-            seen.set(key, a.id);   // keep the oldest
+            seen.set(titleKey, a.id);
           }
         }
 
