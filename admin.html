@@ -342,7 +342,7 @@
       let memberAction = null, selectedUserId = null;
 
       // ── Session timeout & tab close detection ──
-      const IDLE_LIMIT = 5 * 60 * 1000; // 5 minutes
+      const IDLE_LIMIT = 5 * 60 * 1000;   // 5 minutes
       let idleTimer;
 
       function resetIdleTimer() {
@@ -352,37 +352,36 @@
 
       function forceLogout() {
         clearTimeout(idleTimer);
+        sessionStorage.removeItem('admin_unload');
         sb.auth.signOut().then(() => {
           window.location.href = "admin_login.html";
         });
       }
 
-      // On beforeunload, store a timestamp so we know the page was left.
+      // Mark that admin left the page (tab close / navigate away)
       window.addEventListener('beforeunload', () => {
-        localStorage.setItem('admin_unload_ts', Date.now());
+        sessionStorage.setItem('admin_unload', '1');
       });
 
-      // On load, check if we returned from a close/navigation (not a manual refresh)
+      // On load, decide whether to keep the session
       window.addEventListener('load', () => {
-        const unloadTs = localStorage.getItem('admin_unload_ts');
-        if (unloadTs && Date.now() - parseInt(unloadTs) < 5000) {
-          // Detect navigation type
+        const unloadFlag = sessionStorage.getItem('admin_unload');
+        if (unloadFlag) {
+          sessionStorage.removeItem('admin_unload');
+          // Check navigation type: if it was a manual refresh, stay logged in
           const navEntries = performance.getEntriesByType('navigation');
-          const navType = navEntries.length > 0 ? navEntries[0].type : '';
-          if (navType !== 'reload') {
-            // It was a tab close or navigate away → force logout
-            localStorage.removeItem('admin_unload_ts');
+          if (navEntries.length > 0 && navEntries[0].type === 'reload') {
+            // Manual refresh – session remains
+          } else {
+            // Tab close / navigate away → force logout
             sb.auth.signOut().then(() => {
               window.location.href = "admin_login.html";
             });
-          } else {
-            // Manual refresh – keep session, clear the flag
-            localStorage.removeItem('admin_unload_ts');
           }
         }
       });
 
-      // Idle activity listeners
+      // Activity listeners reset the idle timer
       ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
         document.addEventListener(evt, resetIdleTimer, { passive: true })
       );
@@ -428,6 +427,7 @@
 
       async function handleLogout() {
         clearTimeout(idleTimer);
+        sessionStorage.removeItem('admin_unload');
         await sb.auth.signOut();
         window.location.href = "index.html";
       }
@@ -849,7 +849,7 @@
         return null;
       }
 
-      // Fast Fix All (only fixes anime that need it)
+      // ──────────────── FIX ALL (only incomplete items) ────────────────
       async function fetchAllAnimeNeedingFix() {
         const allIncomplete = [];
         let from = 0, to = 999;
@@ -861,8 +861,12 @@
           if (error) throw error;
           if (!data || data.length === 0) break;
           for (const anime of data) {
-            if (!anime.title_en || !anime.title_jp || !anime.title_zh || !anime.title_de || !anime.title_fr ||
-                (anime.status === 'Currently Airing' && anime.aired_to && new Date(anime.aired_to) < new Date())) {
+            // Only flag if English or Japanese title missing, status is stale, or main metadata empty
+            if (!anime.title_en || !anime.title_jp ||
+                (anime.status === 'Currently Airing' && anime.aired_to && new Date(anime.aired_to) < new Date()) ||
+                anime.score == null || anime.ep_total == null ||
+                !anime.genres || (Array.isArray(anime.genres) && anime.genres.length === 0) ||
+                !anime.studio) {
               allIncomplete.push(anime);
             }
           }
@@ -982,11 +986,14 @@
       }
 
       // ───────────────────────────────────────────────
-      //  AGGRESSIVE DELETE DUPLICATES – normalised key
+      //  DELETE DUPLICATES – normalised, one‑shot clean
       // ───────────────────────────────────────────────
       function normaliseTitle(str) {
-        // Remove all punctuation, collapse whitespace, lower case
-        return str.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+        // Convert punctuation to spaces, collapse multiple spaces, trim, lowercase
+        return str.replace(/[^\w\s]/g, ' ')    // non‑word, non‑space → space
+                  .replace(/\s+/g, ' ')        // collapse spaces
+                  .trim()
+                  .toLowerCase();
       }
 
       async function deleteDuplicates() {
@@ -1023,16 +1030,13 @@
         }
 
         status.textContent = "Detecting duplicates…";
-
-        const seen = new Map();   // normalised key -> id of oldest
+        const seen = new Map();   // normalised key → id of oldest
         const toDelete = [];
 
         for (const a of allRows) {
-          // Prefer English title for display, otherwise main title
           const raw = (a.title_en && a.title_en.trim()) ? a.title_en : a.title;
           const key = normaliseTitle(raw || '');
           if (!key) continue;
-
           if (seen.has(key)) {
             toDelete.push(a.id);
           } else {
@@ -1167,7 +1171,7 @@
         const { data: { session } } = await sb.auth.getSession();
         currentAdminId = session.user.id;
 
-        // Start idle timer after successful login
+        // Start idle timer once logged in
         resetIdleTimer();
 
         loadBroadcast(); await loadAnimeList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
