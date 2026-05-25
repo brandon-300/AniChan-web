@@ -360,17 +360,81 @@
     return a.title || "Untitled";
   }
 
-  // Episode number logic
+  // Episode number logic – now also corrects status for display
   function getEpisodeNumber(a) {
-    if (a.status === 'Currently Airing') {
+    // Use corrected status (if we already fixed it)
+    const status = a._correctedStatus || a.status;
+    if (status === 'Currently Airing') {
       if (a.ep_watched != null) return a.ep_watched;
       if (a.ep_total != null) return a.ep_total;
       return '?';
     }
-    if (a.status === 'Aired') {
-      return a.ep_total != null ? a.ep_total : '?';
-    }
+    // For everything else (Aired, Not yet aired, or corrected old "airing")
+    if (a.ep_total != null) return a.ep_total;
     return '?';
+  }
+
+  // ══════════════════════════════════════════════════
+  //  LOAD LIBRARY – with fake-status correction + sort
+  // ══════════════════════════════════════════════════
+  async function loadLibrary() {
+    const { data, error } = await sb
+      .from("anime")
+      .select("*")
+      .order("aired_to", { ascending: false, nullsFirst: true })
+      .order("aired_from", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) {
+      library = [];
+      currentPage = 1;
+      renderReleases();
+      return;
+    }
+
+    const now = new Date();
+
+    // Correct status for display: if status === 'Currently Airing' but aired_to is in the past,
+    // we mark it as 'Aired' locally so it doesn't float to the top.
+    const processed = (data || []).map(a => {
+      const corrected = { ...a };
+      if (a.status === 'Currently Airing' && a.aired_to) {
+        const end = new Date(a.aired_to);
+        if (end < now) {
+          corrected._correctedStatus = 'Aired';  // locally override
+        }
+      }
+      return corrected;
+    });
+
+    // Re-sort with the corrected statuses
+    processed.sort((a, b) => {
+      const statusA = a._correctedStatus || a.status;
+      const statusB = b._correctedStatus || b.status;
+
+      // Currently Airing should come first
+      const aIsAiring = statusA === 'Currently Airing' ? 1 : 0;
+      const bIsAiring = statusB === 'Currently Airing' ? 1 : 0;
+      if (aIsAiring !== bIsAiring) return bIsAiring - aIsAiring;
+
+      // Then sort by aired_to descending (nulls last for both)
+      const aEnd = a.aired_to ? new Date(a.aired_to).getTime() : 0;
+      const bEnd = b.aired_to ? new Date(b.aired_to).getTime() : 0;
+      if (aEnd !== bEnd) return bEnd - aEnd;
+
+      // Then by aired_from descending
+      const aStart = a.aired_from ? new Date(a.aired_from).getTime() : 0;
+      const bStart = b.aired_from ? new Date(b.aired_from).getTime() : 0;
+      if (aStart !== bStart) return bStart - aStart;
+
+      // Finally by created_at descending
+      const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bCreated - aCreated;
+    });
+
+    library = processed;
+    currentPage = 1;
+    renderReleases();
   }
 
   function renderReleases() {
@@ -393,7 +457,6 @@
       list.appendChild(e);
     } else {
       for (const a of pageItems) {
-        // ── CARD BECOMES A LINK ──
         const card = document.createElement("a");
         card.className = "release-card";
         card.href = `anime_info.html?id=${a.id}`;
@@ -434,18 +497,6 @@
       nextBtn.disabled = currentPage >= totalPages;
       indicator.textContent = `${currentPage} / ${totalPages}`;
     }
-  }
-
-  async function loadLibrary() {
-    const { data, error } = await sb
-      .from("anime")
-      .select("*")
-      .order("aired_to", { ascending: false, nullsFirst: true })
-      .order("aired_from", { ascending: false })
-      .order("created_at", { ascending: false });
-    library = error ? [] : (data || []);
-    currentPage = 1;
-    renderReleases();
   }
 
   $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderReleases(); } });
@@ -505,11 +556,26 @@
     renderHeader();
     renderBroadcast();
     loadLibrary();
+
+    // ═══ REAL‑TIME: updates the page when the midnight cron job inserts new anime ═══
+    const channel = sb.channel("public-anichan")
+      .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => {
+        loadLibrary();
+      })
+      .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => {
+        renderBroadcast();
+        loadSiteLogo();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime connected – new anime will appear live.');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.warn('Realtime channel error, retrying…');
+          setTimeout(() => channel.subscribe(), 3000);
+        }
+      });
+
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMessagesModal(); });
-    sb.channel("public-anichan")
-      .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => loadLibrary())
-      .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => { renderBroadcast(); loadSiteLogo(); })
-      .subscribe();
   });
 })();
 </script>
