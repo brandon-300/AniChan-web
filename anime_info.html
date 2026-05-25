@@ -40,40 +40,43 @@
 
   .container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
 
-  /* Hero section */
+  /* ── Hero section – poster centred, no text inside ── */
   .hero{
     position:relative;width:100%;aspect-ratio:16/9;
     background-size:cover;background-position:center;
     border-radius:0 0 20px 20px;overflow:hidden;
-    margin-bottom:20px;
+    margin-bottom:0;
   }
   .hero-overlay{
     position:absolute;inset:0;
     background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 60%, rgba(0,0,0,.2) 100%);
   }
-  .hero-content{
-    position:absolute;bottom:16px;left:16px;right:16px;
-    display:flex;align-items:flex-end;gap:12px;
-  }
-  /* Poster made larger, wider, and centred */
   .hero-poster{
-    width:120px;        /* bigger */
-    height:170px;       /* taller */
-    object-fit:cover;border-radius:12px;
-    border:2px solid var(--border);background:var(--panel);
-    flex-shrink:0;
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    width:140px; height:200px;
+    object-fit:cover; border-radius:12px;
+    border:2px solid var(--border); background:var(--panel);
+    box-shadow:0 8px 24px rgba(0,0,0,.6);
   }
-  .hero-text h1{
-    font-size:24px;font-weight:800;line-height:1.2;
-    text-shadow:0 2px 8px rgba(0,0,0,.6);
+
+  /* ── Title section (outside hero) ── */
+  .title-section{
+    text-align:center;
+    padding:20px 16px 10px;
   }
-  .hero-text .jp-title{
-    font-size:13px;color:var(--muted);margin-top:4px;
+  .title-section h1{
+    font-size:26px;font-weight:800;line-height:1.2;
+    color:#fff;
+  }
+  .title-section .jp-title{
+    font-size:14px;color:var(--muted);margin-top:6px;
   }
 
   /* Tabs */
   .tabs{
-    display:flex;gap:0;margin-bottom:20px;
+    display:flex;gap:0;margin:20px 0;
     border-bottom:1px solid var(--border);
   }
   .tab{
@@ -100,7 +103,7 @@
   .meta-row{display:flex;flex-wrap:wrap;gap:4px 8px}
   .meta-label{font-weight:700;font-size:14px;min-width:100px}
   .meta-value{font-size:14px;color:var(--muted)}
-  .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important} /* remove underline from links */
+  .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important}
 
   /* Genre chips */
   .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
@@ -149,22 +152,7 @@
   }
   .ext-link:hover{background:var(--card)}
 
-  .admin-edit-btn{
-    margin-bottom:16px;display:none;
-  }
-
-  /* Center the poster in the hero content */
-  @media (max-width:500px) {
-    .hero-content{
-      flex-direction:column;
-      align-items:center;
-      text-align:center;
-    }
-    .hero-poster{
-      width:100px;
-      height:140px;
-    }
-  }
+  .admin-edit-btn{ margin-bottom:16px;display:none; }
 </style>
 </head>
 <body>
@@ -174,15 +162,16 @@
     <div class="header-actions" id="headerActions"><!-- admin edit button here --></div>
   </header>
 
+  <!-- HERO: background + centred poster only -->
   <div class="hero" id="heroBg">
     <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <img class="hero-poster" id="heroPoster" src="" alt="Poster" />
-      <div class="hero-text">
-        <h1 id="heroTitle"></h1>
-        <div class="jp-title" id="heroJpTitle"></div>
-      </div>
-    </div>
+    <img class="hero-poster" id="heroPoster" src="" alt="Poster" />
+  </div>
+
+  <!-- Title outside the hero -->
+  <div class="title-section">
+    <h1 id="heroTitle"></h1>
+    <div class="jp-title" id="heroJpTitle"></div>
   </div>
 
   <main class="container">
@@ -230,7 +219,7 @@
     let animeData = null;
     let user = null;
 
-    // ── Tab switching ──
+    // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -242,7 +231,6 @@
       });
     });
 
-    // ── Helper ──
     function seasonFromDate(dateStr) {
       if (!dateStr) return '';
       const d = new Date(dateStr);
@@ -256,7 +244,6 @@
       return `${season} ${y}`;
     }
 
-    // ── Fetch synopsis from Jikan if missing ──
     async function fetchSynopsisFromJikan(title) {
       try {
         const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`);
@@ -270,15 +257,16 @@
       return null;
     }
 
-    // ── Load anime data ──
     async function loadAnime() {
       const { data, error } = await sb.from('anime').select('*').eq('id', animeId).single();
       if (error || !data) { alert('Anime not found'); history.back(); return; }
       animeData = data;
 
-      // Hero
+      // Hero background
       $('heroBg').style.backgroundImage = `url('${data.image_url || DEFAULT_AVATAR}')`;
       $('heroPoster').src = data.image_url || DEFAULT_AVATAR;
+
+      // Title section (outside hero)
       $('heroTitle').textContent = data.title || 'Untitled';
       $('heroJpTitle').textContent = data.title_jp || '';
 
@@ -286,9 +274,7 @@
       let synopsis = data.synopsis || data.notes || null;
       if (!synopsis) {
         synopsis = await fetchSynopsisFromJikan(data.title);
-        if (synopsis) {
-          animeData.synopsis = synopsis;
-        }
+        if (synopsis) animeData.synopsis = synopsis;
       }
       $('synopsis').textContent = synopsis || 'No synopsis available.';
 
@@ -313,10 +299,8 @@
       metaContainer.innerHTML = '';
       metaItems.forEach(m => {
         if (!m.value || m.value === '—' && m.label !== 'Duration') return;
-
         const row = document.createElement('div');
         row.className = 'meta-row';
-
         if (m.link) {
           const seasonStr = seasonFromDate(data.aired_from);
           if (!seasonStr) return;
@@ -330,7 +314,7 @@
         metaContainer.appendChild(row);
       });
 
-      // Genres – now clickable links
+      // Genres (clickable)
       const genreContainer = $('genreTags');
       genreContainer.innerHTML = '';
       if (data.genres && Array.isArray(data.genres)) {
@@ -391,14 +375,14 @@
         grid.innerHTML = '<div style="color:var(--muted);font-size:13px">No episode data</div>';
       }
 
-      // Fetch duration if not stored (from Jikan)
+      // Duration fetch
       if (!data.duration) {
         try {
           const jikanRes = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(data.title)}&limit=1`);
           const jikanData = await jikanRes.json();
           const match = (jikanData.data && jikanData.data[0]);
           if (match && match.duration) {
-            const durationRow = [...document.querySelectorAll('.meta-row')].find(r => r.querySelector('.meta-label').textContent === 'Duration:');
+            const durationRow = [...document.querySelectorAll('.meta-row')].find(r => r.querySelector('.meta-label')?.textContent === 'Duration:');
             if (durationRow) {
               durationRow.querySelector('.meta-value').textContent = match.duration;
               sb.from('anime').update({ duration: match.duration }).eq('id', animeId).then();
@@ -407,7 +391,6 @@
         } catch(e) {}
       }
 
-      // Load recommendations
       loadRecommendations();
 
       // Admin edit button
@@ -422,7 +405,6 @@
       }
     }
 
-    // ── Recommendations (Jikan) ──
     async function loadRecommendations() {
       if (!animeData) return;
       try {
@@ -461,7 +443,6 @@
       } catch(e) { console.warn('Recommendations fetch failed', e); }
     }
 
-    // Init
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { session } } = await sb.auth.getSession();
       user = session?.user || null;
