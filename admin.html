@@ -27,8 +27,7 @@
 
   .sidebar{
     width:260px;background:var(--card);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;z-index:30;
-    transition:transform 0.3s ease;
+    display:flex;flex-direction:column;z-index:30;transition:transform 0.3s ease;
   }
   .sidebar-brand{padding:18px 16px;font-weight:800;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
   .sidebar-brand .accent{color:var(--accent)}
@@ -438,6 +437,14 @@
         finally { btn.disabled = false; btn.textContent = origText; }
       }
 
+      // ─── Helper: display title as seen on homepage (English first, then main) ───
+      function getDisplayTitleForDedup(anime) {
+        // Use English title if present, else fallback to main title.
+        // This matches what most users see on the homepage.
+        if (anime.title_en && anime.title_en.trim()) return anime.title_en.trim();
+        return (anime.title || '').trim();
+      }
+
       // Helper: extract language titles from Jikan's "titles" array
       function extractLanguageTitles(jikanAnime) {
         const titles = jikanAnime.titles || [];
@@ -703,32 +710,33 @@
         }
       });
 
-      // ─────────────────────────────────────────
-      //  NEW BULK IMPORT – Continuous page fetch
-      // ─────────────────────────────────────────
+      // ───────────────────────────────────────────────
+      //  BULK IMPORT – continuous scan, 5‑language titles
+      // ───────────────────────────────────────────────
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Fetching existing titles…";
         showCancelButton();
 
-        // Grab all existing titles (main column) to avoid duplicates
-        const { data: existingData } = await sb.from("anime").select("title");
-        const existingTitles = new Set((existingData || []).map(a => (a.title || '').trim().toLowerCase()));
+        // Build a Set of display titles already in DB
+        const { data: existingData } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
+        const existingTitlesSet = new Set();
+        (existingData || []).forEach(a => {
+          const key = getDisplayTitleForDedup(a).toLowerCase();
+          if (key) existingTitlesSet.add(key);
+        });
 
         const BATCH_SIZE = 50;
         let insertsAccum = [];
         let page = 1;
-        const MAX_PAGES = 200; // safety limit
+        const MAX_PAGES = 200;
 
         try {
           while (insertsAccum.length < BATCH_SIZE && page <= MAX_PAGES && !cancelFlag) {
             status.textContent = `Scanning page ${page}… (${insertsAccum.length}/50 collected)`;
 
             const res = await fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${page}`);
-            if (!res.ok) {
-              page++;
-              continue; // skip problematic pages
-            }
+            if (!res.ok) { page++; continue; }
             const json = await res.json();
             const list = (json && json.data) || [];
             if (list.length === 0) break;
@@ -737,13 +745,23 @@
               if (cancelFlag || insertsAccum.length >= BATCH_SIZE) break;
 
               const mainTitle = (a.title || '').trim();
-              const titleKey = mainTitle.toLowerCase();
-              if (!titleKey || existingTitles.has(titleKey)) continue; // already in DB
+              const lang = extractLanguageTitles(a);
+
+              // Build a dummy object to compute display title as seen on homepage
+              const candidate = {
+                title: mainTitle,
+                title_en: lang.en,
+                title_jp: lang.jp,
+                title_zh: lang.zh,
+                title_de: lang.de,
+                title_fr: lang.fr
+              };
+              const candidateKey = getDisplayTitleForDedup(candidate).toLowerCase();
+              if (!candidateKey || existingTitlesSet.has(candidateKey)) continue;
 
               // Check within current batch
-              if (insertsAccum.some(x => (x.title || '').trim().toLowerCase() === titleKey)) continue;
+              if (insertsAccum.some(x => getDisplayTitleForDedup(x).toLowerCase() === candidateKey)) continue;
 
-              const lang = extractLanguageTitles(a);
               const image_url = (a.images?.jpg?.large_image_url) || (a.images?.jpg?.image_url) || null;
               const type = normalizeType(a.type) || null;
               const year = a.year || (a.aired?.from ? new Date(a.aired.from).getFullYear() : null);
@@ -768,11 +786,10 @@
               };
 
               insertsAccum.push(newEntry);
-              existingTitles.add(titleKey); // prevent re‑adding from later pages
+              existingTitlesSet.add(candidateKey);
             }
 
             page++;
-            // Small delay to respect Jikan rate limit
             await new Promise(r => setTimeout(r, 300));
           }
 
@@ -866,7 +883,6 @@
             const jikanStatus = mapAiringStatus(match.status);
             if (jikanStatus && jikanStatus !== anime.status) updates.status = jikanStatus;
 
-            // update language titles if different
             const lang = extractLanguageTitles(match);
             if (lang.en && lang.en !== anime.title_en) updates.title_en = lang.en;
             if (lang.jp && lang.jp !== anime.title_jp) updates.title_jp = lang.jp;
@@ -917,16 +933,17 @@
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
-      // ─────────────────────────────────────────
-      //  IMPROVED DELETE DUPLICATES – uses main title
-      // ─────────────────────────────────────────
+      // ───────────────────────────────────────────────
+      //  DELETE DUPLICATES – uses display title logic
+      // ───────────────────────────────────────────────
       async function deleteDuplicates() {
         const btn = $("deleteDupBtn");
         btn.disabled = true; btn.textContent = "Deleting…";
-        // Fetch all anime ordered by oldest first
+
+        // Fetch all anime, keep the oldest first
         const { data: all, error } = await sb
           .from("anime")
-          .select("id, title")
+          .select("id, title, title_en, title_jp, title_zh, title_de, title_fr, created_at")
           .order("created_at", { ascending: true });
 
         if (error) {
@@ -935,14 +952,16 @@
           return;
         }
 
-        const seen = new Map();   // lowercase title -> id of first (oldest) occurrence
+        const seen = new Map();   // lowercase display title -> id of first (oldest) entry
         const toDelete = [];
 
         for (const a of all) {
-          const key = (a.title || '').trim().toLowerCase();
-          if (!key) continue;   // skip empty titles
+          const display = getDisplayTitleForDedup(a);
+          const key = display.toLowerCase().trim();
+          if (!key) continue;
+
           if (seen.has(key)) {
-            toDelete.push(a.id);   // this is a duplicate (newer one)
+            toDelete.push(a.id);   // this is a newer duplicate
           } else {
             seen.set(key, a.id);   // keep the oldest
           }
