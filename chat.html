@@ -23,76 +23,69 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* ── SIDEBAR ── */
+  /* ── SIDEBAR (Gemini's recommended structure & styling) ── */
   .sidebar{
-    width:320px;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;z-index:10;
-    transition:transform 0.25s ease;
+    width:320px;background:#080b0d;display:flex;flex-direction:column;
+    z-index:10;transition:transform 0.25s ease;
+    padding:20px 16px;
+    height:100dvh;
   }
-  .sidebar-header{
-    padding:16px;border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:10px;
+  .sidebar-title{
+    color:#ffffff;font-size:28px;font-weight:700;margin-bottom:16px;
   }
-  .sidebar-header h2{font-size:16px;flex:1;font-weight:700}
+  .search-container{margin-bottom:24px}
+  .search-input{
+    width:100%;background:#0c1214;
+    border:2px solid var(--accent);border-radius:50px;
+    padding:12px 20px;color:#ffffff;font-size:15px;
+    outline:none;box-shadow:0 0 12px rgba(81,218,211,.4);
+    transition:box-shadow .2s;
+  }
+  .search-input::placeholder{color:#4a5d65}
+  .chat-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1}
+
+  .chat-item{
+    display:flex;align-items:center;padding:12px;border-radius:14px;
+    cursor:pointer;transition:background .2s;
+  }
+  .chat-item.active{
+    background:linear-gradient(135deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.01) 100%);
+    border:1px solid rgba(81,218,211,.25);
+    box-shadow:0 4px 20px rgba(81,218,211,.05);
+  }
+  .avatar-container{
+    position:relative;width:50px;height:50px;margin-right:14px;flex-shrink:0;
+  }
+  .avatar-img{
+    width:100%;height:100%;border-radius:50%;object-fit:cover;background:#333;
+  }
+  .online-indicator{
+    position:absolute;bottom:1px;right:1px;width:12px;height:12px;
+    background:var(--success);border:2px solid #080b0d;border-radius:50%;
+  }
+  .chat-details{
+    flex-grow:1;display:flex;flex-direction:column;gap:4px;min-width:0;
+  }
+  .chat-header-row{
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .contact-name{color:#ffffff;font-weight:600;font-size:16px}
+  .timestamp{color:#6c7c85;font-size:12px}
+  .chat-body-row{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .message-preview{
+    color:#8fa0a8;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-grow:1;
+  }
+  .unread-badge{
+    background:var(--accent);color:#0a0a0a;font-size:11px;font-weight:700;
+    min-width:20px;height:20px;padding:0 6px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 10px rgba(81,218,211,.5);flex-shrink:0;
+  }
   .back-btn{
     display:none;background:none;border:none;color:var(--accent);
-    font-size:20px;cursor:pointer;
-  }
-  .new-chat{padding:12px 16px;border-bottom:1px solid var(--border)}
-  .new-chat input{
-    width:100%;padding:10px 14px;border-radius:20px;
-    background:var(--panel);border:1px solid var(--border);
-    color:var(--text);font-size:14px;outline:none;
-    transition:border-color .2s,box-shadow .2s;
-  }
-  .new-chat input:focus{
-    border-color:var(--accent);
-    box-shadow:0 0 8px rgba(81,218,211,.35), 0 0 0 2px rgba(81,218,211,.15);
-  }
-
-  .room-list{flex:1;overflow-y:auto;padding:0 0 16px}
-  .room{
-    display:flex;align-items:center;padding:12px 16px;
-    cursor:pointer;transition:background .15s;gap:12px;
-    border-bottom:1px solid rgba(255,255,255,.03);
-  }
-  .room:hover{background:rgba(81,218,211,.04)}
-  .room.active{
-    background:rgba(81,218,211,.10);
-    border:1px solid rgba(81,218,211,.25);
-    border-radius:14px;
-    margin:4px 8px;
-    padding:12px 8px;
-    box-shadow:0 0 12px rgba(81,218,211,.08);
-  }
-  .room .avatar-wrap{
-    width:48px;height:48px;border-radius:50%;
-    background:var(--panel);border:2px solid var(--border);
-    flex-shrink:0;position:relative;
-  }
-  .room .avatar-wrap img{
-    width:100%;height:100%;border-radius:50%;object-fit:cover;
-  }
-  .online-dot{
-    position:absolute;bottom:1px;right:1px;
-    width:12px;height:12px;border-radius:50%;
-    background:var(--offline);border:2px solid var(--card);
-  }
-  .online-dot.online{background:var(--success)}
-  .room .info{flex:1;min-width:0}
-  .room .name{font-weight:600;font-size:14px}
-  .room .preview{
-    font-size:12px;color:var(--muted);margin-top:2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .room .preview.unread{font-weight:700;color:var(--text)}
-  .room .meta{text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-  .room .time{font-size:11px;color:var(--muted)}
-  .unread-badge{
-    display:inline-block;background:var(--accent);color:#0a2a28;
-    font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
-    min-width:18px;text-align:center;
+    font-size:20px;cursor:pointer;margin-right:8px;
   }
 
   /* ── CHAT AREA ── */
@@ -113,13 +106,12 @@
     border:2px solid var(--border);
   }
   .chat-header .header-online-dot{
-    position:absolute;bottom:1px;right:1px;
-    width:10px;height:10px;border-radius:50%;
-    background:var(--offline);border:2px solid var(--card);
+    position:absolute;bottom:1px;right:1px;width:10px;height:10px;
+    border-radius:50%;background:var(--offline);border:2px solid var(--card);
   }
   .chat-header .header-online-dot.online{background:var(--success)}
   .chat-header .name{font-weight:600;font-size:15px}
-  .chat-header .status{font-size:12px;color:var(--muted)}
+  .chat-header .status{font-size:12px;color:var(--muted);margin-left:12px} /* added margin */
 
   .chat-box{
     flex:1 1 0;overflow-y:auto;padding:16px;
@@ -127,52 +119,58 @@
     -webkit-overflow-scrolling:touch;
   }
 
-  /* Message bubbles */
-  .message{display:flex;gap:8px;max-width:80%;position:relative;user-select:none}
-  .message.sent{align-self:flex-end;flex-direction:row-reverse}
-  .message.received{align-self:flex-start}
-  .message .bubble{
-    padding:10px 14px;border-radius:16px;
-    font-size:14px;line-height:1.45;word-break:break-word;position:relative;
-    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  /* Message rows – Gemini's recommended structure */
+  .message-row{
+    display:flex;flex-direction:column;margin-bottom:8px;width:100%;
   }
-  .message.received .bubble{
+  .message-row.sent{align-items:flex-end}
+  .message-row.received{align-items:flex-start}
+
+  .message-box{
+    padding:10px 14px;border-radius:16px;max-width:75%;
+    font-size:14px;line-height:1.45;word-break:break-word;
+  }
+  .sent .message-box{
+    background:var(--accent);color:#0a2a28;
+    border-bottom-right-radius:4px;
+    box-shadow:0 0 8px rgba(81,218,211,.25);
+  }
+  .received .message-box{
     background:var(--panel);color:var(--text);
     border-bottom-left-radius:4px;
   }
-  .message.sent .bubble{
-    background:var(--accent);color:#0a2a28;
-    border-bottom-right-radius:4px;
-    box-shadow:0 0 12px rgba(81,218,211,.20);
+  /* Reply preview inside bubble */
+  .reply-preview{
+    font-size:11px;margin-bottom:4px;padding-left:6px;
+    border-left:2px solid rgba(0,0,0,.4);
   }
-  .message .time{
-    font-size:10px;color:var(--muted);margin-top:2px;align-self:flex-end;
-    white-space:nowrap;display:flex;align-items:center;gap:4px;
+  .sent .reply-preview{
+    color:rgba(0,0,0,.6);border-left-color:rgba(0,0,0,.4);
   }
-  .message.sent .time{justify-content:flex-end}
-  .message .status-icon{font-size:14px}
-  .message.sent .status-icon.read{color:var(--accent)}
+  .received .reply-preview{
+    color:var(--muted);border-left-color:var(--accent);
+  }
+  .reply-preview:hover{cursor:pointer;color:var(--text)}
+
+  .message-meta{
+    display:flex;gap:4px;font-size:11px;color:var(--muted);margin-top:4px;
+  }
+  .sent .message-meta{justify-content:flex-end}
+  .status-icon{font-size:14px}
+  .sent .status-icon.read{color:var(--accent)}
 
   .deleted-placeholder{
     padding:8px 14px;border-radius:12px;background:var(--panel);
     font-style:italic;color:var(--muted);font-size:13px;
-    pointer-events:none;user-select:none;align-self:center;
+    text-align:center;margin:8px auto;
     border:1px dashed var(--border);
+    max-width:60%;
   }
-
-  /* Reply quote inside bubble */
-  .reply-quote{
-    font-size:11px;color:var(--muted);margin-bottom:4px;
-    border-left:2px solid var(--accent);padding-left:8px;
-    cursor:pointer;transition:color .1s;
-  }
-  .reply-quote:hover{color:var(--text)}
 
   /* Reply bar above input */
   .reply-bar{
     background:var(--card);border-top:1px solid var(--border);
-    padding:8px 16px;display:none;align-items:center;gap:8px;
-    flex-shrink:0;
+    padding:8px 16px;display:none;align-items:center;gap:8px;flex-shrink:0;
   }
   .reply-bar.show{display:flex}
   .reply-bar .quote{flex:1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -198,10 +196,7 @@
     0%,60%,100%{transform:translateY(0)}
     30%{transform:translateY(-6px)}
   }
-  .typing-swipe-hint{
-    font-size:11px;color:var(--muted);
-    display:flex;align-items:center;gap:4px;
-  }
+  .typing-swipe-hint{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
 
   /* Input area */
   .input-area{
@@ -213,8 +208,8 @@
   .input-row{display:flex;gap:8px}
   .input-row input{
     flex:1;padding:12px;border-radius:20px;
-    background:var(--panel);border:1px solid var(--border);
-    color:var(--text);font-size:14px;outline:none;
+    background:var(--panel);border:2px solid var(--border);color:var(--text);
+    font-size:14px;outline:none;
     transition:border-color .2s,box-shadow .2s;
   }
   .input-row input:focus{
@@ -225,8 +220,7 @@
     width:44px;height:44px;border-radius:50%;
     background:var(--accent);color:#0a2a28;
     display:flex;align-items:center;justify-content:center;
-    border:none;cursor:pointer;transition:filter .15s;
-    flex-shrink:0;
+    border:none;cursor:pointer;transition:filter .15s;flex-shrink:0;
   }
   .send-btn:hover{filter:brightness(1.1)}
   .send-btn .material-symbols-outlined{font-size:20px}
@@ -272,14 +266,14 @@
 </head>
 <body>
   <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
+    <div style="display:flex;align-items:center;margin-bottom:16px">
       <button class="back-btn" id="sidebarBackBtn">←</button>
-      <h2>Messages</h2>
+      <h1 class="sidebar-title" style="margin-bottom:0">Messages</h1>
     </div>
-    <div class="new-chat">
-      <input type="text" id="newChatUsername" placeholder="Search/new-chat" />
+    <div class="search-container">
+      <input type="text" class="search-input" id="newChatUsername" placeholder="Search/new-chat" />
     </div>
-    <div class="room-list" id="roomList"></div>
+    <div class="chat-list" id="roomList"></div>
   </div>
 
   <div class="chat-area" id="chatArea">
@@ -331,9 +325,7 @@
 
 <script>
 /*
-  AniChan Realtime Chat — Telegram‑inspired UI
-  Sidebar with glowing search, online dots, unread badges, active capsule.
-  Chat area with teal/grey bubbles, reply quotes, typing dots, swipe, scroll-to-bottom.
+  AniChan Realtime Chat – Fully corrected layout (Gemini's sidebar + row structure)
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -384,11 +376,10 @@
     await supabase.from('user_presence').upsert({ user_id: currentUser.id, typing_in_room_id: typing ? roomId : null });
   }
 
-  // ── Sidebar filtering ──
+  // ── Sidebar filtering & rendering (Gemini structure) ──
   function filterRooms(query) {
     const q = query.trim().toLowerCase();
-    if (!q) { filteredRooms = [...rooms]; }
-    else { filteredRooms = rooms.filter(r => (r.other_user.full_name || r.other_user.username).toLowerCase().includes(q)); }
+    filteredRooms = q ? rooms.filter(r => (r.other_user.full_name || r.other_user.username).toLowerCase().includes(q)) : [...rooms];
     renderRoomList(filteredRooms);
   }
 
@@ -398,20 +389,21 @@
     roomsData.forEach(room => {
       const o = room.other_user;
       const div = document.createElement('div');
-      div.className = 'room' + (activeRoom===room.id ? ' active' : '');
-      const previewClass = room.unread_count ? 'preview unread' : 'preview';
+      div.className = 'chat-item' + (activeRoom===room.id ? ' active' : '');
       div.innerHTML = `
-        <div class="avatar-wrap">
-          <img src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-          <div class="online-dot ${o.is_online ? 'online' : ''}"></div>
+        <div class="avatar-container">
+          <img src="${o.avatar_url || DEFAULT_AVATAR}" class="avatar-img" onerror="this.src='${DEFAULT_AVATAR}'" />
+          <span class="online-indicator" style="background:${o.is_online ? 'var(--success)' : 'var(--offline)'}"></span>
         </div>
-        <div class="info">
-          <div class="name">${escapeHtml(o.full_name || o.username)}</div>
-          <div class="${previewClass}">${escapeHtml(room.last_message || '')}</div>
-        </div>
-        <div class="meta">
-          <div class="time">${formatChatTime(room.last_message_time)}</div>
-          ${room.unread_count ? `<span class="unread-badge">${room.unread_count}</span>` : ''}
+        <div class="chat-details">
+          <div class="chat-header-row">
+            <span class="contact-name">${escapeHtml(o.full_name || o.username)}</span>
+            <span class="timestamp">${formatChatTime(room.last_message_time)}</span>
+          </div>
+          <div class="chat-body-row">
+            <p class="message-preview">${escapeHtml(room.last_message || '')}</p>
+            ${room.unread_count ? `<span class="unread-badge">${room.unread_count}</span>` : ''}
+          </div>
         </div>`;
       div.addEventListener('click', () => openRoom(room.id, o.id));
       list.appendChild(div);
@@ -451,8 +443,7 @@
       $('chatPartnerName').textContent = p.full_name || p.username;
       $('chatPartnerStatus').textContent = p.is_online ? 'Online' : (p.last_seen ? `last-seen ${formatChatTime(p.last_seen)}` : 'Offline');
       $('chatAvatarLink').href = `profile.html?user=${otherUserId}`;
-      const dot = $('chatPartnerDot');
-      dot.classList.toggle('online', p.is_online);
+      $('chatPartnerDot').classList.toggle('online', p.is_online);
     }
     renderRoomList(filteredRooms);
     await loadMessages(roomId);
@@ -461,7 +452,7 @@
     if (window.innerWidth <= 640) $('sidebar').classList.remove('open');
   }
 
-  // ── Messages ──
+  // ── Messages (using Gemini row structure) ──
   async function loadMessages(roomId) {
     const { data, error } = await supabase.from('messages').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
     if (error) { console.error(error); return; }
@@ -480,36 +471,43 @@
 
   function addMessageElement(msg) {
     const box = $('chatBox'), isSent = msg.sender_id === currentUser.id;
-    const div = document.createElement('div');
-    div.className = `message ${isSent ? 'sent' : 'received'}`;
-    div.dataset.msgId = msg.id;
 
     if (msg.is_deleted) {
-      div.innerHTML = `<div class="deleted-placeholder">This message was deleted</div>`;
-      box.appendChild(div);
+      const place = document.createElement('div');
+      place.className = 'deleted-placeholder';
+      place.textContent = 'This message was deleted';
+      box.appendChild(place);
       checkScroll();
       return;
     }
 
+    const row = document.createElement('div');
+    row.className = `message-row ${isSent ? 'sent' : 'received'}`;
+    row.dataset.msgId = msg.id;
+
     let replyHtml = '';
     if (msg.reply_to) {
-      const originalEl = document.querySelector(`.message[data-msg-id="${msg.reply_to}"]`);
-      const quotedText = originalEl ? originalEl.querySelector('.bubble')?.textContent?.trim() || 'Message' : 'Message';
-      replyHtml = `<div class="reply-quote" data-reply-to="${msg.reply_to}">${escapeHtml(quotedText)}</div>`;
+      const originalEl = document.querySelector(`.message-row[data-msg-id="${msg.reply_to}"]`);
+      const quoted = originalEl ? originalEl.querySelector('.message-box')?.textContent?.trim() || 'Message' : 'Message';
+      replyHtml = `<div class="reply-preview" data-reply-to="${msg.reply_to}">${escapeHtml(quoted)}</div>`;
     }
 
     let content = escapeHtml(msg.message || '');
     if (msg.edited_at) content += ' <small style="opacity:0.7">(edited)</small>';
 
-    div.innerHTML = `<div class="bubble">${replyHtml}${content}</div>
-      <div class="time">${formatTime(msg.created_at)} ${isSent ? '<span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>' : ''}</div>`;
+    row.innerHTML = `
+      <div class="message-box">${replyHtml}${content}</div>
+      <div class="message-meta">
+        <span class="time">${formatTime(msg.created_at)}</span>
+        ${isSent ? '<span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>' : ''}
+      </div>`;
 
-    const replyDiv = div.querySelector('.reply-quote');
+    const replyDiv = row.querySelector('.reply-preview');
     if (replyDiv) {
       replyDiv.addEventListener('click', (e) => {
         e.stopPropagation();
         const targetId = replyDiv.dataset.replyTo;
-        const target = document.querySelector(`.message[data-msg-id="${targetId}"]`);
+        const target = document.querySelector(`.message-row[data-msg-id="${targetId}"]`);
         if (target) {
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
           target.style.background = 'var(--panel)';
@@ -518,23 +516,22 @@
       });
     }
 
-    attachSwipe(div, msg);
-
+    attachSwipe(row, msg);
     if (isSent) {
-      div.addEventListener('touchstart', (e) => startLongPress(e, msg));
-      div.addEventListener('touchend', cancelLongPress);
-      div.addEventListener('touchmove', cancelLongPress);
+      row.addEventListener('touchstart', (e) => startLongPress(e, msg));
+      row.addEventListener('touchend', cancelLongPress);
+      row.addEventListener('touchmove', cancelLongPress);
     }
 
-    box.appendChild(div);
+    box.appendChild(row);
     checkScroll();
   }
 
   function checkScroll() {
     const box = $('chatBox');
-    const isNearBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 30;
-    $('scrollBottom').classList.toggle('show', !isNearBottom && box.scrollHeight > box.clientHeight);
-    if (isNearBottom) box.scrollTop = box.scrollHeight;
+    const near = box.scrollHeight - box.clientHeight <= box.scrollTop + 30;
+    $('scrollBottom').classList.toggle('show', !near && box.scrollHeight > box.clientHeight);
+    if (near) box.scrollTop = box.scrollHeight;
   }
   $('scrollBottom').addEventListener('click', () => {
     const box = $('chatBox');
@@ -542,16 +539,14 @@
     $('scrollBottom').classList.remove('show');
   });
 
-  // ── Swipe to reply ──
+  // ── Swipe reply ──
   function attachSwipe(el, msg) {
-    let startX = 0;
-    el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; });
-    el.addEventListener('touchend', (e) => {
-      const diff = (e.changedTouches[0]?.clientX || startX) - startX;
-      if (diff > 80) setReply(msg);
+    let sx = 0;
+    el.addEventListener('touchstart', e => sx = e.touches[0].clientX);
+    el.addEventListener('touchend', e => {
+      if ((e.changedTouches[0]?.clientX || sx) - sx > 80) setReply(msg);
     });
   }
-
   function setReply(msg) {
     if (msg.is_deleted) return;
     replyToMessage = { id: msg.id, sender: msg.sender_id, content: msg.message || '' };
@@ -565,50 +560,41 @@
   });
 
   // ── Long press ──
-  let longPressTimer;
-  function startLongPress(e, msg) { longPressTimer = setTimeout(() => showContextMenu(e, msg), 500); }
-  function cancelLongPress() { clearTimeout(longPressTimer); }
-
-  function showContextMenu(e, msg) {
+  let longTimer;
+  function startLongPress(e, msg) { longTimer = setTimeout(() => showCtx(e, msg), 500); }
+  function cancelLongPress() { clearTimeout(longTimer); }
+  function showCtx(e, msg) {
     if (msg.is_deleted) return;
     contextMsgId = msg.id;
-    const menu = $('contextMenu');
-    const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
-    $('ctxEdit').style.display = canEdit ? 'block' : 'none';
-    menu.style.display = 'block';
-    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 180) + 'px';
-    menu.style.top = (e.touches[0].clientY - 100) + 'px';
+    const m = $('contextMenu');
+    const can = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
+    $('ctxEdit').style.display = can ? 'block' : 'none';
+    m.style.display = 'block';
+    m.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 180) + 'px';
+    m.style.top = (e.touches[0].clientY - 100) + 'px';
   }
-
-  document.addEventListener('click', (e) => {
-    if (!$('contextMenu').contains(e.target)) $('contextMenu').style.display = 'none';
-  });
-
+  document.addEventListener('click', e => { if (!$('contextMenu').contains(e.target)) $('contextMenu').style.display = 'none'; });
   $('ctxEdit').addEventListener('click', () => {
     $('contextMenu').style.display = 'none';
-    const newContent = prompt('Edit message:');
-    if (!newContent) return;
-    supabase.from('messages').update({ message: newContent, edited_at: new Date().toISOString() }).eq('id', contextMsgId).then(({error}) => {
+    const c = prompt('Edit message:');
+    if (!c) return;
+    supabase.from('messages').update({ message: c, edited_at: new Date().toISOString() }).eq('id', contextMsgId).then(({error}) => {
       if (error) alert('Edit failed');
       else loadMessages(activeRoom);
     });
   });
-
   $('ctxDeleteForMe').addEventListener('click', () => {
     $('contextMenu').style.display = 'none';
-    addDeleted(contextMsgId);
-    loadMessages(activeRoom);
+    addDeleted(contextMsgId); loadMessages(activeRoom);
   });
-
   $('ctxDeleteForEveryone').addEventListener('click', () => {
     $('contextMenu').style.display = 'none';
-    if (!confirm('Delete this message for everyone?')) return;
+    if (!confirm('Delete for everyone?')) return;
     supabase.from('messages').update({ is_deleted: true }).eq('id', contextMsgId).then(({error}) => {
       if (error) alert('Delete failed');
       else loadMessages(activeRoom);
     });
   });
-
   $('ctxCancel').addEventListener('click', () => $('contextMenu').style.display = 'none');
 
   // ── Send ──
@@ -617,13 +603,12 @@
     if (!text || !activeRoom || !partnerId || isSending) return;
     input.value = '';
     isSending = true;
-
-    const tempId = 'temp-' + Date.now();
-    const tempDiv = document.createElement('div');
-    tempDiv.className = 'message sent';
-    tempDiv.dataset.msgId = tempId;
-    tempDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><div class="time"><span class="status-text" style="color:var(--muted)">sending…</span></div>`;
-    $('chatBox').appendChild(tempDiv);
+    const tmpId = 'tmp-'+Date.now();
+    const tmpRow = document.createElement('div');
+    tmpRow.className = 'message-row sent';
+    tmpRow.dataset.msgId = tmpId;
+    tmpRow.innerHTML = `<div class="message-box">${escapeHtml(text)}</div><div class="message-meta"><span class="time" style="color:var(--muted)">sending…</span></div>`;
+    $('chatBox').appendChild(tmpRow);
     checkScroll();
 
     const payload = {
@@ -633,14 +618,14 @@
     };
     if (replyToMessage) { replyToMessage = null; $('replyBar').classList.remove('show'); }
 
-    const { data: inserted, error } = await supabase.from('messages').insert(payload).select().single();
-    const statusEl = tempDiv.querySelector('.status-text');
+    const { data: ins, error } = await supabase.from('messages').insert(payload).select().single();
+    const meta = tmpRow.querySelector('.message-meta');
     if (error) {
-      statusEl.innerHTML = '<span style="color:var(--danger)">not sent</span>';
-    } else if (inserted) {
-      sentMsgIds.add(inserted.id);
-      tempDiv.dataset.msgId = inserted.id;
-      statusEl.innerHTML = '<span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>';
+      meta.innerHTML = '<span style="color:var(--danger)">not sent</span>';
+    } else if (ins) {
+      sentMsgIds.add(ins.id);
+      tmpRow.dataset.msgId = ins.id;
+      meta.innerHTML = `<span class="time">${formatTime(ins.created_at)}</span> <span class="material-symbols-outlined status-icon read" style="font-size:14px">done_all</span>`;
       await supabase.from('chat_rooms').update({ last_message: text, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
     }
@@ -651,10 +636,10 @@
   function subscribeToMessages(roomId) {
     if (messageSub) supabase.removeChannel(messageSub);
     messageSub = supabase.channel(`room:${roomId}`)
-      .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, (payload) => {
+      .on('postgres_changes', { event:'*', schema:'public', table:'messages', filter:`room_id=eq.${roomId}` }, payload => {
         if (payload.eventType === 'INSERT') {
           const nm = payload.new;
-          if (!sentMsgIds.has(nm.id) && !document.querySelector(`.message[data-msg-id="${nm.id}"]`)) {
+          if (!sentMsgIds.has(nm.id) && !document.querySelector(`.message-row[data-msg-id="${nm.id}"]`)) {
             addMessageElement(nm);
             if (nm.receiver_id === currentUser.id) supabase.from('messages').update({ is_read:true }).eq('id', nm.id).then();
           }
@@ -664,16 +649,16 @@
       }).subscribe();
   }
 
-  // ── Typing indicator ──
-  let typingTimeout;
+  // ── Typing ──
+  let typingTO;
   $('messageInput').addEventListener('input', () => {
     if (!activeRoom) return;
-    setTyping(activeRoom, true); clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => setTyping(activeRoom, false), 3000);
+    setTyping(activeRoom, true); clearTimeout(typingTO);
+    typingTO = setTimeout(() => setTyping(activeRoom, false), 3000);
   });
   if (presenceSub) supabase.removeChannel(presenceSub);
   presenceSub = supabase.channel('presence-changes')
-    .on('postgres_changes', { event:'*', schema:'public', table:'user_presence' }, (payload) => {
+    .on('postgres_changes', { event:'*', schema:'public', table:'user_presence' }, payload => {
       if (partnerId && payload.new && payload.new.user_id === partnerId) {
         $('typingDots').classList.toggle('active', payload.new.typing_in_room_id === activeRoom);
       }
@@ -681,11 +666,11 @@
 
   // ── New chat / search ──
   $('newChatUsername').addEventListener('input', () => filterRooms($('newChatUsername').value));
-  $('newChatUsername').addEventListener('keydown', async (e) => {
+  $('newChatUsername').addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       const u = e.target.value.trim();
       if (!u) return;
-      const match = filteredRooms.find(r => (r.other_user.username || '').toLowerCase() === u.toLowerCase());
+      const match = filteredRooms.find(r => (r.other_user.username||'').toLowerCase() === u.toLowerCase());
       if (match) { openRoom(match.id, match.other_user.id); e.target.value = ''; }
       else { e.target.value = ''; await createRoom(u); }
     }
@@ -704,13 +689,8 @@
   }
 
   // ── Deleted for me ──
-  function getDeletedSet() {
-    try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]')); } catch { return new Set(); }
-  }
-  function addDeleted(msgId) {
-    const s = getDeletedSet(); s.add(msgId);
-    localStorage.setItem(DELETED_KEY, JSON.stringify([...s]));
-  }
+  function getDeletedSet() { try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY)||'[]')); } catch { return new Set(); } }
+  function addDeleted(id) { const s = getDeletedSet(); s.add(id); localStorage.setItem(DELETED_KEY, JSON.stringify([...s])); }
 
   // ── Lifecycle ──
   window.addEventListener('beforeunload', () => updatePresence('offline'));
@@ -718,7 +698,6 @@
     if (document.hidden) updatePresence('idle'); else { updatePresence('online'); loadRooms(); }
   });
   setInterval(loadRooms, 30000);
-
   $('sidebarBackBtn').addEventListener('click', () => $('sidebar').classList.remove('open'));
   async function logout() { await updatePresence('offline'); await supabase.auth.signOut(); window.location.href = 'index.html'; }
 
@@ -728,20 +707,20 @@
     currentUser = session.user;
     await updatePresence('online'); await loadRooms();
 
-    const roomParam = new URLSearchParams(window.location.search).get('room');
-    if (roomParam) {
-      const { data: room } = await supabase.from('chat_rooms').select('user_one_id, user_two_id').eq('id', roomParam).single();
-      if (room) openRoom(roomParam, room.user_one_id === currentUser.id ? room.user_two_id : room.user_one_id);
+    const rp = new URLSearchParams(window.location.search).get('room');
+    if (rp) {
+      const { data: room } = await supabase.from('chat_rooms').select('user_one_id, user_two_id').eq('id', rp).single();
+      if (room) openRoom(rp, room.user_one_id === currentUser.id ? room.user_two_id : room.user_one_id);
       else { alert('Chat room not found.'); window.history.replaceState({}, document.title, window.location.pathname); }
     }
 
     supabase.channel('public:chat_rooms').on('postgres_changes', { event:'*', schema:'public', table:'chat_rooms' }, () => loadRooms()).subscribe();
     $('sendBtn').addEventListener('click', sendMessage);
-    $('messageInput').addEventListener('keydown', (e) => { if (e.key==='Enter') sendMessage(); });
+    $('messageInput').addEventListener('keydown', e => { if (e.key==='Enter') sendMessage(); });
 
     const lb = document.createElement('button'); lb.textContent='Logout';
     lb.style.cssText = 'background:transparent;border:1px solid rgba(255,71,87,.25);color:var(--danger);padding:6px 12px;border-radius:10px;cursor:pointer;margin-left:auto;font-size:13px;font-weight:600;';
-    lb.addEventListener('click', logout); document.querySelector('.sidebar-header').appendChild(lb);
+    lb.addEventListener('click', logout); document.querySelector('.sidebar').appendChild(lb);
   }
 
   document.addEventListener('DOMContentLoaded', init);
