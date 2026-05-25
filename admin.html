@@ -55,7 +55,6 @@
 
   .main-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto}
 
-  /* Mobile top bar */
   .top-bar-mobile{
     display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border);
     align-items:center;justify-content:space-between;
@@ -72,7 +71,6 @@
 
   .content{padding:20px 24px;flex:1}
 
-  /* Glass panel */
   .glass-panel{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -118,14 +116,9 @@
     background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.35);color:#9eece9;
   }
 
-  .member-item{
-    display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);
-  }
+  .member-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
   .member-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
-  .badge{
-    display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;
-    letter-spacing:.3px;margin-left:6px;
-  }
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.3px;margin-left:6px;}
   .badge.online{background:rgba(46,213,115,.15);color:var(--success)}
   .badge.offline{background:rgba(85,85,85,.15);color:var(--muted)}
   .badge.suspended{background:rgba(255,181,151,.15);color:var(--accent2)}
@@ -158,11 +151,8 @@
   @media (max-width:768px){
     .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
     .sidebar.open{transform:translateX(0)}
-    .top-bar-mobile{
-      display:flex;
-      position:fixed; top:0; left:0; right:0; z-index:50;
-    }
-    .main-area{ padding-top:56px; }
+    .top-bar-mobile{display:flex;position:fixed;top:0;left:0;right:0;z-index:50;}
+    .main-area{padding-top:56px;}
     .bento-grid{grid-template-columns:1fr}
     .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1}
   }
@@ -170,7 +160,6 @@
   .star-rating { display: flex; gap: 2px; align-items: center; }
   .star-rating .star { color: var(--accent); font-size: 18px; }
   .star-rating .star.empty { color: var(--muted); opacity: 0.4; }
-
   .added-date{font-size:10px;color:var(--muted);margin-top:2px}
 </style>
 </head>
@@ -253,13 +242,21 @@
               </div>
             </div>
 
-            <!-- Add/Edit Anime Form -->
+            <!-- Add/Edit Anime Form (with all language title fields) -->
             <div id="anime-form-section" class="glass-panel span-2">
               <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
-              <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the title is required.</p>
+              <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the main title is required.</p>
               <input type="hidden" id="editId" />
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div><label for="titleInput">Title</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
+                <!-- Main title -->
+                <div style="grid-column:span 2"><label for="titleInput">Title *</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
+                <!-- Language titles -->
+                <div><label for="titleEnInput">English</label><input id="titleEnInput" type="text" placeholder="English title" /></div>
+                <div><label for="titleJpInput">Japanese</label><input id="titleJpInput" type="text" placeholder="日本語タイトル" /></div>
+                <div><label for="titleZhInput">Chinese</label><input id="titleZhInput" type="text" placeholder="中文标题" /></div>
+                <div><label for="titleDeInput">German</label><input id="titleDeInput" type="text" placeholder="Deutscher Titel" /></div>
+                <div><label for="titleFrInput">French</label><input id="titleFrInput" type="text" placeholder="Titre français" /></div>
+
                 <div><label for="imageInput">Image URL</label><input id="imageInput" type="url" placeholder="https://…" /></div>
                 <div>
                   <label for="statusInput">Status</label>
@@ -519,7 +516,16 @@
       }
 
       function fillFormFromJikan(a, imgSrc){
+        // Main title
         $("titleInput").value = a.title || "";
+        // Language titles (Jikan only gives English and Japanese)
+        $("titleEnInput").value = a.title_english || "";
+        $("titleJpInput").value = a.title_japanese || "";
+        // Others are left empty – you can fill them manually
+        $("titleZhInput").value = "";
+        $("titleDeInput").value = "";
+        $("titleFrInput").value = "";
+
         $("imageInput").value = imgSrc || "";
         $("typeInput").value = normalizeType(a.type);
         const yr = a.year || (a.aired && a.aired.from ? new Date(a.aired.from).getFullYear() : null);
@@ -535,6 +541,11 @@
       function setEditMode(item){
         $("editId").value = item.id;
         $("titleInput").value = item.title || "";
+        $("titleEnInput").value = item.title_en || "";
+        $("titleJpInput").value = item.title_jp || "";
+        $("titleZhInput").value = item.title_zh || "";
+        $("titleDeInput").value = item.title_de || "";
+        $("titleFrInput").value = item.title_fr || "";
         $("imageInput").value = item.image_url || "";
         $("statusInput").value = item.status || "";
         $("typeInput").value = normalizeType(item.type);
@@ -551,9 +562,12 @@
         document.querySelector("#formTitle").scrollIntoView({behavior:"smooth",block:"start"});
         $("titleInput").focus();
       }
+
       function clearForm(){
         $("editId").value = "";
-        for (const id of ["titleInput","imageInput","statusInput","typeInput","scoreInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"]) $(id).value = "";
+        for (const id of ["titleInput","titleEnInput","titleJpInput","titleZhInput","titleDeInput","titleFrInput",
+                          "imageInput","statusInput","typeInput","scoreInput","epTotalInput","yearInput",
+                          "genresInput","studioInput","notesInput"]) $(id).value = "";
         updateStarRating(null);
         renderGenreChips();
         $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Add to Latest Releases';
@@ -567,6 +581,11 @@
         if (!title) { toast("Title is required"); $("titleInput").focus(); return; }
         const payload = {
           title,
+          title_en: $("titleEnInput").value.trim() || null,
+          title_jp: $("titleJpInput").value.trim() || null,
+          title_zh: $("titleZhInput").value.trim() || null,
+          title_de: $("titleDeInput").value.trim() || null,
+          title_fr: $("titleFrInput").value.trim() || null,
           image_url: $("imageInput").value.trim() || null,
           status: $("statusInput").value || null,
           type: normalizeType($("typeInput").value) || null,
@@ -585,7 +604,7 @@
         clearForm(); await loadAnimeList();
       }
 
-      // ── Collection (with true count and server‑side pagination) ──
+      // Collection list (true count, server‑side pagination)
       async function loadAnimeList() {
         const { count, error: countErr } = await sb
           .from("anime")
@@ -596,7 +615,6 @@
         const totalPages = Math.ceil(totalAnimeCount / ADMIN_ITEMS_PER_PAGE);
         if (adminPage < 1) adminPage = 1;
         if (adminPage > totalPages) adminPage = totalPages || 1;
-
         const start = (adminPage - 1) * ADMIN_ITEMS_PER_PAGE;
         const end = start + ADMIN_ITEMS_PER_PAGE - 1;
 
@@ -673,9 +691,7 @@
         }
       }
 
-      $("prevPageBtn").addEventListener("click", () => {
-        if (adminPage > 1) { adminPage--; loadAnimeList(); }
-      });
+      $("prevPageBtn").addEventListener("click", () => { if (adminPage > 1) { adminPage--; loadAnimeList(); } });
       $("nextPageBtn").addEventListener("click", () => {
         const totalPages = Math.ceil(totalAnimeCount / ADMIN_ITEMS_PER_PAGE);
         if (adminPage < totalPages) { adminPage++; loadAnimeList(); }
@@ -691,17 +707,15 @@
         }
       });
 
-      // Bulk Import (unchanged, works)
+      // Bulk Import
       let bulkPage = 1;
       async function bulkImport(){
         const btn = $("bulkImportBtn"), status = $("bulkStatus");
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Importing…"; status.textContent = "Searching…";
         showCancelButton();
-
         const { data: existingData } = await sb.from("anime").select("title, title_en, title_jp, title_zh, title_de, title_fr");
         const existing = existingData || [];
         const existingDisplayTitles = new Set(existing.map(a => getDisplayTitleForDedup(a)));
-
         const maxAttempts = 50; let attempts = 0;
         let insertsAccum = [];
         try {
@@ -742,9 +756,9 @@
 
               insertsAccum.push({
                 title: bestTitle,
+                title_en, title_jp, title_zh, title_de, title_fr,
                 image_url, type, year, genres, studio, score, ep_total,
                 status: airingStatus || 'Not yet aired',
-                title_en, title_jp, title_zh, title_de, title_fr,
                 aired_from, aired_to
               });
               existingDisplayTitles.add(dispTitle);
@@ -766,8 +780,7 @@
         } catch (e) { console.warn(e); status.textContent = "Import failed."; toast("Import failed."); }
         finally {
           btn.disabled = false; btn.textContent = origText;
-          hideCancelButton();
-          cancelFlag = false;
+          hideCancelButton(); cancelFlag = false;
         }
       }
 
@@ -793,8 +806,7 @@
           if (!data || data.length === 0) break;
           all.push(...data);
           if (data.length < 1000) break;
-          from += 1000;
-          to += 1000;
+          from += 1000; to += 1000;
         }
         return all;
       }
@@ -807,35 +819,23 @@
           status.textContent = "Please wait 5 minutes between fixes.";
           return;
         }
-
         const origText = btn.textContent; btn.disabled = true; btn.textContent = "Fixing…";
-        status.textContent = "Fetching full anime list…";
-        showCancelButton();
-
+        status.textContent = "Fetching full anime list…"; showCancelButton();
         let allAnime;
-        try {
-          allAnime = await fetchAllAnime();
-        } catch (e) {
-          toast("Failed to fetch anime list.");
-          btn.disabled = false; btn.textContent = origText;
-          hideCancelButton();
-          return;
-        }
+        try { allAnime = await fetchAllAnime(); }
+        catch (e) { toast("Failed to fetch anime list."); btn.disabled = false; btn.textContent = origText; hideCancelButton(); return; }
 
         const originals = allAnime.map(a => ({
-          id: a.id,
-          status: a.status,
+          id: a.id, status: a.status,
           title_en: a.title_en, title_jp: a.title_jp, title_zh: a.title_zh,
           title_de: a.title_de, title_fr: a.title_fr,
           aired_from: a.aired_from, aired_to: a.aired_to,
-          score: a.score, ep_total: a.ep_total,
-          genres: a.genres, studio: a.studio
+          score: a.score, ep_total: a.ep_total, genres: a.genres, studio: a.studio
         }));
 
         const total = allAnime.length;
         let processed = 0, fixedCount = 0;
         const updatedIds = [];
-
         const CONCURRENCY = 3;
         const queue = [...allAnime];
 
@@ -844,19 +844,15 @@
           try {
             await new Promise(r => setTimeout(r, 350));
             if (cancelFlag) return;
-
             const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(anime.title)}&limit=1`);
             if (!res.ok) return;
             const json = await res.json();
             const match = json.data && json.data[0];
             if (!match) return;
-
             const updates = {};
 
             const jikanStatus = mapAiringStatus(match.status);
-            if (jikanStatus && jikanStatus !== anime.status) {
-              updates.status = jikanStatus;
-            }
+            if (jikanStatus && jikanStatus !== anime.status) updates.status = jikanStatus;
 
             if (match.title_english && match.title_english !== anime.title_en) updates.title_en = match.title_english;
             if (match.title_japanese && match.title_japanese !== anime.title_jp) updates.title_jp = match.title_japanese;
@@ -864,14 +860,8 @@
             if (match.title_german  && match.title_german  !== anime.title_de) updates.title_de = match.title_german;
             if (match.title_french  && match.title_french  !== anime.title_fr) updates.title_fr = match.title_french;
 
-            if (match.aired?.from) {
-              const fromISO = new Date(match.aired.from).toISOString();
-              if (fromISO !== anime.aired_from) updates.aired_from = fromISO;
-            }
-            if (match.aired?.to) {
-              const toISO = new Date(match.aired.to).toISOString();
-              if (toISO !== anime.aired_to) updates.aired_to = toISO;
-            }
+            if (match.aired?.from) { const fromISO = new Date(match.aired.from).toISOString(); if (fromISO !== anime.aired_from) updates.aired_from = fromISO; }
+            if (match.aired?.to)   { const toISO   = new Date(match.aired.to).toISOString();   if (toISO   !== anime.aired_to)   updates.aired_to   = toISO; }
 
             if (anime.score == null && match.score != null) updates.score = match.score;
             if (anime.ep_total == null && match.episodes != null) updates.ep_total = match.episodes;
@@ -884,28 +874,14 @@
 
             if (Object.keys(updates).length) {
               const { error: updErr } = await sb.from("anime").update(updates).eq("id", anime.id);
-              if (!updErr) {
-                fixedCount++;
-                updatedIds.push(anime.id);
-              }
+              if (!updErr) { fixedCount++; updatedIds.push(anime.id); }
             }
           } catch (e) { console.warn(`Failed to fix ${anime.title}`, e); }
-          finally {
-            processed++;
-            const pct = Math.round((processed / total) * 100);
-            status.textContent = `Fixing ${processed}/${total} (${pct}%)`;
-          }
+          finally { processed++; const pct = Math.round((processed / total) * 100); status.textContent = `Fixing ${processed}/${total} (${pct}%)`; }
         }
 
-        async function worker() {
-          while (queue.length && !cancelFlag) {
-            const anime = queue.shift();
-            await processOne(anime);
-          }
-        }
-
-        const workers = [];
-        for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+        async function worker() { while (queue.length && !cancelFlag) { const anime = queue.shift(); await processOne(anime); } }
+        const workers = []; for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
         await Promise.all(workers);
 
         if (cancelFlag) {
@@ -913,62 +889,40 @@
           const revertList = originals.filter(o => updatedIds.includes(o.id));
           for (const orig of revertList) {
             await sb.from("anime").update({
-              status: orig.status,
-              title_en: orig.title_en, title_jp: orig.title_jp, title_zh: orig.title_zh,
-              title_de: orig.title_de, title_fr: orig.title_fr,
-              aired_from: orig.aired_from, aired_to: orig.aired_to,
-              score: orig.score, ep_total: orig.ep_total,
-              genres: orig.genres, studio: orig.studio
+              status: orig.status, title_en: orig.title_en, title_jp: orig.title_jp, title_zh: orig.title_zh,
+              title_de: orig.title_de, title_fr: orig.title_fr, aired_from: orig.aired_from, aired_to: orig.aired_to,
+              score: orig.score, ep_total: orig.ep_total, genres: orig.genres, studio: orig.studio
             }).eq("id", orig.id);
           }
-          toast("Fix cancelled and changes reverted.");
-          status.textContent = "Cancelled.";
+          toast("Fix cancelled and changes reverted."); status.textContent = "Cancelled.";
         } else {
-          toast(`Fixed ${fixedCount} titles.`);
-          status.textContent = `Fixed ${fixedCount} titles.`;
+          toast(`Fixed ${fixedCount} titles.`); status.textContent = `Fixed ${fixedCount} titles.`;
           await loadAnimeList();
         }
-
-        btn.disabled = false; btn.textContent = origText;
-        hideCancelButton();
-        cancelFlag = false;
+        btn.disabled = false; btn.textContent = origText; hideCancelButton(); cancelFlag = false;
         if (!cancelFlag) localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
       }
 
       // Delete Duplicates
       async function deleteDuplicates() {
-        const btn = $("deleteDupBtn");
-        btn.disabled = true; btn.textContent = "Deleting…";
+        const btn = $("deleteDupBtn"); btn.disabled = true; btn.textContent = "Deleting…";
         const { data: all, error } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, created_at").order("created_at", { ascending: true });
         if (error) { toast("Failed to fetch anime."); btn.disabled = false; btn.textContent = "Delete Duplicates"; return; }
-
-        const seen = new Map();
-        const toDelete = [];
+        const seen = new Map(); const toDelete = [];
         for (const a of all) {
           const displayTitle = getDisplayTitleForDedup(a);
           if (!displayTitle) continue;
-          if (seen.has(displayTitle)) {
-            toDelete.push(a.id);
-          } else {
-            seen.set(displayTitle, a.id);
-          }
+          if (seen.has(displayTitle)) { toDelete.push(a.id); } else { seen.set(displayTitle, a.id); }
         }
-
-        if (toDelete.length === 0) {
-          toast("No duplicate titles found.");
-          btn.disabled = false; btn.textContent = "Delete Duplicates"; return;
-        }
-
-        const BATCH_SIZE = 100;
-        let deletedCount = 0;
+        if (toDelete.length === 0) { toast("No duplicate titles found."); btn.disabled = false; btn.textContent = "Delete Duplicates"; return; }
+        const BATCH_SIZE = 100; let deletedCount = 0;
         for (let i = 0; i < toDelete.length; i += BATCH_SIZE) {
           const batch = toDelete.slice(i, i + BATCH_SIZE);
           const { error: delErr } = await sb.from("anime").delete().in("id", batch);
           if (delErr) { toast("Error: " + delErr.message); break; }
           deletedCount += batch.length;
         }
-        toast(`Deleted ${deletedCount} duplicates.`);
-        await loadAnimeList();
+        toast(`Deleted ${deletedCount} duplicates.`); await loadAnimeList();
         btn.disabled = false; btn.textContent = "Delete Duplicates";
       }
 
@@ -1031,8 +985,7 @@
         if (error) { container.innerHTML = "Error loading members."; return; }
         container.innerHTML = "";
         users.forEach(user => {
-          const row = document.createElement("div");
-          row.className = "member-item";
+          const row = document.createElement("div"); row.className = "member-item";
           let statusHtml = user.is_online
             ? '<span class="badge online">Online</span>'
             : `<span class="badge offline">Offline since ${formatLastSeen(user.last_seen)}</span>`;
@@ -1071,16 +1024,11 @@
       window.unsuspendUser = unsuspendUser;
       window.openMemberModal = openMemberModal;
 
-      // Init
       document.addEventListener("DOMContentLoaded", async () => {
         const ok = await gate(); if (!ok) return;
         const { data: { session } } = await sb.auth.getSession();
         currentAdminId = session.user.id;
-        loadBroadcast();
-        await loadAnimeList();
-        renderMemberList();
-        renderActionLog();
-        loadCurrentLogo();
+        loadBroadcast(); await loadAnimeList(); renderMemberList(); renderActionLog(); loadCurrentLogo();
 
         $("broadcastSave").addEventListener("click", () => saveBroadcast($("broadcastInput").value.trim()));
         $("broadcastClear").addEventListener("click", () => { $("broadcastInput").value = ""; saveBroadcast(""); });
