@@ -86,7 +86,7 @@
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 0 10px rgba(81,218,211,.55);flex-shrink:0;
   }
-  /* New chat button at the bottom of the sidebar */
+
   .new-chat-btn{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     color:var(--text);padding:10px;margin:8px 16px;
@@ -97,7 +97,6 @@
   .new-chat-btn:hover{border-color:var(--accent)}
   .new-chat-btn .material-symbols-outlined{font-size:20px}
 
-  /* Friends list overlay */
   .friends-overlay{
     position:fixed;top:0;left:0;width:100%;height:100%;
     background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
@@ -140,7 +139,7 @@
   }
   .add-more-btn:hover{filter:brightness(1.1)}
 
-  /* ── SCREEN-B: Conversation Room (unchanged) ── */
+  /* ── SCREEN-B: Conversation Room ── */
   .screen-b{
     position:absolute;top:0;left:0;width:100%;height:100dvh;
     background:var(--bg);display:flex;flex-direction:column;
@@ -303,7 +302,6 @@
     color:var(--muted);font-size:14px;text-align:center;padding:20px;
   }
 
-  /* Mobile screen swap */
   @media (max-width:768px){
     .screen-a{transform:translateX(0)}
     .screen-b{transform:translateX(100%)}
@@ -400,7 +398,7 @@
 
 <script>
 /*
-  AniChan Chat – all fixes + new chat flow
+  AniChan Chat – all features restored + unread & presence fixes
 */
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -434,11 +432,16 @@
     return d.toLocaleDateString();
   }
 
+  // ── FIX: presence updates also profiles table ──
   async function presence(status='online'){
     if(!currentUser) return;
     await supabase.from('user_presence').upsert({user_id:currentUser.id, status, last_active:new Date().toISOString()});
-    // Also update profiles is_online / last_seen so that other users see the correct status
-    await supabase.from('profiles').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+    // Update profiles so other clients see the latest status
+    const isOnline = (status === 'online');
+    await supabase.from('profiles').update({
+      is_online: isOnline,
+      last_seen: new Date().toISOString()
+    }).eq('id', currentUser.id);
   }
   async function typing(room, on){
     if(!currentUser) return;
@@ -502,6 +505,7 @@
     if(p){
       $('partnerPic').src=p.avatar_url||DEFAULT_AVATAR;
       $('partnerName').textContent=p.full_name||p.username;
+      // FIX: use is_online from profiles, not presence
       if(p.is_online){
         $('partnerSub').textContent = 'online';
         $('partnerDot').classList.add('live');
@@ -654,7 +658,7 @@
           if(!sentIds.has(nm.id)&&!document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)){
             addMsg(nm);
             if(nm.receiver_id===currentUser.id) supabase.from('messages').update({is_read:true}).eq('id',nm.id).then();
-            loadRooms();  // update unread counts
+            loadRooms();   // update unread counts
           }
         }else if(payload.eventType==='UPDATE'){loadMsgs(roomId); loadRooms();}
       }).subscribe();
@@ -709,7 +713,6 @@
   }
 
   function startOrOpenChat(friend){
-    // Check if a room already exists
     supabase.from('chat_rooms').select('id')
       .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${friend.id}),and(user_one_id.eq.${friend.id},user_two_id.eq.${currentUser.id})`)
       .maybeSingle()
@@ -737,21 +740,13 @@
 
   // ── Search bar ──
   $('searchInput').addEventListener('input',()=>filterRooms($('searchInput').value));
-  $('searchInput').addEventListener('keydown',async e=>{
-    if(e.key==='Enter'){
-      const u=e.target.value.trim(); if(!u) return;
-      const match=filteredRooms.find(r=>(r.other_user.username||'').toLowerCase()===u.toLowerCase());
-      if(match){ openRoom(match.id,match.other_user.id); e.target.value=''; }
-      // else do nothing – no auto‑creation from search
-    }
-  });
 
   function getDel(){try{return new Set(JSON.parse(localStorage.getItem(DELETED_KEY)||'[]'));}catch{return new Set();}}
   function addDel(id){const s=getDel();s.add(id);localStorage.setItem(DELETED_KEY,JSON.stringify([...s]));}
 
   window.addEventListener('beforeunload',()=>presence('offline'));
   document.addEventListener('visibilitychange',()=>{if(document.hidden)presence('idle');else{presence('online');loadRooms();}});
-  setInterval(()=>{ loadRooms(); presence('online'); }, 30000);
+  setInterval(()=>{ presence('online'); loadRooms(); }, 30000);
 
   async function init(){
     const {data:{session}}=await supabase.auth.getSession();
