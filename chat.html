@@ -464,6 +464,10 @@
       const o=room.other_user;
       const d=document.createElement('div');
       d.className='thread-item'+(activeRoom===room.id?' active':'');
+      // Bug 1 fix: store IDs as data attributes — the delegated listener on
+      // #roomList will pick them up even after the list is fully re-rendered.
+      d.dataset.roomId  = room.id;
+      d.dataset.otherId = o.id;
       d.innerHTML=`
         <div class="avatar-ctn">
           <img src="${o.avatar_url||DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
@@ -473,7 +477,8 @@
           <div class="thread-top"><span class="thread-name">${esc(o.full_name||o.username)}</span><span class="thread-time">${fmtChat(room.last_message_time)}</span></div>
           <div class="thread-bottom"><p class="thread-preview">${esc(room.last_message||'')}</p>${room.unread_count?`<span class="unread-pill">${room.unread_count}</span>`:''}</div>
         </div>`;
-      d.addEventListener('click', () => openRoom(room.id, o.id));
+      // No per-element listener here — handled by the single delegated
+      // listener registered once on #roomList in closeRoom / init setup.
       list.appendChild(d);
     });
   }
@@ -523,8 +528,28 @@
           }
         });
         if(changed) renderRooms(filteredRooms);
+        // Bug 2 fix: if the status change belongs to whoever is open in the
+        // topbar right now, keep the dot + text in sync via the same atomic
+        // helper — so the header never shows a stale online dot after the
+        // initial openRoom fetch.
+        if (updated.id === partnerId) {
+          setPartnerStatus(updated.is_online, updated.last_seen);
+        }
       })
       .subscribe();
+  }
+
+  // ── Bug 2 fix: single atomic helper that keeps the dot + text in lock-step ──
+  // Call this as the ONE place that ever writes to partnerDot / partnerSub so
+  // the two UI elements can never contradict each other.
+  function setPartnerStatus(isOnline, lastSeen) {
+    if (isOnline) {
+      $('partnerDot').classList.add('live');
+      $('partnerSub').textContent = 'online';
+    } else {
+      $('partnerDot').classList.remove('live');
+      $('partnerSub').textContent = lastSeen ? `last-seen ${fmtChat(lastSeen)}` : 'Offline';
+    }
   }
 
   // ── Open room ──
@@ -533,17 +558,16 @@
     $('emptyState').style.display='none';
     $('chatTopbar').style.display='flex';
     $('composeArea').style.display='flex';
+    // Bug 2 fix: reset the dot immediately so there is no stale green dot
+    // visible during the async profile fetch below.
+    $('partnerDot').classList.remove('live');
+    $('partnerSub').textContent = '';
     const {data:p}=await supabase.from('profiles').select('username,full_name,avatar_url,is_online,last_seen').eq('id',otherId).single();
     if(p){
       $('partnerPic').src=p.avatar_url||DEFAULT_AVATAR;
       $('partnerName').textContent=p.full_name||p.username;
-      if(p.is_online){
-        $('partnerSub').textContent = 'online';
-        $('partnerDot').classList.add('live');
-      } else {
-        $('partnerSub').textContent = p.last_seen ? `last-seen ${fmtChat(p.last_seen)}` : 'Offline';
-        $('partnerDot').classList.remove('live');
-      }
+      // Bug 2 fix: one atomic call — dot class and status text always match.
+      setPartnerStatus(p.is_online, p.last_seen);
       $('partnerLink').href=`profile.html?user=${otherId}`;
     }
     renderRooms(filteredRooms);
@@ -559,6 +583,15 @@
     // On mobile, we stay on sidebar, keep activeRoom so conversation remains highlighted
   }
   $('backArrow').addEventListener('click', closeRoom);
+
+  // ── Bug 1 fix: single delegated listener on the static #roomList wrapper ──
+  // Attached once at startup; survives every innerHTML wipe / re-render inside
+  // renderRooms because it lives on the parent, not on the re-created children.
+  $('roomList').addEventListener('click', e => {
+    const item = e.target.closest('.thread-item');
+    if (!item || !item.dataset.roomId) return;
+    openRoom(item.dataset.roomId, item.dataset.otherId);
+  });
 
   // ── Messages ──
   async function loadMsgs(roomId){
@@ -797,8 +830,15 @@
   $('friendsOverlay').addEventListener('click', (e)=>{ if(e.target.id==='friendsOverlay') $('friendsOverlay').classList.remove('open'); });
   $('addMoreBtn').addEventListener('click', ()=> window.location.href='find_friends.html');
 
-  // ── Home button ──
-  $('homeBtn').addEventListener('click', ()=> window.location.href='index.html');
+  // ── Bug 3 fix: async logout / home navigation ──
+  // The original handler fired window.location.href immediately, cutting off
+  // the in-flight Supabase calls.  await forces both writes to complete first
+  // so last_seen is correct for everyone else before the page unloads.
+  $('homeBtn').addEventListener('click', async () => {
+    await presence('offline');          // flush last_seen → DB
+    await supabase.auth.signOut();      // invalidate session token
+    window.location.href = 'index.html';
+  });
 
   // ── Search bar ──
   $('searchInput').addEventListener('input',()=>filterRooms($('searchInput').value));
