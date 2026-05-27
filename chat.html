@@ -415,7 +415,7 @@
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--border);
     border-left: 4px solid var(--accent);
-    padding: 10px 12px 10px 14px;
+    padding: 10px 8px 10px 14px;
     display: none; align-items: center; gap: 10px; flex-shrink: 0;
   }
   .reply-strip.open { display: flex; }
@@ -463,17 +463,22 @@
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     padding: 10px 8px 10px 14px;
     padding-bottom: max(10px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
-  .compose-row { display: flex; gap: 10px; align-items: center; }
-  .compose-row input {
-    flex: 1; padding: 12px 16px; border-radius: 24px;
+  .compose-area #msgInput {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 12px 16px; border-radius: 24px;
     background: rgba(0,0,0,0.25);
     border: 1px solid transparent;
     color: var(--text); font-size: 14px; outline: none;
     transition: border-color .2s, box-shadow .2s;
   }
-  .compose-row input::placeholder { color: #4a5d65; }
-  .compose-row input:focus {
+  .compose-area #msgInput::placeholder { color: #4a5d65; }
+  .compose-area #msgInput:focus {
     border-color: var(--accent);
     box-shadow: var(--glow);
   }
@@ -489,6 +494,14 @@
   .send-circle:hover { filter: brightness(1.1); }
   .send-circle:active { transform: scale(0.94); }
   .send-circle .material-symbols-outlined { font-size: 20px; }
+
+  /* Edited label */
+  .edited-label {
+    font-size: 10px; opacity: 0.65; margin-top: 3px;
+    display: block; font-style: italic; letter-spacing: 0.2px;
+  }
+  .out .edited-label { color: rgba(0,0,0,0.55); }
+  .in  .edited-label { color: var(--muted); }
 
   /* Context menu */
   .ctx-menu {
@@ -595,12 +608,10 @@
     </div>
 
     <div class="compose-area" id="composeArea" style="display:none;">
-      <div class="compose-row">
-        <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" />
-        <button class="send-circle" id="sendBtn">
-          <span class="material-symbols-outlined">send</span>
-        </button>
-      </div>
+      <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" />
+      <button class="send-circle" id="sendBtn">
+        <span class="material-symbols-outlined">send</span>
+      </button>
     </div>
   </div>
 </div>
@@ -852,6 +863,24 @@
       .subscribe();
   }
 
+  // ── Mark all messages in a room as read ──
+  async function markAsRead(roomId) {
+    await supabase.from('messages')
+      .update({ is_read: true })
+      .eq('room_id', roomId)
+      .eq('receiver_id', currentUser.id)
+      .eq('is_read', false);
+    // Zero the cached unread count and hide the pill immediately
+    const room = rooms.find(r => r.id === roomId);
+    if (room) room.unread_count = 0;
+    // Hide the pill directly in the DOM without a full re-render
+    const activeItem = document.querySelector(`.thread-item[data-room-id="${roomId}"]`);
+    if (activeItem) {
+      const pill = activeItem.querySelector('.unread-pill');
+      if (pill) pill.remove();
+    }
+  }
+
   // ── Open room ──
   async function openRoom(roomId, otherId) {
     activeRoom = roomId;
@@ -859,6 +888,9 @@
 
     // Slide to chat screen immediately — before any async calls
     if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
+
+    // Mark all messages read immediately when opening the room
+    markAsRead(roomId);
 
     $('emptyState').style.display = 'none';
     $('chatTopbar').style.display = 'flex';
@@ -1000,7 +1032,9 @@
     }
 
     let content = esc(msg.message || '');
-    if (msg.edited_at) content += ' <small style="opacity:0.6;font-size:11px">(edited)</small>';
+    const editedHtml = (msg.edited_at || msg.is_edited)
+      ? '<span class="edited-label">(edited)</span>'
+      : '';
 
     // Swipe reply icon
     const iconSide = out ? 'left' : 'right';
@@ -1011,6 +1045,7 @@
       <div class="bubble">
         ${replyHtml}
         ${content}
+        ${editedHtml}
       </div>
       <div class="msg-foot">
         <span>${fmtTimeOnly(msg.created_at)}</span>
@@ -1086,7 +1121,7 @@
     if (msg.is_deleted) return;
     ctxMsgId = msg.id;
     const menu = $('ctxMenu');
-    const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
+    const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
     $('ctxEdit').style.display = canEdit ? 'block' : 'none';
     menu.style.display = 'block';
     const tx = e.touches[0];
@@ -1099,8 +1134,10 @@
   $('ctxEdit').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
     const c = prompt('Edit message:');
-    if (!c) return;
-    supabase.from('messages').update({ message: c, edited_at: new Date().toISOString() }).eq('id', ctxMsgId)
+    if (!c || !c.trim()) return;
+    supabase.from('messages')
+      .update({ message: c.trim(), edited_at: new Date().toISOString(), is_edited: true })
+      .eq('id', ctxMsgId)
       .then(({ error }) => { if (error) alert('Edit failed'); else loadMsgs(activeRoom); });
   });
   $('ctxDelMe').addEventListener('click', () => {
@@ -1269,12 +1306,9 @@
   $('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
 
   // ── Lifecycle ──
-  window.addEventListener('beforeunload', () => presence('offline'));
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) presence('offline');
-    else { presence('online'); loadRooms(); }
-  });
-  setInterval(() => { presence('online'); loadRooms(); }, 30000);
+  // Presence is set online at init and offline only on explicit logout.
+  // The heartbeat keeps the session alive and rooms fresh.
+  setInterval(() => { loadRooms(); }, 30000);
 
   // ── Init ──
   async function init() {
