@@ -1144,14 +1144,20 @@
   document.addEventListener('click', e => {
     if (!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none';
   });
-  $('ctxEdit').addEventListener('click', () => {
+    $('ctxEdit').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
     const c = prompt('Edit message:');
     if (!c || !c.trim()) return;
     supabase.from('messages')
       .update({ message: c.trim(), edited_at: new Date().toISOString(), is_edited: true })
       .eq('id', ctxMsgId)
-      .then(({ error }) => { if (error) alert('Edit failed'); else loadMsgs(activeRoom); });
+      .then(({ error }) => { 
+          if (error) {
+              alert('Edit failed: ' + error.message); 
+          } else {
+              loadMsgs(activeRoom);
+          }
+      });
   });
   $('ctxDelMe').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
