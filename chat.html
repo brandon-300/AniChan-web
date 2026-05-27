@@ -9,332 +9,551 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
-  :root{
-    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
-    --accent:#51dad3; --accent2:#ffb597;
-    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
-    --danger:#ff4757; --success:#2ed573; --offline:#555;
-    --glow:0 0 12px rgba(81,218,211,.45);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--bg);color:var(--text);
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    height:100dvh;overflow:hidden;
-    -webkit-font-smoothing:antialiased;
+  :root {
+    --bg: #0a0e12;
+    --card: #1a1a1a;
+    --panel: rgba(21, 28, 36, 0.75);
+    --accent: #51dad3;
+    --accent2: #ffb597;
+    --text: #f1f1f1;
+    --muted: #9aa0a6;
+    --border: rgba(255, 255, 255, 0.04);
+    --border-solid: #2a2a2a;
+    --danger: #ff4757;
+    --success: #2ed573;
+    --offline: #555;
+    --glow: 0 0 12px rgba(81, 218, 211, 0.45);
   }
 
-  .app-root{width:100%;height:100dvh;overflow:hidden;position:relative}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100dvh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-root { width: 100%; height: 100dvh; overflow: hidden; position: relative; }
 
   /* ── SCREEN-A: Messages Directory ── */
-  .screen-a{
-    position:absolute;top:0;left:0;width:100%;height:100dvh;
-    background:#080b0d;display:flex;flex-direction:column;
-    transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:1;
+  .screen-a {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100dvh;
+    background: #080b0d;
+    display: flex; flex-direction: column;
+    transition: transform .3s cubic-bezier(.4,0,.2,1); z-index: 1;
   }
-  .screen-a-header{
-    display:flex;align-items:center;gap:10px;
-    padding:20px 16px 12px;
-  }
-  .home-btn{
-    background:none;border:none;color:var(--accent);
-    font-size:20px;cursor:pointer;padding:4px;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .screen-title{color:#fff;font-size:28px;font-weight:700;margin:0;flex:1}
-  .search-box{margin:0 16px 24px}
-  .search-box input{
-    width:100%;background:#0c1214;border:2px solid var(--accent);border-radius:50px;
-    padding:12px 20px;color:#fff;font-size:15px;outline:none;
-    box-shadow:var(--glow);
-  }
-  .search-box input::placeholder{color:#4a5d65}
-  .thread-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:0 16px 16px}
-  .thread-item{
-    display:flex;align-items:center;padding:12px;border-radius:14px;
-    cursor:pointer;transition:background .2s;
-  }
-  .thread-item.active{
-    background:linear-gradient(135deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.01) 100%);
-    border:1px solid rgba(81,218,211,.25);
-    box-shadow:0 0 18px rgba(81,218,211,.08);
-  }
-  .avatar-ctn{
-    position:relative;width:50px;height:50px;margin-right:14px;flex-shrink:0;
-  }
-  .avatar-ctn img{
-    width:100%;height:100%;border-radius:50%;object-fit:cover;background:#333;
-  }
-  .online-marker{
-    position:absolute;bottom:1px;right:1px;width:12px;height:12px;
-    border-radius:50%;border:2px solid #080b0d;
-    background:var(--offline);
-  }
-  .online-marker.live{background:var(--success)}
-  .thread-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-  .thread-top{display:flex;justify-content:space-between;align-items:center}
-  .thread-name{color:#fff;font-weight:600;font-size:16px}
-  .thread-time{color:#6c7c85;font-size:12px}
-  .thread-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .thread-preview{
-    color:#8fa0a8;font-size:14px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;
-  }
-  .unread-pill{
-    background:var(--accent);color:#0a0a0a;font-size:11px;font-weight:700;
-    min-width:20px;height:20px;padding:0 6px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 0 10px rgba(81,218,211,.55);flex-shrink:0;
-  }
-  .new-chat-btn{
-    background:var(--panel);border:1px solid var(--border);border-radius:12px;
-    color:var(--text);padding:10px;margin:8px 16px;
-    display:flex;align-items:center;justify-content:center;
-    gap:6px;font-size:14px;font-weight:500;cursor:pointer;
-    transition:border-color .15s;
-  }
-  .new-chat-btn:hover{border-color:var(--accent)}
-  .new-chat-btn .material-symbols-outlined{font-size:20px}
 
-  .friends-overlay{
-    position:fixed;top:0;left:0;width:100%;height:100%;
-    background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
-    z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;
-    padding:20px;
+  /* Header */
+  .screen-a-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 20px 16px 12px 16px;
+    background: rgba(8, 11, 13, 0.9);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
-  .friends-overlay.open{display:flex}
-  .friends-panel{
-    width:100%;max-width:400px;max-height:70vh;
-    background:var(--card);border:1px solid var(--border);
-    border-radius:20px;padding:20px;
-    display:flex;flex-direction:column;
-    box-shadow:0 20px 40px rgba(0,0,0,.6);
+
+  .home-btn {
+    background: none; border: none; color: var(--accent);
+    font-size: 20px; cursor: pointer; padding: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
   }
-  .friends-panel h3{
-    margin-bottom:16px;font-size:18px;font-weight:700;
-    display:flex;justify-content:space-between;align-items:center;
+
+  /* AniChan brand in header */
+  .screen-brand {
+    flex: 1;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1;
   }
-  .friends-panel .close-friends{
-    background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;
+  .screen-brand .brand-ani { color: #fff; }
+  .screen-brand .brand-chan { color: var(--accent); }
+
+  /* Search box */
+  .search-box { margin: 12px 16px 8px; position: relative; }
+  .search-box .search-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 18px; pointer-events: none;
   }
-  .friends-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-  .friend-item{
-    display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;
-    cursor:pointer;transition:background .15s;
+  .search-box input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid transparent;
+    border-radius: 24px;
+    padding: 11px 16px 11px 42px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
   }
-  .friend-item:hover{background:var(--panel)}
-  .friend-avatar{
-    width:44px;height:44px;border-radius:50%;object-fit:cover;
-    background:var(--panel);border:1px solid var(--border);
+  .search-box input::placeholder { color: #4a5d65; }
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
   }
-  .friend-name{font-weight:600;font-size:15px}
-  .friend-username{color:var(--muted);font-size:13px}
-  .no-more{text-align:center;color:var(--muted);font-size:13px;margin-bottom:8px}
-  .add-more-btn{
-    background:var(--accent);color:#0a2a28;border:none;
-    padding:10px 16px;border-radius:12px;font-weight:600;
-    font-size:14px;cursor:pointer;transition:filter .15s;
-    align-self:center;
+
+  /* Thread list */
+  .thread-list {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column;
+    padding: 8px 0 80px;
+    position: relative;
   }
-  .add-more-btn:hover{filter:brightness(1.1)}
+  .thread-list::-webkit-scrollbar { width: 4px; }
+  .thread-list::-webkit-scrollbar-track { background: transparent; }
+  .thread-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .thread-item {
+    display: flex; align-items: center;
+    padding: 12px 14px;
+    border-radius: 12px;
+    margin: 2px 8px;
+    cursor: pointer;
+    transition: background .2s;
+    border-left: 3px solid transparent;
+    position: relative;
+  }
+  .thread-item:hover {
+    background: rgba(255,255,255,0.04);
+  }
+  .thread-item.active {
+    background: rgba(81, 218, 211, 0.08);
+    border-left-color: var(--accent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Avatar */
+  .avatar-ctn {
+    position: relative; width: 50px; height: 50px;
+    margin-right: 14px; flex-shrink: 0;
+  }
+  .avatar-ctn img {
+    width: 100%; height: 100%;
+    border-radius: 50%; object-fit: cover; background: #333;
+  }
+  .online-marker {
+    position: absolute; bottom: 1px; left: 1px;
+    width: 12px; height: 12px;
+    border-radius: 50%; border: 2px solid #080b0d;
+    background: var(--offline);
+    transition: background .3s;
+  }
+  .online-marker.live { background: var(--success); }
+
+  /* Thread info */
+  .thread-info {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .thread-top {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .thread-name {
+    color: #fff; font-weight: 600; font-size: 15px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; margin-right: 8px;
+  }
+  .thread-time { color: #6c7c85; font-size: 12px; flex-shrink: 0; }
+  .thread-bottom {
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 8px;
+  }
+  .thread-preview {
+    color: var(--muted); font-size: 13px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1;
+  }
+  .thread-preview.typing-preview {
+    color: var(--accent);
+    font-style: italic;
+  }
+  .unread-pill {
+    background: var(--accent); color: #0a0a0a;
+    font-size: 11px; font-weight: 700;
+    min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(81,218,211,.55);
+    flex-shrink: 0;
+  }
+
+  /* FAB new chat button */
+  .new-chat-fab {
+    position: absolute;
+    bottom: 20px; right: 20px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0a2a28;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(81,218,211,0.4), 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform .15s, box-shadow .15s;
+    z-index: 10;
+  }
+  .new-chat-fab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 28px rgba(81,218,211,0.55), 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .new-chat-fab:active { transform: scale(0.96); }
+  .new-chat-fab .material-symbols-outlined { font-size: 22px; }
+
+  /* Friends overlay */
+  .friends-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+    z-index: 300; display: none; flex-direction: column;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .friends-overlay.open { display: flex; }
+  .friends-panel {
+    width: 100%; max-width: 400px; max-height: 70vh;
+    background: #1a1f26; border: 1px solid var(--border-solid);
+    border-radius: 20px; padding: 20px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 40px rgba(0,0,0,.6);
+  }
+  .friends-panel h3 {
+    margin-bottom: 16px; font-size: 18px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .friends-panel .close-friends {
+    background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer;
+  }
+  .friends-list {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
+  }
+  .friend-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px;
+    border-radius: 12px; cursor: pointer; transition: background .15s;
+  }
+  .friend-item:hover { background: rgba(255,255,255,0.05); }
+  .friend-avatar {
+    width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
+    background: var(--panel); border: 1px solid var(--border-solid);
+  }
+  .friend-name { font-weight: 600; font-size: 15px; }
+  .friend-username { color: var(--muted); font-size: 13px; }
+  .no-more { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .add-more-btn {
+    background: var(--accent); color: #0a2a28; border: none;
+    padding: 10px 16px; border-radius: 12px; font-weight: 600;
+    font-size: 14px; cursor: pointer; transition: filter .15s; align-self: center;
+  }
+  .add-more-btn:hover { filter: brightness(1.1); }
 
   /* ── SCREEN-B: Conversation Room ── */
-  .screen-b{
-    position:absolute;top:0;left:0;width:100%;height:100dvh;
-    background:var(--bg);display:flex;flex-direction:column;
-    transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:2;
-  }
-  .chat-topbar{
-    padding:12px 16px;border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:12px;
-    background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);flex-shrink:0;
-  }
-  .back-arrow{
-    display:none;background:none;border:none;color:var(--accent);
-    font-size:24px;cursor:pointer;padding:0 8px 0 0;
-  }
-  .partner-link{display:block;flex-shrink:0;position:relative}
-  .partner-pic{
-    width:40px;height:40px;border-radius:50%;object-fit:cover;
-    border:2px solid var(--border);
-  }
-  .partner-online{
-    position:absolute;bottom:1px;right:1px;width:10px;height:10px;
-    border-radius:50%;border:2px solid var(--card);
-    background:var(--offline);
-  }
-  .partner-online.live{background:var(--success)}
-  .partner-text{margin-left:8px}
-  .partner-name{font-weight:600;font-size:15px}
-  .partner-sub{font-size:12px;color:var(--muted)}
-
-  .msg-feed{
-    flex:1;overflow-y:auto;padding:16px;
-    display:flex;flex-direction:column;gap:8px;
-    -webkit-overflow-scrolling:touch;
-  }
-  .msg-row{display:flex;flex-direction:column;margin-bottom:6px;width:100%}
-  .msg-row.out{align-items:flex-end}
-  .msg-row.in{align-items:flex-start}
-
-  .bubble{
-    padding:10px 14px;border-radius:16px;max-width:75%;
-    font-size:14px;line-height:1.45;word-break:break-word;
-  }
-  .out .bubble{
-    background:var(--accent);color:#0a2a28;
-    border-bottom-right-radius:4px;
-    box-shadow:0 0 10px rgba(81,218,211,.25);
-  }
-  .in .bubble{
-    background:var(--panel);color:var(--text);
-    border-bottom-left-radius:4px;
+  .screen-b {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100dvh;
+    background: var(--bg); display: flex; flex-direction: column;
+    transition: transform .3s cubic-bezier(.4,0,.2,1); z-index: 2;
   }
 
-  .reply-snip{
-    margin-bottom:5px;font-size:11px;
+  /* Chat topbar */
+  .chat-topbar {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(21, 28, 36, 0.85);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    flex-shrink: 0; min-height: 64px;
   }
-  .reply-snip .reply-user{font-weight:600;margin-bottom:2px}
-  .reply-snip .reply-body{
-    opacity:0.8;padding-left:6px;border-left:2px solid rgba(0,0,0,.4);
+  .back-arrow {
+    display: none; background: none; border: none; color: var(--accent);
+    font-size: 24px; cursor: pointer; padding: 0 8px 0 0; flex-shrink: 0;
   }
-  .out .reply-snip .reply-user{color:rgba(0,0,0,.7)}
-  .out .reply-snip .reply-body{color:rgba(0,0,0,.6); border-left-color:rgba(0,0,0,.4)}
-  .in .reply-snip .reply-user{color:var(--accent)}
-  .in .reply-snip .reply-body{color:var(--muted); border-left-color:var(--accent)}
+  .partner-link { display: block; flex-shrink: 0; position: relative; }
+  .partner-pic {
+    width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border-solid);
+  }
+  .partner-online {
+    position: absolute; bottom: 1px; left: 1px;
+    width: 11px; height: 11px;
+    border-radius: 50%; border: 2px solid #1a1f26;
+    background: var(--offline); transition: background .3s;
+  }
+  .partner-online.live { background: var(--success); }
+  .partner-text { margin-left: 6px; }
+  .partner-name { font-weight: 600; font-size: 15px; }
+  .partner-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .partner-sub.typing-status { color: var(--accent); font-style: italic; }
 
-  .msg-foot{
-    display:flex;gap:4px;font-size:11px;color:var(--muted);margin-top:3px;
+  /* Message feed */
+  .msg-feed {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    -webkit-overflow-scrolling: touch;
   }
-  .out .msg-foot{justify-content:flex-end}
-  .tick-icon{font-size:14px}
-  .out .tick-icon.read{color:var(--accent)}
+  .msg-feed::-webkit-scrollbar { width: 4px; }
+  .msg-feed::-webkit-scrollbar-track { background: transparent; }
+  .msg-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
 
-  /* Deleted – aligned to sender side */
-  .deleted-note{
-    padding:6px 14px;border-radius:20px;
-    background:rgba(255,255,255,.05);
-    color:var(--muted);font-size:13px;
-    border:none;box-shadow:none;
-    max-width:60%;
-    margin:4px 0;
-  }
-  .msg-row.out .deleted-note{margin-left:auto}
-  .msg-row.in .deleted-note{margin-right:auto}
+  .msg-row { display: flex; flex-direction: column; margin-bottom: 4px; width: 100%; }
+  .msg-row.out { align-items: flex-end; }
+  .msg-row.in { align-items: flex-start; }
 
-  .reply-strip{
-    background:var(--card);border-top:1px solid var(--border);
-    padding:8px 16px;display:none;align-items:center;gap:8px;flex-shrink:0;
+  /* Bubbles */
+  .bubble {
+    padding: 10px 14px; border-radius: 16px; max-width: 75%;
+    font-size: 14px; line-height: 1.5; word-break: break-word;
   }
-  .reply-strip.open{display:flex}
-  .reply-strip .preview{flex:1;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .reply-strip button{background:none;border:none;color:var(--danger);font-size:14px;cursor:pointer}
-
-  .typing-bar{padding:4px 16px;flex-shrink:0;display:flex;align-items:center;gap:8px}
-  .typing-anim{
-    display:none;align-items:center;gap:4px;
-    background:var(--panel);padding:6px 14px;border-radius:14px;
+  .out .bubble {
+    background: var(--accent); color: #0a2a28;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 0 10px rgba(81,218,211,.2);
   }
-  .typing-anim.on{display:flex}
-  .typing-anim span{
-    width:6px;height:6px;border-radius:50%;background:var(--accent);
-    animation:bounce 1.2s infinite ease-in-out;
-  }
-  .typing-anim span:nth-child(2){animation-delay:.15s}
-  .typing-anim span:nth-child(3){animation-delay:.3s}
-  @keyframes bounce{
-    0%,60%,100%{transform:translateY(0)}
-    30%{transform:translateY(-6px)}
-  }
-
-  .date-separator{
-    align-self:center;
-    background:rgba(255,255,255,.06);
-    color:var(--muted);
-    font-size:12px;
-    padding:4px 14px;
-    border-radius:12px;
-    margin:8px 0;
-    pointer-events:none;
+  .in .bubble {
+    background: #1e262e; color: var(--text);
+    border-bottom-left-radius: 4px;
   }
 
-  .compose-area{
-    flex-shrink:0;border-top:1px solid var(--border);
-    background:var(--card);padding:12px 16px;
-    padding-bottom:max(16px,env(safe-area-inset-bottom));
-    display:flex;flex-direction:column;gap:6px;
+  /* Reply snippet inside bubble */
+  .reply-snip {
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    border-left: 3px solid;
   }
-  .compose-row{display:flex;gap:8px}
-  .compose-row input{
-    flex:1;padding:12px;border-radius:20px;
-    background:var(--panel);border:2px solid var(--border);
-    color:var(--text);font-size:14px;outline:none;
-    transition:border-color .2s,box-shadow .2s;
+  .in .reply-snip {
+    background: rgba(0, 0, 0, 0.25);
+    border-left-color: var(--accent);
   }
-  .compose-row input:focus{
-    border-color:var(--accent);
-    box-shadow:var(--glow);
+  .out .reply-snip {
+    background: rgba(0, 0, 0, 0.15);
+    border-left-color: rgba(0,0,0,0.4);
   }
-  .send-circle{
-    width:44px;height:44px;border-radius:50%;
-    background:var(--accent);color:#0a2a28;
-    display:flex;align-items:center;justify-content:center;
-    border:none;cursor:pointer;transition:filter .15s;flex-shrink:0;
+  .reply-snip .reply-user {
+    font-weight: 700;
+    font-size: 12px;
+    margin-bottom: 2px;
   }
-  .send-circle:hover{filter:brightness(1.1)}
-  .send-circle .material-symbols-outlined{font-size:20px}
+  .in .reply-snip .reply-user { color: var(--accent); }
+  .out .reply-snip .reply-user { color: rgba(0,0,0,0.7); }
+  .reply-snip .reply-body {
+    font-size: 12px;
+    opacity: 0.8;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .in .reply-snip .reply-body { color: var(--muted); }
+  .out .reply-snip .reply-body { color: rgba(0,0,0,0.6); }
 
-  .ctx-menu{
-    position:fixed;background:var(--card);border:1px solid var(--border);
-    border-radius:14px;padding:4px 0;min-width:160px;z-index:200;
-    display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  /* Message footer */
+  .msg-foot {
+    display: flex; gap: 4px; font-size: 11px; color: var(--muted); margin-top: 3px;
+    align-items: center;
   }
-  .ctx-menu button{
-    display:block;width:100%;padding:10px 16px;border:none;
-    background:none;color:var(--text);font-size:14px;text-align:left;
-    cursor:pointer;transition:background .1s;
-  }
-  .ctx-menu button:hover{background:var(--panel)}
-  .ctx-menu .danger{color:var(--danger)}
-  .ctx-menu .split{height:1px;background:var(--border);margin:2px 0}
+  .out .msg-foot { justify-content: flex-end; }
+  .tick-icon { font-size: 14px; }
+  .out .tick-icon.read { color: var(--accent); }
 
-  .empty-state{
-    flex:1;display:flex;align-items:center;justify-content:center;
-    color:var(--muted);font-size:14px;text-align:center;padding:20px;
+  /* Deleted message */
+  .deleted-note {
+    padding: 6px 14px; border-radius: 20px;
+    background: rgba(255,255,255,.05);
+    color: var(--muted); font-size: 13px; font-style: italic;
+    border: none; box-shadow: none; max-width: 60%; margin: 4px 0;
+  }
+  .msg-row.out .deleted-note { margin-left: auto; }
+  .msg-row.in .deleted-note { margin-right: auto; }
+
+  /* Unread separator */
+  .unread-separator {
+    align-self: center;
+    background: rgba(81, 218, 211, 0.12);
+    border: 1px solid rgba(81, 218, 211, 0.25);
+    color: var(--accent);
+    font-size: 12px; font-weight: 600;
+    padding: 5px 16px;
+    border-radius: 12px;
+    margin: 10px 0;
+    pointer-events: none;
   }
 
-  @media (max-width:768px){
-    .screen-a{transform:translateX(0)}
-    .screen-b{transform:translateX(100%)}
-    .app-root.chat-open .screen-a{transform:translateX(-100%)}
-    .app-root.chat-open .screen-b{transform:translateX(0)}
-    .back-arrow{display:block}
+  /* Date separator */
+  .date-separator {
+    align-self: center;
+    background: rgba(255,255,255,.06);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px 14px;
+    border-radius: 12px;
+    margin: 8px 0;
+    pointer-events: none;
   }
-  @media (min-width:769px){
-    .app-root{display:flex}
-    .screen-a{position:relative;width:350px;flex-shrink:0;transform:none!important}
-    .screen-b{position:relative;flex:1;transform:none!important}
-    .back-arrow{display:none}
+
+  /* Swipe reply icon */
+  .swipe-reply-icon {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .1s;
+  }
+  .msg-row.in .swipe-reply-icon { right: -28px; }
+  .msg-row.out .swipe-reply-icon { left: -28px; }
+  .msg-row { position: relative; overflow: visible; }
+
+  /* Reply dock above input */
+  .reply-strip {
+    background: var(--panel);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 10px 12px 10px 14px;
+    display: none; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .reply-strip.open { display: flex; }
+  .reply-strip-content { flex: 1; min-width: 0; }
+  .reply-strip-user {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .reply-strip-text {
+    font-size: 12px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .reply-strip button {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4px; transition: color .15s;
+  }
+  .reply-strip button:hover { color: var(--danger); }
+
+  /* Typing bar */
+  .typing-bar { padding: 4px 16px; flex-shrink: 0; min-height: 28px; }
+  .typing-anim {
+    display: none; align-items: center; gap: 4px;
+    background: #1e262e; padding: 8px 14px; border-radius: 14px;
+    width: fit-content;
+  }
+  .typing-anim.on { display: flex; }
+  .typing-anim span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing-anim span:nth-child(2) { animation-delay: .15s; }
+  .typing-anim span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Compose area */
+  .compose-area {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: rgba(21, 28, 36, 0.85);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    padding: 10px 14px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .compose-row { display: flex; gap: 10px; align-items: center; }
+  .compose-row input {
+    flex: 1; padding: 12px 16px; border-radius: 24px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid transparent;
+    color: var(--text); font-size: 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .compose-row input::placeholder { color: #4a5d65; }
+  .compose-row input:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .send-circle {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent); color: #0a2a28;
+    display: flex; align-items: center; justify-content: center;
+    border: none; cursor: pointer;
+    transition: filter .15s, transform .1s;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(81,218,211,0.35);
+  }
+  .send-circle:hover { filter: brightness(1.1); }
+  .send-circle:active { transform: scale(0.94); }
+  .send-circle .material-symbols-outlined { font-size: 20px; }
+
+  /* Context menu */
+  .ctx-menu {
+    position: fixed; background: #1a1f26;
+    border: 1px solid var(--border-solid);
+    border-radius: 14px; padding: 4px 0; min-width: 180px; z-index: 200;
+    display: none; box-shadow: 0 12px 32px rgba(0,0,0,.6);
+  }
+  .ctx-menu button {
+    display: block; width: 100%; padding: 12px 18px; border: none;
+    background: none; color: var(--text); font-size: 14px; text-align: left;
+    cursor: pointer; transition: background .1s;
+  }
+  .ctx-menu button:hover { background: rgba(255,255,255,0.05); }
+  .ctx-menu .danger { color: var(--danger); }
+  .ctx-menu .split { height: 1px; background: var(--border-solid); margin: 2px 0; }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 14px; text-align: center; padding: 20px;
+    flex-direction: column; gap: 12px;
+  }
+  .empty-state .material-symbols-outlined { font-size: 48px; color: rgba(81,218,211,0.2); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .screen-a { transform: translateX(0); }
+    .screen-b { transform: translateX(100%); }
+    .app-root.chat-open .screen-a { transform: translateX(-100%); }
+    .app-root.chat-open .screen-b { transform: translateX(0); }
+    .back-arrow { display: block; }
+  }
+  @media (min-width: 769px) {
+    .app-root { display: flex; }
+    .screen-a { position: relative; width: 340px; flex-shrink: 0; transform: none !important; border-right: 1px solid var(--border); }
+    .screen-b { position: relative; flex: 1; transform: none !important; }
+    .back-arrow { display: none; }
   }
 </style>
 </head>
 <body>
 <div class="app-root" id="appRoot">
+
   <!-- SCREEN-A: Messages Directory -->
   <div class="screen-a" id="screenA">
     <div class="screen-a-header">
       <button class="home-btn" id="homeBtn" title="Back to Home">
         <span class="material-symbols-outlined">home</span>
       </button>
-      <h1 class="screen-title">Messages</h1>
+      <div class="screen-brand">
+        <span class="brand-ani">Ani</span><span class="brand-chan">Chan</span>
+      </div>
     </div>
+
     <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Search a conversation" />
+      <span class="search-icon material-symbols-outlined">search</span>
+      <input type="text" id="searchInput" placeholder="Search a conversation" autocomplete="off" />
     </div>
+
     <div class="thread-list" id="roomList"></div>
-    <button class="new-chat-btn" id="newChatBtn">
-      <span class="material-symbols-outlined">chat</span> New chat
+
+    <!-- FAB -->
+    <button class="new-chat-fab" id="newChatBtn" title="New chat">
+      <span class="material-symbols-outlined">edit</span>
     </button>
   </div>
 
@@ -351,23 +570,33 @@
         <div class="partner-sub" id="partnerSub"></div>
       </div>
     </div>
+
     <div class="typing-bar">
       <div class="typing-anim" id="typingAnim">
         <span></span><span></span><span></span>
       </div>
     </div>
+
     <div class="msg-feed" id="msgFeed">
       <div class="empty-state" id="emptyState">
+        <span class="material-symbols-outlined">chat</span>
         Select a conversation to start chatting
       </div>
     </div>
+
     <div class="reply-strip" id="replyStrip">
-      <span class="preview" id="replyPreview"></span>
-      <button id="cancelReply">✕</button>
+      <div class="reply-strip-content">
+        <div class="reply-strip-user" id="replyStripUser"></div>
+        <div class="reply-strip-text" id="replyPreview"></div>
+      </div>
+      <button id="cancelReply" title="Cancel reply">
+        <span class="material-symbols-outlined" style="font-size:18px">close</span>
+      </button>
     </div>
+
     <div class="compose-area" id="composeArea" style="display:none;">
       <div class="compose-row">
-        <input type="text" id="msgInput" placeholder="Type a message..." />
+        <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" />
         <button class="send-circle" id="sendBtn">
           <span class="material-symbols-outlined">send</span>
         </button>
@@ -389,6 +618,7 @@
   </div>
 </div>
 
+<!-- Context menu -->
 <div class="ctx-menu" id="ctxMenu">
   <button id="ctxEdit">Edit</button>
   <div class="split"></div>
@@ -399,194 +629,270 @@
 </div>
 
 <script>
-/*
-  AniChan Chat – full restoration + critical fixes:
-  - Real‑time profile status (green dot + last seen) via Supabase subscription
-  - Reliable sidebar → chat navigation
-  - Dynamic unread counts
-  - Swipe‑to‑reply, long‑press context menu
-  - Deleted messages aligned to sender side
-*/
 (() => {
-  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_URL  = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const $ = id => document.getElementById(id);
+
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
 
+  // ── State ──
   let currentUser = null, activeRoom = null, partnerId = null;
   let rooms = [], filteredRooms = [];
   let messageSub = null, presenceSub = null, profilesSub = null;
+  let broadcastChannel = null;
   let replyTo = null, ctxMsgId = null, sending = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
   const sentIds = new Set();
 
-  function esc(t){ return t.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]); }
-  function fmtTimeOnly(iso){ if(!iso) return ''; const d = new Date(iso); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
-  function fmtDate(iso){ if(!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }
-  function fmtChat(iso){
-    if(!iso) return '';
-    const d=new Date(iso), n=new Date(), diff=n-d, mins=Math.floor(diff/60000);
-    if(mins<1) return 'Just now';
-    if(mins<60) return `${mins}m ago`;
-    const hrs=Math.floor(mins/60);
-    if(hrs<24) return `${hrs}h ago`;
-    const days=Math.floor(hrs/24);
-    if(days<7) return `${days}d ago`;
+  // Tracks which users are currently typing (by user id)
+  const typingUsers = new Map();
+
+  // ── Helpers ──
+  function esc(t) {
+    return String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+  }
+  function fmtTimeOnly(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  }
+  function fmtChat(iso) {
+    if (!iso) return '';
+    const d = new Date(iso), n = new Date(), diff = n - d, mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7)  return `${days}d ago`;
     return d.toLocaleDateString();
   }
+  function getDel()    { try { return new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || '[]')); } catch { return new Set(); } }
+  function addDel(id)  { const s = getDel(); s.add(id); localStorage.setItem(DELETED_KEY, JSON.stringify([...s])); }
 
-  // ── Presence sync (profiles + user_presence) ──
-  async function presence(status='online'){
-    if(!currentUser) return;
-    await supabase.from('user_presence').upsert({user_id:currentUser.id, status, last_active:new Date().toISOString()});
-    const isOnline = (status === 'online');
+  // ── Presence (DB) ──
+  async function presence(status = 'online') {
+    if (!currentUser) return;
+    await supabase.from('user_presence').upsert({ user_id: currentUser.id, status, last_active: new Date().toISOString() });
+    const isOnline = status === 'online';
     await supabase.from('profiles').update({ is_online: isOnline, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
   }
-  async function typing(room, on){
-    if(!currentUser) return;
-    await supabase.from('user_presence').upsert({user_id:currentUser.id, typing_in_room_id:on?room:null});
+
+  // ── Typing broadcast via Supabase Realtime Broadcast ──
+  // Uses a per-room broadcast channel (not DB writes)
+  let typingTimeout = null;
+
+  function setupBroadcastChannel(roomId) {
+    if (broadcastChannel) supabase.removeChannel(broadcastChannel);
+    broadcastChannel = supabase.channel(`typing:${roomId}`, { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (!payload || payload.user_id === currentUser.id) return;
+        handleTypingBroadcast(payload.user_id, payload.is_typing);
+      })
+      .subscribe();
   }
 
-  // ── Sidebar rendering ──
-  function filterRooms(q){
-    const t=q.trim().toLowerCase();
-    filteredRooms = t ? rooms.filter(r => (r.other_user.full_name||r.other_user.username).toLowerCase().includes(t)) : [...rooms];
+  function broadcastTyping(isTyping) {
+    if (!broadcastChannel || !currentUser) return;
+    broadcastChannel.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: currentUser.id, is_typing: isTyping }
+    });
+  }
+
+  function handleTypingBroadcast(userId, isTyping) {
+    // Update right panel header if this is the active partner
+    if (userId === partnerId) {
+      const sub = $('partnerSub');
+      if (isTyping) {
+        sub.textContent = 'typing...';
+        sub.classList.add('typing-status');
+        $('typingAnim').classList.add('on');
+      } else {
+        sub.classList.remove('typing-status');
+        $('typingAnim').classList.remove('on');
+        // Restore status from cached room data
+        const room = rooms.find(r => r.other_user.id === userId);
+        if (room) setPartnerStatus(room.other_user.is_online, room.other_user.last_seen);
+      }
+    }
+    // Update left panel thread preview
+    if (isTyping) {
+      typingUsers.set(userId, true);
+    } else {
+      typingUsers.delete(userId);
+    }
     renderRooms(filteredRooms);
   }
-  function renderRooms(data){
-    const list=$('roomList'); list.innerHTML='';
-    if(!data.length){ list.innerHTML='<div style="padding:16px;color:var(--muted);text-align:center">No conversations</div>'; return; }
-    data.forEach(room=>{
-      const o=room.other_user;
-      const d=document.createElement('div');
-      d.className='thread-item'+(activeRoom===room.id?' active':'');
-      // Bug 1 fix: store IDs as data attributes — the delegated listener on
-      // #roomList will pick them up even after the list is fully re-rendered.
+
+  // ── Partner status helper ──
+  function setPartnerStatus(isOnline, lastSeen) {
+    const sub = $('partnerSub');
+    if (sub.classList.contains('typing-status')) return; // Don't override while typing
+    if (isOnline) {
+      $('partnerDot').classList.add('live');
+      sub.textContent = 'online';
+    } else {
+      $('partnerDot').classList.remove('live');
+      sub.textContent = lastSeen ? `last seen ${fmtChat(lastSeen)}` : 'Offline';
+    }
+  }
+
+  // ── Rooms ──
+  function filterRooms(q) {
+    const t = q.trim().toLowerCase();
+    filteredRooms = t
+      ? rooms.filter(r => (r.other_user.full_name || r.other_user.username).toLowerCase().includes(t))
+      : [...rooms];
+    renderRooms(filteredRooms);
+  }
+
+  function renderRooms(data) {
+    const list = $('roomList');
+    list.innerHTML = '';
+    if (!data.length) {
+      list.innerHTML = '<div style="padding:24px 16px;color:var(--muted);text-align:center;font-size:14px">No conversations yet</div>';
+      return;
+    }
+    data.forEach(room => {
+      const o = room.other_user;
+      const isTyping = typingUsers.has(o.id);
+      const d = document.createElement('div');
+      d.className = 'thread-item' + (activeRoom === room.id ? ' active' : '');
       d.dataset.roomId  = room.id;
       d.dataset.otherId = o.id;
-      d.innerHTML=`
+
+      const previewHtml = isTyping
+        ? `<p class="thread-preview typing-preview">typing...</p>`
+        : `<p class="thread-preview">${esc(room.last_message || '')}</p>`;
+
+      const unreadHtml = room.unread_count
+        ? `<span class="unread-pill">${room.unread_count}</span>`
+        : '';
+
+      d.innerHTML = `
         <div class="avatar-ctn">
-          <img src="${o.avatar_url||DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-          <div class="online-marker${o.is_online?' live':''}"></div>
+          <img src="${o.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" alt="" />
+          <div class="online-marker${o.is_online ? ' live' : ''}"></div>
         </div>
         <div class="thread-info">
-          <div class="thread-top"><span class="thread-name">${esc(o.full_name||o.username)}</span><span class="thread-time">${fmtChat(room.last_message_time)}</span></div>
-          <div class="thread-bottom"><p class="thread-preview">${esc(room.last_message||'')}</p>${room.unread_count?`<span class="unread-pill">${room.unread_count}</span>`:''}</div>
+          <div class="thread-top">
+            <span class="thread-name">${esc(o.full_name || o.username)}</span>
+            <span class="thread-time">${fmtChat(room.last_message_time)}</span>
+          </div>
+          <div class="thread-bottom">
+            ${previewHtml}
+            ${unreadHtml}
+          </div>
         </div>`;
-      // No per-element listener here — handled by the single delegated
-      // listener registered once on #roomList in closeRoom / init setup.
       list.appendChild(d);
     });
   }
 
-  async function loadRooms(){
-    if(!currentUser) return;
-    const {data,error}=await supabase.from('chat_rooms')
+  async function loadRooms() {
+    if (!currentUser) return;
+    const { data, error } = await supabase
+      .from('chat_rooms')
       .select(`id,last_message,last_message_time,user_one_id,user_two_id,
         user_one:profiles!chat_rooms_user_one_id_fkey(id,username,full_name,avatar_url,is_online,last_seen),
         user_two:profiles!chat_rooms_user_two_id_fkey(id,username,full_name,avatar_url,is_online,last_seen)`)
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
-      .order('last_message_time',{ascending:false});
-    if(error){ console.error(error); return; }
-    const enriched=[];
-    for(const room of data){
-      const partner=room.user_one_id===currentUser.id?room.user_two:room.user_one;
-      const {count}=await supabase.from('messages').select('*',{count:'exact',head:true})
-        .eq('room_id',room.id).eq('receiver_id',currentUser.id).eq('is_read',false);
+      .order('last_message_time', { ascending: false });
+    if (error) { console.error(error); return; }
+
+    const enriched = [];
+    for (const room of data) {
+      const partner = room.user_one_id === currentUser.id ? room.user_two : room.user_one;
+      const { count } = await supabase
+        .from('messages').select('*', { count: 'exact', head: true })
+        .eq('room_id', room.id).eq('receiver_id', currentUser.id).eq('is_read', false);
       enriched.push({
-        id:room.id,
-        last_message:room.last_message,
-        last_message_time:room.last_message_time,
-        other_user:partner,
-        unread_count:count||0
+        id: room.id,
+        last_message: room.last_message,
+        last_message_time: room.last_message_time,
+        other_user: partner,
+        unread_count: count || 0
       });
     }
-    rooms=enriched;
+    rooms = enriched;
     filterRooms($('searchInput').value);
   }
 
-  // ── Real‑time profile updates for sidebar status ──
-  function subscribeToProfiles(){
-    if(profilesSub) supabase.removeChannel(profilesSub);
-    // Build filter for all partner IDs currently in rooms (plus potential new ones)
+  // ── Profile subscription for real-time online dots ──
+  function subscribeToProfiles() {
+    if (profilesSub) supabase.removeChannel(profilesSub);
     const partnerIds = rooms.map(r => r.other_user.id);
-    if(!partnerIds.length) return;
+    if (!partnerIds.length) return;
     profilesSub = supabase.channel('profiles-changes')
-      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter: `id=in.(${partnerIds.join(',')})` }, payload => {
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'profiles',
+        filter: `id=in.(${partnerIds.join(',')})`
+      }, payload => {
         const updated = payload.new;
-        // Find all rooms where this user is the partner and update cached data
         let changed = false;
         rooms.forEach(room => {
-          if(room.other_user.id === updated.id){
+          if (room.other_user.id === updated.id) {
             room.other_user.is_online = updated.is_online;
             room.other_user.last_seen = updated.last_seen;
             changed = true;
           }
         });
-        if(changed) renderRooms(filteredRooms);
-        // Bug 2 fix: if the status change belongs to whoever is open in the
-        // topbar right now, keep the dot + text in sync via the same atomic
-        // helper — so the header never shows a stale online dot after the
-        // initial openRoom fetch.
-        if (updated.id === partnerId) {
-          setPartnerStatus(updated.is_online, updated.last_seen);
-        }
+        if (changed) renderRooms(filteredRooms);
+        if (updated.id === partnerId) setPartnerStatus(updated.is_online, updated.last_seen);
       })
       .subscribe();
   }
 
-  // ── Bug 2 fix: single atomic helper that keeps the dot + text in lock-step ──
-  // Call this as the ONE place that ever writes to partnerDot / partnerSub so
-  // the two UI elements can never contradict each other.
-  function setPartnerStatus(isOnline, lastSeen) {
-    if (isOnline) {
-      $('partnerDot').classList.add('live');
-      $('partnerSub').textContent = 'online';
-    } else {
-      $('partnerDot').classList.remove('live');
-      $('partnerSub').textContent = lastSeen ? `last-seen ${fmtChat(lastSeen)}` : 'Offline';
-    }
-  }
-
   // ── Open room ──
-  async function openRoom(roomId, otherId){
-    activeRoom=roomId; partnerId=otherId;
-    $('emptyState').style.display='none';
-    $('chatTopbar').style.display='flex';
-    $('composeArea').style.display='flex';
-    // Bug 2 fix: reset the dot immediately so there is no stale green dot
-    // visible during the async profile fetch below.
+  async function openRoom(roomId, otherId) {
+    activeRoom = roomId;
+    partnerId  = otherId;
+
+    $('emptyState').style.display = 'none';
+    $('chatTopbar').style.display = 'flex';
+    $('composeArea').style.display = 'flex';
+
+    // Reset partner dot while fetching
     $('partnerDot').classList.remove('live');
     $('partnerSub').textContent = '';
-    const {data:p}=await supabase.from('profiles').select('username,full_name,avatar_url,is_online,last_seen').eq('id',otherId).single();
-    if(p){
-      $('partnerPic').src=p.avatar_url||DEFAULT_AVATAR;
-      $('partnerName').textContent=p.full_name||p.username;
-      // Bug 2 fix: one atomic call — dot class and status text always match.
+    $('partnerSub').classList.remove('typing-status');
+
+    const { data: p } = await supabase
+      .from('profiles').select('username,full_name,avatar_url,is_online,last_seen')
+      .eq('id', otherId).single();
+    if (p) {
+      $('partnerPic').src = p.avatar_url || DEFAULT_AVATAR;
+      $('partnerName').textContent = p.full_name || p.username;
       setPartnerStatus(p.is_online, p.last_seen);
-      $('partnerLink').href=`profile.html?user=${otherId}`;
+      $('partnerLink').href = `profile.html?user=${otherId}`;
     }
+
+    // Setup broadcast channel for this room
+    setupBroadcastChannel(roomId);
+
     renderRooms(filteredRooms);
     await loadMsgs(roomId);
     subMsgs(roomId);
     $('typingAnim').classList.remove('on');
-    // Mobile: switch to chat screen
-    if(window.innerWidth<=768) $('appRoot').classList.add('chat-open');
+
+    if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
   }
 
-  function closeRoom(){
+  function closeRoom() {
     $('appRoot').classList.remove('chat-open');
-    // On mobile, we stay on sidebar, keep activeRoom so conversation remains highlighted
   }
   $('backArrow').addEventListener('click', closeRoom);
 
-  // ── Bug 1 fix: single delegated listener on the static #roomList wrapper ──
-  // Attached once at startup; survives every innerHTML wipe / re-render inside
-  // renderRooms because it lives on the parent, not on the re-created children.
+  // Delegated click on room list
   $('roomList').addEventListener('click', e => {
     const item = e.target.closest('.thread-item');
     if (!item || !item.dataset.roomId) return;
@@ -594,209 +900,326 @@
   });
 
   // ── Messages ──
-  async function loadMsgs(roomId){
-    const {data,error}=await supabase.from('messages').select('*').eq('room_id',roomId).order('created_at',{ascending:true});
-    if(error){ console.error(error); return; }
+  async function loadMsgs(roomId) {
+    const { data, error } = await supabase
+      .from('messages').select('*')
+      .eq('room_id', roomId).order('created_at', { ascending: true });
+    if (error) { console.error(error); return; }
+
     sentIds.clear();
-    renderMsgs(data);
-    const unread=data.filter(m=>m.receiver_id===currentUser.id&&!m.is_read).map(m=>m.id);
-    if(unread.length){ await supabase.from('messages').update({is_read:true}).in('id',unread); loadRooms(); }
+
+    // Find unread messages to insert separator
+    const del = getDel();
+    const unreadIds = new Set(
+      data.filter(m => m.receiver_id === currentUser.id && !m.is_read).map(m => m.id)
+    );
+
+    renderMsgs(data, unreadIds);
+
+    // Mark as read
+    const toRead = [...unreadIds];
+    if (toRead.length) {
+      await supabase.from('messages').update({ is_read: true }).in('id', toRead);
+      loadRooms();
+    }
   }
 
-  function renderMsgs(msgs){
-    $('msgFeed').innerHTML='';
-    const del=getDel();
-    let lastDate='';
-    msgs.filter(m=>!del.has(m.id)).forEach(msg=>{
+  function renderMsgs(msgs, unreadIds = new Set()) {
+    $('msgFeed').innerHTML = '';
+    const del = getDel();
+    let lastDate = '';
+    let separatorInserted = false;
+
+    msgs.filter(m => !del.has(m.id)).forEach(msg => {
+      // Date separator
       const msgDate = fmtDate(msg.created_at);
-      if(msgDate && msgDate!==lastDate){
+      if (msgDate && msgDate !== lastDate) {
         const sep = document.createElement('div');
-        sep.className='date-separator'; sep.textContent=msgDate;
+        sep.className = 'date-separator';
+        sep.textContent = msgDate;
         $('msgFeed').appendChild(sep);
-        lastDate=msgDate;
+        lastDate = msgDate;
       }
+
+      // Unread separator — insert before the first unread message
+      if (!separatorInserted && unreadIds.has(msg.id)) {
+        const unreadCount = unreadIds.size;
+        const uSep = document.createElement('div');
+        uSep.className = 'unread-separator';
+        uSep.textContent = `${unreadCount} unread message${unreadCount > 1 ? 's' : ''}`;
+        $('msgFeed').appendChild(uSep);
+        separatorInserted = true;
+      }
+
       addMsg(msg);
     });
+
+    // Scroll to unread separator if present, else bottom
+    const uSep = $('msgFeed').querySelector('.unread-separator');
+    if (uSep) {
+      uSep.scrollIntoView({ block: 'center' });
+    } else {
+      $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
+    }
   }
 
-  function addMsg(msg){
-    const feed=$('msgFeed'), out=msg.sender_id===currentUser.id;
+  function addMsg(msg) {
+    const feed = $('msgFeed');
+    const out  = msg.sender_id === currentUser.id;
 
-    if(msg.is_deleted){
+    if (msg.is_deleted) {
       const row = document.createElement('div');
-      row.className = `msg-row ${out?'out':'in'}`;
+      row.className = `msg-row ${out ? 'out' : 'in'}`;
       const p = document.createElement('div');
-      p.className='deleted-note'; p.textContent='This message was deleted';
+      p.className = 'deleted-note';
+      p.textContent = 'This message was deleted';
       row.appendChild(p);
       feed.appendChild(row);
       return;
     }
 
-    const row=document.createElement('div');
-    row.className=`msg-row ${out?'out':'in'}`;
-    row.dataset.msgId=msg.id;
+    const row = document.createElement('div');
+    row.className = `msg-row ${out ? 'out' : 'in'}`;
+    row.dataset.msgId = msg.id;
+    row.style.position = 'relative';
 
-    let replyHtml='';
-    if(msg.reply_to){
-      const orig=document.querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
-      const txt=orig?orig.querySelector('.bubble')?.textContent?.trim()||'Message':'Message';
-      const quotedUser = orig ? orig.querySelector('.msg-foot')?.textContent?.trim() || '' : '';
-      replyHtml=`<div class="reply-snip"><div class="reply-user">${esc(quotedUser)}</div><div class="reply-body">${esc(txt)}</div></div>`;
+    // Reply snippet
+    let replyHtml = '';
+    if (msg.reply_to) {
+      const orig = document.querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
+      const origText = orig ? (orig.querySelector('.bubble')?.childNodes[orig.querySelector('.bubble').childNodes.length - 1]?.textContent?.trim() || 'Message') : 'Message';
+      // Determine who sent the original message
+      const origOut = orig ? orig.classList.contains('out') : false;
+      const quotedName = origOut ? (currentUser?.user_metadata?.full_name || 'You') : ($('partnerName')?.textContent || 'Them');
+      replyHtml = `
+        <div class="reply-snip">
+          <div class="reply-user">${esc(quotedName)}</div>
+          <div class="reply-body">${esc(origText)}</div>
+        </div>`;
     }
 
-    let content=esc(msg.message||'');
-    if(msg.edited_at) content+=' <small style="opacity:0.7">(edited)</small>';
+    let content = esc(msg.message || '');
+    if (msg.edited_at) content += ' <small style="opacity:0.6;font-size:11px">(edited)</small>';
 
-    row.innerHTML=`<div class="bubble">${replyHtml}${content}</div>
-      <div class="msg-foot"><span>${fmtTimeOnly(msg.created_at)}</span>${out?' <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>':''}</div>`;
+    // Swipe reply icon
+    const iconSide = out ? 'left' : 'right';
+    const replyIconHtml = `<span class="material-symbols-outlined swipe-reply-icon" style="${iconSide}:-28px">reply</span>`;
 
-    // ── Restored swipe & long‑press ──
+    row.innerHTML = `
+      ${replyIconHtml}
+      <div class="bubble">
+        ${replyHtml}
+        ${content}
+      </div>
+      <div class="msg-foot">
+        <span>${fmtTimeOnly(msg.created_at)}</span>
+        ${out ? '<span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>' : ''}
+      </div>`;
+
     attachSwipe(row, msg);
-    if(out){
-      row.addEventListener('touchstart', e => startLongPress(e, msg));
-      row.addEventListener('touchend', cancelLongPress);
-      row.addEventListener('touchmove', cancelLongPress);
+
+    // Long press for sent messages (own messages only for edit/delete)
+    if (out) {
+      let longTimer;
+      row.addEventListener('touchstart', e => { longTimer = setTimeout(() => showCtx(e, msg), 500); }, { passive: true });
+      row.addEventListener('touchend',   () => clearTimeout(longTimer));
+      row.addEventListener('touchmove',  () => clearTimeout(longTimer));
     }
 
     feed.appendChild(row);
   }
 
-  // ── Swipe reply ──
-  function attachSwipe(el, msg){
-    let sx = 0;
-    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; });
+  // ── Swipe to reply ──
+  function attachSwipe(el, msg) {
+    let sx = 0, dragging = false;
+    const icon = el.querySelector('.swipe-reply-icon');
+    const THRESHOLD = 72;
+
+    el.addEventListener('touchstart', e => {
+      sx = e.touches[0].clientX;
+      dragging = true;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      const dx = e.touches[0].clientX - sx;
+      // Only allow rightward swipe for received, leftward not needed — both dirs work
+      const progress = Math.max(0, Math.min(dx, THRESHOLD)) / THRESHOLD;
+      if (dx > 8) {
+        el.style.transform = `translateX(${Math.min(dx, THRESHOLD)}px)`;
+        if (icon) icon.style.opacity = String(progress);
+      }
+    }, { passive: true });
+
     el.addEventListener('touchend', e => {
+      if (!dragging) return;
+      dragging = false;
       const dx = (e.changedTouches[0]?.clientX || sx) - sx;
-      if(dx > 80) setReply(msg);
+      el.style.transform = '';
+      if (icon) icon.style.opacity = '0';
+      if (dx >= THRESHOLD) setReply(msg);
     });
   }
-  function setReply(msg){
-    if(msg.is_deleted) return;
-    replyTo = { id: msg.id, sender: msg.sender_id, content: msg.message || '' };
-    $('replyPreview').textContent = replyTo.content.substring(0, 60);
+
+  function setReply(msg) {
+    if (msg.is_deleted) return;
+    const out = msg.sender_id === currentUser.id;
+    const senderName = out
+      ? (currentUser?.user_metadata?.full_name || 'You')
+      : ($('partnerName')?.textContent || 'Them');
+    replyTo = { id: msg.id, sender: msg.sender_id, content: msg.message || '', senderName };
+    $('replyStripUser').textContent = senderName;
+    $('replyPreview').textContent   = replyTo.content.substring(0, 80);
     $('replyStrip').classList.add('open');
     $('msgInput').focus();
   }
+
   $('cancelReply').addEventListener('click', () => {
     replyTo = null;
     $('replyStrip').classList.remove('open');
   });
 
-  // ── Long press ──
+  // ── Context menu ──
   let longTimer;
-  function startLongPress(e, msg){ longTimer = setTimeout(() => showCtx(e, msg), 500); }
-  function cancelLongPress(){ clearTimeout(longTimer); }
-  function showCtx(e, msg){
-    if(msg.is_deleted) return;
+  function showCtx(e, msg) {
+    if (msg.is_deleted) return;
     ctxMsgId = msg.id;
     const menu = $('ctxMenu');
     const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 15 * 60 * 1000;
     $('ctxEdit').style.display = canEdit ? 'block' : 'none';
     menu.style.display = 'block';
-    menu.style.left = Math.min(e.touches[0].clientX, window.innerWidth - 180) + 'px';
-    menu.style.top = (e.touches[0].clientY - 100) + 'px';
+    const tx = e.touches[0];
+    menu.style.left = Math.min(tx.clientX, window.innerWidth - 200) + 'px';
+    menu.style.top  = Math.max(tx.clientY - 120, 10) + 'px';
   }
-  document.addEventListener('click', e => { if(!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none'; });
+  document.addEventListener('click', e => {
+    if (!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none';
+  });
   $('ctxEdit').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
-    const c = prompt('Edit message:'); if(!c) return;
-    supabase.from('messages').update({ message: c, edited_at: new Date().toISOString() }).eq('id', ctxMsgId).then(({error}) => {
-      if(error) alert('Edit failed'); else loadMsgs(activeRoom);
-    });
+    const c = prompt('Edit message:');
+    if (!c) return;
+    supabase.from('messages').update({ message: c, edited_at: new Date().toISOString() }).eq('id', ctxMsgId)
+      .then(({ error }) => { if (error) alert('Edit failed'); else loadMsgs(activeRoom); });
   });
-  $('ctxDelMe').addEventListener('click', () => { $('ctxMenu').style.display = 'none'; addDel(ctxMsgId); loadMsgs(activeRoom); });
+  $('ctxDelMe').addEventListener('click', () => {
+    $('ctxMenu').style.display = 'none';
+    addDel(ctxMsgId);
+    loadMsgs(activeRoom);
+  });
   $('ctxDelAll').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
-    if(!confirm('Delete for everyone?')) return;
-    supabase.from('messages').update({ is_deleted: true }).eq('id', ctxMsgId).then(({error}) => {
-      if(error) alert('Delete failed'); else loadMsgs(activeRoom);
-    });
+    if (!confirm('Delete for everyone?')) return;
+    supabase.from('messages').update({ is_deleted: true }).eq('id', ctxMsgId)
+      .then(({ error }) => { if (error) alert('Delete failed'); else loadMsgs(activeRoom); });
   });
-  $('ctxCancel').addEventListener('click', () => $('ctxMenu').style.display = 'none');
+  $('ctxCancel').addEventListener('click', () => { $('ctxMenu').style.display = 'none'; });
 
   // ── Send ──
-  async function sendMsg(){
-    const inp=$('msgInput'), txt=inp.value.trim();
-    if(!txt||!activeRoom||!partnerId||sending) return;
-    inp.value=''; sending=true;
-    const tmp='tmp-'+Date.now();
-    const row=document.createElement('div');
-    row.className='msg-row out';row.dataset.msgId=tmp;
-    row.innerHTML=`<div class="bubble">${esc(txt)}</div><div class="msg-foot"><span style="color:var(--muted)">sending…</span></div>`;
+  async function sendMsg() {
+    const inp = $('msgInput'), txt = inp.value.trim();
+    if (!txt || !activeRoom || !partnerId || sending) return;
+    inp.value = '';
+    sending = true;
+
+    // Stop typing broadcast
+    clearTimeout(typingTimeout);
+    broadcastTyping(false);
+
+    const tmp = 'tmp-' + Date.now();
+    const row = document.createElement('div');
+    row.className = 'msg-row out';
+    row.dataset.msgId = tmp;
+    row.innerHTML = `<div class="bubble">${esc(txt)}</div><div class="msg-foot"><span style="color:var(--muted)">sending…</span></div>`;
     $('msgFeed').appendChild(row);
+    $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
 
-    const payload={room_id:activeRoom,sender_id:currentUser.id,receiver_id:partnerId,message:txt,msg_type:'text',reply_to:replyTo?.id||null};
-    if(replyTo){replyTo=null;$('replyStrip').classList.remove('open');}
+    const payload = {
+      room_id: activeRoom, sender_id: currentUser.id, receiver_id: partnerId,
+      message: txt, msg_type: 'text', reply_to: replyTo?.id || null
+    };
+    if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
 
-    const {data:ins,error}=await supabase.from('messages').insert(payload).select().single();
-    const foot=row.querySelector('.msg-foot');
-    if(error){foot.innerHTML='<span style="color:var(--danger)">not sent</span>';}
-    else if(ins){
-      sentIds.add(ins.id);row.dataset.msgId=ins.id;
-      foot.innerHTML=`<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
-      await supabase.from('chat_rooms').update({last_message:txt,last_message_time:new Date().toISOString()}).eq('id',activeRoom);
+    const { data: ins, error } = await supabase.from('messages').insert(payload).select().single();
+    const foot = row.querySelector('.msg-foot');
+    if (error) {
+      foot.innerHTML = '<span style="color:var(--danger)">not sent</span>';
+    } else if (ins) {
+      sentIds.add(ins.id);
+      row.dataset.msgId = ins.id;
+      foot.innerHTML = `<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
+      await supabase.from('chat_rooms').update({ last_message: txt, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
     }
-    sending=false;
+    sending = false;
   }
 
   // ── Realtime messages ──
-  function subMsgs(roomId){
-    if(messageSub) supabase.removeChannel(messageSub);
-    messageSub=supabase.channel(`room:${roomId}`)
-      .on('postgres_changes',{event:'*',schema:'public',table:'messages',filter:`room_id=eq.${roomId}`},payload=>{
-        if(payload.eventType==='INSERT'){
-          const nm=payload.new;
-          if(!sentIds.has(nm.id)&&!document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)){
+  function subMsgs(roomId) {
+    if (messageSub) supabase.removeChannel(messageSub);
+    messageSub = supabase.channel(`room:${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, payload => {
+        if (payload.eventType === 'INSERT') {
+          const nm = payload.new;
+          if (!sentIds.has(nm.id) && !document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)) {
             addMsg(nm);
-            if(nm.receiver_id===currentUser.id) supabase.from('messages').update({is_read:true}).eq('id',nm.id).then();
-            loadRooms();   // unread update
+            $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
+            if (nm.receiver_id === currentUser.id) {
+              supabase.from('messages').update({ is_read: true }).eq('id', nm.id).then();
+            }
+            loadRooms();
           }
-        }else if(payload.eventType==='UPDATE'){
+        } else if (payload.eventType === 'UPDATE') {
           loadMsgs(roomId);
           loadRooms();
         }
       }).subscribe();
   }
 
-  // ── Typing indicator ──
-  let typingTO;
-  $('msgInput').addEventListener('input',()=>{
-    if(!activeRoom) return;
-    typing(activeRoom,true);clearTimeout(typingTO);
-    typingTO=setTimeout(()=>typing(activeRoom,false),3000);
+  // ── Typing input handler with broadcast ──
+  $('msgInput').addEventListener('input', () => {
+    if (!activeRoom) return;
+    broadcastTyping(true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => broadcastTyping(false), 2500);
   });
-  if(presenceSub) supabase.removeChannel(presenceSub);
-  presenceSub=supabase.channel('presence-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'user_presence'},payload=>{
-      if(partnerId&&payload.new&&payload.new.user_id===partnerId){
-        $('typingAnim').classList.toggle('on',payload.new.typing_in_room_id===activeRoom);
+
+  // ── Presence subscription (user_presence for typing anim in old system — kept for compat) ──
+  if (presenceSub) supabase.removeChannel(presenceSub);
+  presenceSub = supabase.channel('presence-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, payload => {
+      if (partnerId && payload.new && payload.new.user_id === partnerId) {
+        // typing_in_room_id kept for backward compat (some clients may still write it)
+        const isTypingHere = payload.new.typing_in_room_id === activeRoom;
+        $('typingAnim').classList.toggle('on', isTypingHere);
       }
     }).subscribe();
 
   // ── New chat (friends overlay) ──
-  async function loadFriends(){
-    const {data,error}=await supabase.from('profiles').select('id,username,full_name,avatar_url').neq('id',currentUser.id).order('username');
-    if(error){ console.error(error); return []; }
-    return data||[];
+  async function loadFriends() {
+    const { data, error } = await supabase
+      .from('profiles').select('id,username,full_name,avatar_url').neq('id', currentUser.id).order('username');
+    if (error) { console.error(error); return []; }
+    return data || [];
   }
 
-  function showFriendsOverlay(){
-    loadFriends().then(friends=>{
-      const list=$('friendsList'); list.innerHTML='';
-      if(!friends.length){
-        list.innerHTML='<div style="padding:16px;color:var(--muted);text-align:center">No other users found</div>';
-      }else{
-        friends.forEach(f=>{
-          const div=document.createElement('div');
-          div.className='friend-item';
-          div.innerHTML=`
-            <img class="friend-avatar" src="${f.avatar_url||DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+  function showFriendsOverlay() {
+    loadFriends().then(friends => {
+      const list = $('friendsList');
+      list.innerHTML = '';
+      if (!friends.length) {
+        list.innerHTML = '<div style="padding:16px;color:var(--muted);text-align:center">No other users found</div>';
+      } else {
+        friends.forEach(f => {
+          const div = document.createElement('div');
+          div.className = 'friend-item';
+          div.innerHTML = `
+            <img class="friend-avatar" src="${f.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" alt="" />
             <div>
-              <div class="friend-name">${esc(f.full_name||f.username)}</div>
-              <div class="friend-username">@${f.username}</div>
+              <div class="friend-name">${esc(f.full_name || f.username)}</div>
+              <div class="friend-username">@${esc(f.username)}</div>
             </div>`;
-          div.addEventListener('click',()=>{
+          div.addEventListener('click', () => {
             $('friendsOverlay').classList.remove('open');
             startOrOpenChat(f);
           });
@@ -807,17 +1230,17 @@
     });
   }
 
-  function startOrOpenChat(friend){
+  function startOrOpenChat(friend) {
     supabase.from('chat_rooms').select('id')
       .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${friend.id}),and(user_one_id.eq.${friend.id},user_two_id.eq.${currentUser.id})`)
       .maybeSingle()
-      .then(({data:exist})=>{
-        if(exist){
+      .then(({ data: exist }) => {
+        if (exist) {
           openRoom(exist.id, friend.id);
-        }else{
-          supabase.from('chat_rooms').insert({user_one_id:currentUser.id, user_two_id:friend.id}).select('id').single()
-            .then(({data:nr,error})=>{
-              if(error){alert('Could not start chat');return;}
+        } else {
+          supabase.from('chat_rooms').insert({ user_one_id: currentUser.id, user_two_id: friend.id }).select('id').single()
+            .then(({ data: nr, error }) => {
+              if (error) { alert('Could not start chat'); return; }
               loadRooms();
               openRoom(nr.id, friend.id);
             });
@@ -826,52 +1249,55 @@
   }
 
   $('newChatBtn').addEventListener('click', showFriendsOverlay);
-  $('closeFriends').addEventListener('click', ()=>$('friendsOverlay').classList.remove('open'));
-  $('friendsOverlay').addEventListener('click', (e)=>{ if(e.target.id==='friendsOverlay') $('friendsOverlay').classList.remove('open'); });
-  $('addMoreBtn').addEventListener('click', ()=> window.location.href='find_friends.html');
+  $('closeFriends').addEventListener('click', () => $('friendsOverlay').classList.remove('open'));
+  $('friendsOverlay').addEventListener('click', e => { if (e.target.id === 'friendsOverlay') $('friendsOverlay').classList.remove('open'); });
+  $('addMoreBtn').addEventListener('click', () => window.location.href = 'find_friends.html');
 
-  // ── Bug 3 fix: async logout / home navigation ──
-  // The original handler fired window.location.href immediately, cutting off
-  // the in-flight Supabase calls.  await forces both writes to complete first
-  // so last_seen is correct for everyone else before the page unloads.
+  // ── Home button (flush presence before nav) ──
   $('homeBtn').addEventListener('click', async () => {
-    await presence('offline');          // flush last_seen → DB
-    await supabase.auth.signOut();      // invalidate session token
+    await presence('offline');
+    await supabase.auth.signOut();
     window.location.href = 'index.html';
   });
 
-  // ── Search bar ──
-  $('searchInput').addEventListener('input',()=>filterRooms($('searchInput').value));
+  // ── Search ──
+  $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
 
-  function getDel(){try{return new Set(JSON.parse(localStorage.getItem(DELETED_KEY)||'[]'));}catch{return new Set();}}
-  function addDel(id){const s=getDel();s.add(id);localStorage.setItem(DELETED_KEY,JSON.stringify([...s]));}
+  // ── Send button & Enter key ──
+  $('sendBtn').addEventListener('click', sendMsg);
+  $('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
 
-  window.addEventListener('beforeunload',()=>presence('offline'));
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)presence('idle');else{presence('online');loadRooms();}});
-  setInterval(()=>{ presence('online'); loadRooms(); }, 30000);
+  // ── Lifecycle ──
+  window.addEventListener('beforeunload', () => presence('offline'));
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) presence('idle');
+    else { presence('online'); loadRooms(); }
+  });
+  setInterval(() => { presence('online'); loadRooms(); }, 30000);
 
-  async function init(){
-    const {data:{session}}=await supabase.auth.getSession();
-    if(!session){window.location.href='user_login.html';return;}
-    currentUser=session.user;
+  // ── Init ──
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'user_login.html'; return; }
+    currentUser = session.user;
     await presence('online');
     await loadRooms();
-    // Start listening to profile changes so online dots update in real time
     subscribeToProfiles();
 
-    const rp=new URLSearchParams(window.location.search).get('room');
-    if(rp){
-      const {data:room}=await supabase.from('chat_rooms').select('user_one_id,user_two_id').eq('id',rp).single();
-      if(room) openRoom(rp,room.user_one_id===currentUser.id?room.user_two_id:room.user_one_id);
-      else{alert('Chat room not found.');window.history.replaceState({},document.title,window.location.pathname);}
+    // Deep-link to a specific room via ?room=
+    const rp = new URLSearchParams(window.location.search).get('room');
+    if (rp) {
+      const { data: room } = await supabase.from('chat_rooms').select('user_one_id,user_two_id').eq('id', rp).single();
+      if (room) openRoom(rp, room.user_one_id === currentUser.id ? room.user_two_id : room.user_one_id);
+      else { alert('Chat room not found.'); window.history.replaceState({}, document.title, window.location.pathname); }
     }
 
-    supabase.channel('public:chat_rooms').on('postgres_changes',{event:'*',schema:'public',table:'chat_rooms'},()=>loadRooms()).subscribe();
-    $('sendBtn').addEventListener('click',sendMsg);
-    $('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
+    supabase.channel('public:chat_rooms')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => loadRooms())
+      .subscribe();
   }
 
-  document.addEventListener('DOMContentLoaded',init);
+  document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
 </body>
