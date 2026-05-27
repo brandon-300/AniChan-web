@@ -1117,7 +1117,9 @@
   let longTimer;
   function showCtx(e, msg) {
     if (msg.is_deleted) return;
-    ctxMsgId = msg.id;
+    // Always read the current ID from the DOM — avoids stale tmp- closure bug
+    const domRow = e.target.closest('.msg-row');
+    ctxMsgId = domRow ? domRow.dataset.msgId : msg.id;
     const menu = $('ctxMenu');
     const isMine = msg.sender_id === currentUser.id;
     const withinEditWindow = (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
@@ -1144,20 +1146,18 @@
   document.addEventListener('click', e => {
     if (!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none';
   });
-    $('ctxEdit').addEventListener('click', () => {
+  $('ctxEdit').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
+    if (ctxMsgId && ctxMsgId.startsWith('tmp-')) {
+      alert('Message is still sending — please wait a moment and try again.');
+      return;
+    }
     const c = prompt('Edit message:');
     if (!c || !c.trim()) return;
     supabase.from('messages')
       .update({ message: c.trim(), edited_at: new Date().toISOString(), is_edited: true })
       .eq('id', ctxMsgId)
-      .then(({ error }) => { 
-          if (error) {
-              alert('Edit failed: ' + error.message); 
-          } else {
-              loadMsgs(activeRoom);
-          }
-      });
+      .then(({ error }) => { if (error) alert('Edit failed'); else loadMsgs(activeRoom); });
   });
   $('ctxDelMe').addEventListener('click', () => {
     $('ctxMenu').style.display = 'none';
