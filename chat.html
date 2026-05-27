@@ -138,7 +138,7 @@
     border-radius: 50%; object-fit: cover; background: #333;
   }
   .online-marker {
-    position: absolute; bottom: 1px; left: 1px;
+    position: absolute; bottom: 1px; right: 0px; left: auto;
     width: 12px; height: 12px;
     border-radius: 50%; border: 2px solid #080b0d;
     background: var(--offline);
@@ -276,7 +276,7 @@
     border: 2px solid var(--border-solid);
   }
   .partner-online {
-    position: absolute; bottom: 1px; left: 1px;
+    position: absolute; bottom: 1px; right: 0px; left: auto;
     width: 11px; height: 11px;
     border-radius: 50%; border: 2px solid #1a1f26;
     background: var(--offline); transition: background .3s;
@@ -405,8 +405,8 @@
     pointer-events: none;
     transition: opacity .1s;
   }
-  .msg-row.in .swipe-reply-icon { right: -28px; }
-  .msg-row.out .swipe-reply-icon { left: -28px; }
+  .msg-row.in .swipe-reply-icon  { left: -28px; right: auto; }
+  .msg-row.out .swipe-reply-icon { right: -28px; left: auto; }
   .msg-row { position: relative; overflow: visible; }
 
   /* Reply dock above input */
@@ -461,8 +461,8 @@
     border-top: 1px solid var(--border);
     background: rgba(21, 28, 36, 0.85);
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    padding: 10px 14px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 10px 8px 10px 14px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
   .compose-row { display: flex; gap: 10px; align-items: center; }
   .compose-row input {
@@ -857,6 +857,9 @@
     activeRoom = roomId;
     partnerId  = otherId;
 
+    // Slide to chat screen immediately — before any async calls
+    if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
+
     $('emptyState').style.display = 'none';
     $('chatTopbar').style.display = 'flex';
     $('composeArea').style.display = 'flex';
@@ -883,8 +886,6 @@
     await loadMsgs(roomId);
     subMsgs(roomId);
     $('typingAnim').classList.remove('on');
-
-    if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
   }
 
   function closeRoom() {
@@ -1270,7 +1271,7 @@
   // ── Lifecycle ──
   window.addEventListener('beforeunload', () => presence('offline'));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) presence('idle');
+    if (document.hidden) presence('offline');
     else { presence('online'); loadRooms(); }
   });
   setInterval(() => { presence('online'); loadRooms(); }, 30000);
