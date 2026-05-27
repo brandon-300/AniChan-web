@@ -1054,13 +1054,11 @@
 
     attachSwipe(row, msg);
 
-    // Long press for sent messages (own messages only for edit/delete)
-    if (out) {
-      let longTimer;
-      row.addEventListener('touchstart', e => { longTimer = setTimeout(() => showCtx(e, msg), 500); }, { passive: true });
-      row.addEventListener('touchend',   () => clearTimeout(longTimer));
-      row.addEventListener('touchmove',  () => clearTimeout(longTimer));
-    }
+    // Long press on ALL messages — ownership enforced inside showCtx()
+    let rowLongTimer;
+    row.addEventListener('touchstart', e => { rowLongTimer = setTimeout(() => showCtx(e, msg), 500); }, { passive: true });
+    row.addEventListener('touchend',   () => clearTimeout(rowLongTimer));
+    row.addEventListener('touchmove',  () => clearTimeout(rowLongTimer));
 
     feed.appendChild(row);
   }
@@ -1121,8 +1119,23 @@
     if (msg.is_deleted) return;
     ctxMsgId = msg.id;
     const menu = $('ctxMenu');
-    const canEdit = (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
-    $('ctxEdit').style.display = canEdit ? 'block' : 'none';
+    const isMine = msg.sender_id === currentUser.id;
+    const withinEditWindow = (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
+
+    // Edit: only my messages, only within 5 minutes
+    $('ctxEdit').style.display = (isMine && withinEditWindow) ? 'block' : 'none';
+
+    // Delete for everyone + its divider: only my messages
+    $('ctxDelAll').style.display = isMine ? 'block' : 'none';
+    // Hide the divider above ctxDelAll when not mine
+    const delAllDivider = $('ctxDelAll').previousElementSibling;
+    if (delAllDivider && delAllDivider.classList.contains('split')) {
+      delAllDivider.style.display = isMine ? 'block' : 'none';
+    }
+
+    // Delete for me: always visible
+    $('ctxDelMe').style.display = 'block';
+
     menu.style.display = 'block';
     const tx = e.touches[0];
     menu.style.left = Math.min(tx.clientX, window.innerWidth - 200) + 'px';
@@ -1169,6 +1182,12 @@
     row.className = 'msg-row out';
     row.dataset.msgId = tmp;
     row.innerHTML = `<div class="bubble">${esc(txt)}</div><div class="msg-foot"><span style="color:var(--muted)">sending…</span></div>`;
+    // Attach long-press immediately so the optimistic bubble is interactable
+    const tmpMsg = { id: tmp, sender_id: currentUser.id, message: txt, created_at: new Date().toISOString(), is_deleted: false };
+    let tmpLongTimer;
+    row.addEventListener('touchstart', e => { tmpLongTimer = setTimeout(() => showCtx(e, tmpMsg), 500); }, { passive: true });
+    row.addEventListener('touchend',   () => clearTimeout(tmpLongTimer));
+    row.addEventListener('touchmove',  () => clearTimeout(tmpLongTimer));
     $('msgFeed').appendChild(row);
     $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
 
@@ -1291,10 +1310,8 @@
   $('friendsOverlay').addEventListener('click', e => { if (e.target.id === 'friendsOverlay') $('friendsOverlay').classList.remove('open'); });
   $('addMoreBtn').addEventListener('click', () => window.location.href = 'find_friends.html');
 
-  // ── Home button (flush presence before nav) ──
-  $('homeBtn').addEventListener('click', async () => {
-    await presence('offline');
-    await supabase.auth.signOut();
+  // ── Home button — navigate only, logout handled elsewhere ──
+  $('homeBtn').addEventListener('click', () => {
     window.location.href = 'index.html';
   });
 
