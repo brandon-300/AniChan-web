@@ -825,7 +825,10 @@
       const partner = room.user_one_id === currentUser.id ? room.user_two : room.user_one;
       const { count } = await supabase
         .from('messages').select('*', { count: 'exact', head: true })
-        .eq('room_id', room.id).eq('receiver_id', currentUser.id).eq('is_read', false);
+        .eq('room_id', room.id)
+        .eq('receiver_id', currentUser.id)
+        .eq('is_read', false)
+        .eq('is_deleted', false); // Filters out messages deleted for everyone
       enriched.push({
         id: room.id,
         last_message: room.last_message,
@@ -865,11 +868,10 @@
 
   // ── Mark all messages in a room as read ──
   async function markAsRead(roomId) {
-    await supabase.from('messages')
-      .update({ is_read: true })
-      .eq('room_id', roomId)
-      .eq('receiver_id', currentUser.id)
-      .eq('is_read', false);
+    // Call the security definer Postgres function
+    await supabase.rpc('mark_messages_read', {
+      room_id: roomId
+    });
     // Zero the cached unread count and hide the pill immediately
     const room = rooms.find(r => r.id === roomId);
     if (room) room.unread_count = 0;
@@ -944,7 +946,12 @@
     // Find unread messages to insert separator
     const del = getDel();
     const unreadIds = new Set(
-      data.filter(m => m.receiver_id === currentUser.id && !m.is_read).map(m => m.id)
+      data.filter(m => 
+        m.receiver_id === currentUser.id && 
+        !m.is_read && 
+        !m.is_deleted &&  // Ignores messages deleted for everyone
+        !del.has(m.id)    // Ignores messages deleted locally just for you
+      ).map(m => m.id)
     );
 
     renderMsgs(data, unreadIds);
