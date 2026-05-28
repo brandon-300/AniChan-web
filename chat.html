@@ -862,32 +862,72 @@
   }
 
   // ── Profile subscription for real-time online dots ──
+  // ── Online presence via Supabase Realtime Presence (websocket, no table replication needed) ──
+  let presenceChannel = null;
+
   function subscribeToProfiles() {
-    if (profilesSub) supabase.removeChannel(profilesSub);
-    // No server-side filter — Supabase Realtime doesn't support `in` on postgres_changes.
-    // We receive all profile updates and filter client-side by known room partners.
-    profilesSub = supabase.channel('profiles-changes')
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'profiles'
-      }, payload => {
-        const updated = payload.new;
-        // Check if this user is one of our conversation partners
-        const partnerIds = new Set(rooms.map(r => r.other_user.id));
-        if (!partnerIds.has(updated.id)) return;
-        // Update cached room data
-        let changed = false;
-        rooms.forEach(room => {
-          if (room.other_user.id === updated.id) {
-            room.other_user.is_online = updated.is_online;
-            room.other_user.last_seen = updated.last_seen;
-            changed = true;
-          }
-        });
-        if (changed) renderRooms(filteredRooms);
-        // Update active chat header if this is the current partner
-        if (updated.id === partnerId) setPartnerStatus(updated.is_online, updated.last_seen);
+    if (presenceChannel) supabase.removeChannel(presenceChannel);
+
+    presenceChannel = supabase.channel('online-users', {
+      config: { presence: { key: currentUser.id } }
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        // state is { userId: [{ user_id, online_at, ... }], ... }
+        updateOnlineDotsFromPresence(state);
       })
-      .subscribe();
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        updateOnlineDot(key, true);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        updateOnlineDot(key, false);
+      })
+      .subscribe(async status => {
+        if (status === 'SUBSCRIBED') {
+          // Announce this user as online to everyone in the channel
+          await presenceChannel.track({
+            user_id: currentUser.id,
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+  }
+
+  function updateOnlineDotsFromPresence(state) {
+    // state keys are user IDs; any key present = online
+    rooms.forEach(room => {
+      const isOnline = !!state[room.other_user.id];
+      if (room.other_user.is_online !== isOnline) {
+        room.other_user.is_online = isOnline;
+      }
+    });
+    renderRooms(filteredRooms);
+    if (partnerId) {
+      const partnerOnline = !!state[partnerId];
+      const room = rooms.find(r => r.other_user.id === partnerId);
+      setPartnerStatus(partnerOnline, room?.other_user.last_seen);
+    }
+  }
+
+  function updateOnlineDot(userId, isOnline) {
+    // Update cached rooms array
+    rooms.forEach(room => {
+      if (room.other_user.id === userId) room.other_user.is_online = isOnline;
+    });
+    renderRooms(filteredRooms);
+    // Update active chat header
+    if (userId === partnerId) {
+      const room = rooms.find(r => r.other_user.id === userId);
+      setPartnerStatus(isOnline, room?.other_user.last_seen);
+    }
+    // Also write to DB so last_seen stays accurate on logout
+    if (!isOnline) {
+      supabase.from('profiles')
+        .update({ is_online: false, last_seen: new Date().toISOString() })
+        .eq('id', userId).then();
+    }
   }
 
   // ── Mark all messages in a room as read ──
@@ -1051,15 +1091,41 @@
     row.dataset.msgId = msg.id;
     row.style.position = 'relative';
 
-    // Reply snippet — uses stored reply_text and reply_sender_id so both
-    // users see the correct quoted name regardless of who is viewing
+    // Reply snippet — uses stored reply_text/reply_sender_id (for both users),
+    // falls back to DOM scrape for old messages sent before those columns existed
     let replyHtml = '';
     if (msg.reply_to) {
-      const quotedText = msg.reply_text || 'Message';
-      // Resolve the quoted sender's display name from stored sender ID
-      const quotedName = msg.reply_sender_id === currentUser.id
-        ? (currentUser?.user_metadata?.full_name || 'You')
-        : ($('partnerName')?.textContent || 'Them');
+      let quotedText = msg.reply_text || null;
+      let quotedName = null;
+
+      if (msg.reply_sender_id) {
+        // New messages: resolve from stored fields — same result on both screens
+        quotedName = msg.reply_sender_id === currentUser.id
+          ? (currentUser?.user_metadata?.full_name || 'You')
+          : ($('partnerName')?.textContent || 'Them');
+      }
+
+      if (!quotedText || !quotedName) {
+        // Fallback for old messages: scrape the DOM
+        const orig = $('msgFeed').querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
+        if (orig) {
+          if (!quotedText) {
+            const bubble = orig.querySelector('.bubble');
+            // Get last text node inside bubble, skipping reply-snip
+            const nodes = [...bubble.childNodes].filter(n => !n.classList?.contains('reply-snip') && n.textContent.trim());
+            quotedText = nodes[nodes.length - 1]?.textContent?.trim() || '';
+          }
+          if (!quotedName) {
+            quotedName = orig.classList.contains('out')
+              ? (currentUser?.user_metadata?.full_name || 'You')
+              : ($('partnerName')?.textContent || 'Them');
+          }
+        }
+      }
+
+      quotedText = quotedText || '(message)';
+      quotedName = quotedName || 'Unknown';
+
       replyHtml = `
         <div class="reply-snip" data-reply-target="${msg.reply_to}" style="cursor:pointer;">
           <div class="reply-user">${esc(quotedName)}</div>
@@ -1385,11 +1451,8 @@
 
   // ── Lifecycle ──
   // Presence is set online at init and offline only on explicit logout.
-  // Heartbeat: refresh rooms AND write presence so other users see us online in real time
-  setInterval(() => {
-    presence('online');
-    loadRooms();
-  }, 25000);
+  // Heartbeat: refresh rooms every 30s — online status handled by presence channel
+  setInterval(() => { loadRooms(); }, 30000);
 
   // ── Init ──
   async function init() {
