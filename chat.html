@@ -882,7 +882,17 @@
         updateOnlineDot(key, true);
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        updateOnlineDot(key, false);
+        // Delay before marking offline — user may just be navigating between pages.
+        // After 5s, verify against the DB; only mark offline if DB confirms it.
+        setTimeout(async () => {
+          const { data } = await supabase
+            .from('profiles').select('is_online,last_seen').eq('id', key).single();
+          if (data && !data.is_online) {
+            // DB confirms offline — genuine logout
+            updateOnlineDot(key, false, data.last_seen);
+          }
+          // If DB says is_online=true they rejoined (navigated back) — do nothing
+        }, 5000);
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
@@ -911,23 +921,22 @@
     }
   }
 
-  function updateOnlineDot(userId, isOnline) {
+  function updateOnlineDot(userId, isOnline, lastSeen = null) {
     // Update cached rooms array
     rooms.forEach(room => {
-      if (room.other_user.id === userId) room.other_user.is_online = isOnline;
+      if (room.other_user.id === userId) {
+        room.other_user.is_online = isOnline;
+        if (lastSeen) room.other_user.last_seen = lastSeen;
+      }
     });
     renderRooms(filteredRooms);
     // Update active chat header
     if (userId === partnerId) {
       const room = rooms.find(r => r.other_user.id === userId);
-      setPartnerStatus(isOnline, room?.other_user.last_seen);
+      setPartnerStatus(isOnline, lastSeen || room?.other_user.last_seen);
     }
-    // Also write to DB so last_seen stays accurate on logout
-    if (!isOnline) {
-      supabase.from('profiles')
-        .update({ is_online: false, last_seen: new Date().toISOString() })
-        .eq('id', userId).then();
-    }
+    // DB writes for offline state are handled by the user's own logout flow,
+    // not by observers — avoids race conditions and permission issues
   }
 
   // ── Mark all messages in a room as read ──
