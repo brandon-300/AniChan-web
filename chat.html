@@ -883,7 +883,8 @@
         // Client-side filter — only care about our conversation partners
         const partnerIds = new Set(rooms.map(r => r.other_user.id));
         if (!partnerIds.has(updated.id)) return;
-        updateOnlineDot(updated.id, updated.is_online, updated.last_seen);
+        // This fires for BOTH online=true (login) and online=false (logout)
+        updateOnlineDot(updated.id, !!updated.is_online, updated.last_seen);
       })
       .subscribe();
 
@@ -902,11 +903,11 @@
         });
       })
       .on('presence', { event: 'join' }, ({ key }) => {
+        // Only update UI dot — never write to DB for other users
         updateOnlineDot(key, true);
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
-        // Don't act immediately — wait for the DB change event from Channel 1
-        // which only fires if they actually logged out (is_online set to false)
+        // Handled by postgres_changes Channel 1 — fires when is_online changes in DB
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {

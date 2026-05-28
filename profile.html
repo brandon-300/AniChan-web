@@ -400,8 +400,8 @@
     bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
 
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) setOnlineStatus(false);
-      else { setOnlineStatus(true); resetInactivity(); }
+      // Don't set offline on tab hide — only explicit logout does that
+      if (!document.hidden) { setOnlineStatus(true); resetInactivity(); }
     });
   }
 
