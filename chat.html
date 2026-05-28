@@ -436,6 +436,16 @@
   }
   .reply-strip button:hover { color: var(--danger); }
 
+  /* Reply jump highlight */
+  @keyframes replyFlash {
+    0%   { background: rgba(81,218,211,0.35); }
+    100% { background: transparent; }
+  }
+  .msg-row.reply-highlight .bubble {
+    animation: replyFlash 1.2s ease-out forwards;
+    border-radius: 16px;
+  }
+
   /* ── Typing Indicator Styling ── */
   .typing-indicator-container {
     padding: 6px 16px;
@@ -1041,18 +1051,19 @@
     row.dataset.msgId = msg.id;
     row.style.position = 'relative';
 
-    // Reply snippet
+    // Reply snippet — uses stored reply_text and reply_sender_id so both
+    // users see the correct quoted name regardless of who is viewing
     let replyHtml = '';
     if (msg.reply_to) {
-      const orig = document.querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
-      const origText = orig ? (orig.querySelector('.bubble')?.childNodes[orig.querySelector('.bubble').childNodes.length - 1]?.textContent?.trim() || 'Message') : 'Message';
-      // Determine who sent the original message
-      const origOut = orig ? orig.classList.contains('out') : false;
-      const quotedName = origOut ? (currentUser?.user_metadata?.full_name || 'You') : ($('partnerName')?.textContent || 'Them');
+      const quotedText = msg.reply_text || 'Message';
+      // Resolve the quoted sender's display name from stored sender ID
+      const quotedName = msg.reply_sender_id === currentUser.id
+        ? (currentUser?.user_metadata?.full_name || 'You')
+        : ($('partnerName')?.textContent || 'Them');
       replyHtml = `
-        <div class="reply-snip">
+        <div class="reply-snip" data-reply-target="${msg.reply_to}" style="cursor:pointer;">
           <div class="reply-user">${esc(quotedName)}</div>
-          <div class="reply-body">${esc(origText)}</div>
+          <div class="reply-body">${esc(quotedText)}</div>
         </div>`;
     }
 
@@ -1078,6 +1089,23 @@
       </div>`;
 
     attachSwipe(row, msg);
+
+    // Reply-snip click: scroll to original message and flash highlight
+    const snip = row.querySelector('.reply-snip');
+    if (snip) {
+      snip.addEventListener('click', e => {
+        e.stopPropagation();
+        const targetId = snip.dataset.replyTarget;
+        const targetRow = $('msgFeed').querySelector(`.msg-row[data-msg-id="${targetId}"]`);
+        if (targetRow) {
+          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetRow.classList.remove('reply-highlight');
+          void targetRow.offsetWidth; // force reflow to restart animation
+          targetRow.classList.add('reply-highlight');
+          setTimeout(() => targetRow.classList.remove('reply-highlight'), 1200);
+        }
+      });
+    }
 
     // Long press on ALL messages — ownership enforced inside showCtx()
     let rowLongTimer;
@@ -1224,7 +1252,10 @@
 
     const payload = {
       room_id: activeRoom, sender_id: currentUser.id, receiver_id: partnerId,
-      message: txt, msg_type: 'text', reply_to: replyTo?.id || null
+      message: txt, msg_type: 'text',
+      reply_to: replyTo?.id || null,
+      reply_text: replyTo?.content || null,
+      reply_sender_id: replyTo?.sender || null
     };
     if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
 
@@ -1354,8 +1385,11 @@
 
   // ── Lifecycle ──
   // Presence is set online at init and offline only on explicit logout.
-  // The heartbeat keeps the session alive and rooms fresh.
-  setInterval(() => { loadRooms(); }, 30000);
+  // Heartbeat: refresh rooms AND write presence so other users see us online in real time
+  setInterval(() => {
+    presence('online');
+    loadRooms();
+  }, 25000);
 
   // ── Init ──
   async function init() {
