@@ -269,6 +269,8 @@
           err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); return;
         } else { await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id); }
       }
+      // Mark user as online immediately on successful login
+      await supabase.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", profile.id);
       window.location.href = "index.html";
     } catch(e) { err.textContent = e.message || "Login failed."; err.classList.add("show"); }
   });

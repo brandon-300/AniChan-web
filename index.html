@@ -575,7 +575,17 @@
     window.addEventListener("offline", syncOffline);
     const { data: { session } } = await sb.auth.getSession();
     currentSession = session;
-    sb.auth.onAuthStateChange((_e, s) => { currentSession = s; renderHeader(); });
+    // Keep is_online=true while user is on any page of the site
+    if (session?.user) {
+      await sb.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", session.user.id);
+    }
+    sb.auth.onAuthStateChange(async (_e, s) => {
+      currentSession = s;
+      if (s?.user) {
+        await sb.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", s.user.id);
+      }
+      renderHeader();
+    });
     await loadSiteLogo();
     renderHeader();
     renderBroadcast();

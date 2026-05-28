@@ -880,6 +880,10 @@
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         updateOnlineDot(key, true);
+        // Sync DB for the joining user so all pages reflect online status
+        supabase.from('profiles')
+          .update({ is_online: true })
+          .eq('id', key).then();
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         // Delay before marking offline — user may just be navigating between pages.
@@ -896,7 +900,11 @@
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
-          // Announce this user as online to everyone in the channel
+          // Write is_online=true to DB immediately so other pages/users see it
+          await supabase.from('profiles')
+            .update({ is_online: true, last_seen: new Date().toISOString() })
+            .eq('id', currentUser.id);
+          // Announce this user as online via websocket presence channel
           await presenceChannel.track({
             user_id: currentUser.id,
             online_at: new Date().toISOString()
