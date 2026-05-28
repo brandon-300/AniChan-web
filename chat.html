@@ -862,71 +862,63 @@
   }
 
   // ── Profile subscription for real-time online dots ──
-  // ── Online presence via Supabase Realtime Presence (websocket, no table replication needed) ──
+  // ── Online status: dual-channel approach ──
+  // Channel 1: postgres_changes on profiles — catches DB writes from ALL pages
+  //            (login page, index, profile, chat). Works regardless of what
+  //            page the other user has open.
+  // Channel 2: Supabase Presence — instant peer-to-peer for users in chat.html
   let presenceChannel = null;
+  let profilesChangeSub = null;
 
   function subscribeToProfiles() {
-    if (presenceChannel) supabase.removeChannel(presenceChannel);
+    // ── Channel 1: DB changes listener ──
+    if (profilesChangeSub) supabase.removeChannel(profilesChangeSub);
+    profilesChangeSub = supabase.channel('profile-is-online-changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles'
+      }, payload => {
+        const updated = payload.new;
+        // Client-side filter — only care about our conversation partners
+        const partnerIds = new Set(rooms.map(r => r.other_user.id));
+        if (!partnerIds.has(updated.id)) return;
+        updateOnlineDot(updated.id, updated.is_online, updated.last_seen);
+      })
+      .subscribe();
 
+    // ── Channel 2: Presence for instant peer detection inside chat.html ──
+    if (presenceChannel) supabase.removeChannel(presenceChannel);
     presenceChannel = supabase.channel('online-users', {
       config: { presence: { key: currentUser.id } }
     });
-
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
-        // state is { userId: [{ user_id, online_at, ... }], ... }
-        updateOnlineDotsFromPresence(state);
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        updateOnlineDot(key, true);
-        // Sync DB for the joining user so all pages reflect online status
-        supabase.from('profiles')
-          .update({ is_online: true })
-          .eq('id', key).then();
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        // Delay before marking offline — user may just be navigating between pages.
-        // After 5s, verify against the DB; only mark offline if DB confirms it.
-        setTimeout(async () => {
-          const { data } = await supabase
-            .from('profiles').select('is_online,last_seen').eq('id', key).single();
-          if (data && !data.is_online) {
-            // DB confirms offline — genuine logout
-            updateOnlineDot(key, false, data.last_seen);
+        rooms.forEach(room => {
+          if (state[room.other_user.id]) {
+            updateOnlineDot(room.other_user.id, true);
           }
-          // If DB says is_online=true they rejoined (navigated back) — do nothing
-        }, 5000);
+        });
+      })
+      .on('presence', { event: 'join' }, ({ key }) => {
+        updateOnlineDot(key, true);
+      })
+      .on('presence', { event: 'leave' }, ({ key }) => {
+        // Don't act immediately — wait for the DB change event from Channel 1
+        // which only fires if they actually logged out (is_online set to false)
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
-          // Write is_online=true to DB immediately so other pages/users see it
           await supabase.from('profiles')
             .update({ is_online: true, last_seen: new Date().toISOString() })
             .eq('id', currentUser.id);
-          // Announce this user as online via websocket presence channel
           await presenceChannel.track({
             user_id: currentUser.id,
             online_at: new Date().toISOString()
           });
         }
       });
-  }
-
-  function updateOnlineDotsFromPresence(state) {
-    // state keys are user IDs; any key present = online
-    rooms.forEach(room => {
-      const isOnline = !!state[room.other_user.id];
-      if (room.other_user.is_online !== isOnline) {
-        room.other_user.is_online = isOnline;
-      }
-    });
-    renderRooms(filteredRooms);
-    if (partnerId) {
-      const partnerOnline = !!state[partnerId];
-      const room = rooms.find(r => r.other_user.id === partnerId);
-      setPartnerStatus(partnerOnline, room?.other_user.last_seen);
-    }
   }
 
   function updateOnlineDot(userId, isOnline, lastSeen = null) {
