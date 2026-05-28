@@ -854,14 +854,17 @@
   // ── Profile subscription for real-time online dots ──
   function subscribeToProfiles() {
     if (profilesSub) supabase.removeChannel(profilesSub);
-    const partnerIds = rooms.map(r => r.other_user.id);
-    if (!partnerIds.length) return;
+    // No server-side filter — Supabase Realtime doesn't support `in` on postgres_changes.
+    // We receive all profile updates and filter client-side by known room partners.
     profilesSub = supabase.channel('profiles-changes')
       .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'profiles',
-        filter: `id=in.(${partnerIds.join(',')})`
+        event: 'UPDATE', schema: 'public', table: 'profiles'
       }, payload => {
         const updated = payload.new;
+        // Check if this user is one of our conversation partners
+        const partnerIds = new Set(rooms.map(r => r.other_user.id));
+        if (!partnerIds.has(updated.id)) return;
+        // Update cached room data
         let changed = false;
         rooms.forEach(room => {
           if (room.other_user.id === updated.id) {
@@ -871,6 +874,7 @@
           }
         });
         if (changed) renderRooms(filteredRooms);
+        // Update active chat header if this is the current partner
         if (updated.id === partnerId) setPartnerStatus(updated.is_online, updated.last_seen);
       })
       .subscribe();
