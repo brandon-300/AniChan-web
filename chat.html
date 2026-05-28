@@ -891,8 +891,12 @@
     // Slide to chat screen immediately — before any async calls
     if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
 
-    // Mark all messages read immediately when opening the room
-    markAsRead(roomId);
+    // Instantly hide the unread pill from the UI for a snappy feel
+    const activeItem = document.querySelector(`.thread-item[data-room-id="${roomId}"]`);
+    if (activeItem) {
+      const pill = activeItem.querySelector('.unread-pill');
+      if (pill) pill.remove();
+    }
 
     $('emptyState').style.display = 'none';
     $('chatTopbar').style.display = 'flex';
@@ -956,11 +960,9 @@
 
     renderMsgs(data, unreadIds);
 
-    // Mark as read
-    const toRead = [...unreadIds];
-    if (toRead.length) {
-      await supabase.from('messages').update({ is_read: true }).in('id', toRead);
-      loadRooms();
+    // Mark as read in the database AFTER we've rendered the unread separator
+    if (unreadIds.size > 0) {
+      markAsRead(roomId);
     }
   }
 
@@ -994,13 +996,15 @@
       addMsg(msg);
     });
 
-    // Scroll to unread separator if present, else bottom
-    const uSep = $('msgFeed').querySelector('.unread-separator');
-    if (uSep) {
-      uSep.scrollIntoView({ block: 'center' });
-    } else {
-      $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
-    }
+    // Use a slight timeout to ensure the DOM has painted before scrolling
+    setTimeout(() => {
+      const uSep = $('msgFeed').querySelector('.unread-separator');
+      if (uSep) {
+        uSep.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } else {
+        $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
+      }
+    }, 50);
   }
 
   function addMsg(msg) {
