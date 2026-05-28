@@ -1004,7 +1004,7 @@
       } else {
         $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
       }
-    }, 50);
+    }, 300); // Increased from 50 to 300 for a smoother, delayed transition
   }
 
   function addMsg(msg) {
@@ -1224,6 +1224,10 @@
       foot.innerHTML = `<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
       await supabase.from('chat_rooms').update({ last_message: txt, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
+      // Force scroll to bottom after message is confirmed sent
+      setTimeout(() => {
+        $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
+      }, 100);
     }
     sending = false;
   }
