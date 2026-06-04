@@ -20,7 +20,7 @@
     background:var(--bg);color:var(--text);
     font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     min-height:100vh;display:flex;align-items:center;justify-content:center;
-    padding:16px;position:relative;overflow-y:auto; /* scroll if needed */
+    padding:16px;position:relative;overflow-y:auto;
     -webkit-font-smoothing:antialiased;
   }
   .bg-glow{position:fixed;inset:0;z-index:0}
@@ -34,7 +34,7 @@
     position:relative;z-index:1;width:100%;max-width:440px;
     background:rgba(26,26,26,.70);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
     border:1px solid var(--border);border-radius:24px;padding:32px 24px;
-    box-shadow:0 20px 50px rgba(0,0,0,.5);margin:20px 0; /* margin to ensure breathing room */
+    box-shadow:0 20px 50px rgba(0,0,0,.5);margin:20px 0;
   }
   .tabs{display:flex;gap:0;margin-bottom:28px;background:var(--panel);border-radius:14px;padding:4px}
   .tab-btn{
@@ -92,12 +92,51 @@
   .dob-row{display:flex;gap:8px}
   .dob-row select{flex:1;padding:12px 8px;border-radius:12px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-size:14px;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239aa0a6'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 8px center;padding-right:30px}
   .dob-row select:focus{border-color:var(--accent)}
+
+  /* Google button */
+  .google-btn{
+    width:100%;padding:12px;border-radius:12px;
+    background:#fff;color:#000;font-size:14px;font-weight:600;
+    border:1px solid var(--border);cursor:pointer;
+    transition:background .15s;margin-top:12px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .google-btn:hover{background:#eee}
+  .google-btn img{width:20px;height:20px}
+
+  /* Onboarding overlay */
+  .onboarding-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(12px);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+    animation:fadeIn .3s ease;
+  }
+  .onboarding-overlay.hidden{display:none}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .onboarding-card{
+    width:100%;max-width:420px;
+    background:rgba(26,26,26,.70);backdrop-filter:blur(20px);
+    border:1px solid var(--border);border-radius:24px;
+    padding:32px 24px;box-shadow:0 20px 50px rgba(0,0,0,.5);
+    animation:slideUp .3s ease;
+  }
+  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .onboarding-card h2{text-align:center;margin-bottom:8px}
+  .onboarding-card p{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
+
+  .loading-spinner{
+    display:inline-block;width:20px;height:20px;
+    border:2px solid transparent;border-top-color:#0a2a28;
+    border-radius:50%;animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
   <div class="bg-glow"></div>
 
-  <div class="container">
+  <div class="container" id="loginContainer">
     <div class="tabs">
       <button class="tab-btn active" id="tabLogin">Log in</button>
       <button class="tab-btn" id="tabSignup">Sign up</button>
@@ -122,6 +161,13 @@
           <div class="forgot-link"><a href="forgot_password.html">Forgot password?</a></div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">Log in</button>
+
+          <!-- Google sign-in button -->
+          <button class="google-btn" id="googleLoginBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+            Continue with Google
+          </button>
+
           <div class="switch-link">
             Don't have an account? <button id="switchToSignup">Sign up</button>
           </div>
@@ -184,6 +230,45 @@
     </a>
   </div>
 
+  <!-- ONBOARDING OVERLAY -->
+  <div class="onboarding-overlay hidden" id="onboardingOverlay">
+    <div class="onboarding-card">
+      <h2>Complete your profile</h2>
+      <p>Please fill in a few more details to continue.</p>
+
+      <div class="field">
+        <label for="obUsername">Username</label>
+        <input id="obUsername" type="text" autocomplete="off" placeholder="Choose a username" />
+      </div>
+
+      <div class="field">
+        <label>Date of birth</label>
+        <div class="dob-row">
+          <select id="obDobDay"><option value="">Day</option></select>
+          <select id="obDobMonth"><option value="">Month</option></select>
+          <select id="obDobYear"><option value="">Year</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="obAge">Age (auto‑calculated)</label>
+        <input id="obAge" type="text" readonly placeholder="From date of birth" />
+      </div>
+
+      <div class="field">
+        <label for="obCountry">Country</label>
+        <input id="obCountry" type="text" placeholder="Your country" />
+      </div>
+
+      <div class="err-msg" id="obErr"></div>
+      <div class="success-msg" id="obSuccess"></div>
+
+      <button class="submit-btn" id="obSubmit">
+        <span id="obSubmitText">Complete</span>
+      </button>
+    </div>
+  </div>
+
 <script>
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -195,7 +280,7 @@
   const tabLogin = $("tabLogin");
   const tabSignup = $("tabSignup");
 
-  // DOB dropdowns
+  // ── DOB dropdowns for SIGNUP ──
   const dobDay = $("dobDay"), dobMonth = $("dobMonth"), dobYear = $("dobYear");
   const signupAge = $("signupAge"), ageError = $("ageError");
   const currentYear = new Date().getFullYear();
@@ -222,13 +307,13 @@
   }
   dobDay.addEventListener("change", updateAgeField); dobMonth.addEventListener("change", updateAgeField); dobYear.addEventListener("change", updateAgeField);
 
-  // Tab switching
+  // ── Tab switching ──
   function switchToLogin() { slider.style.transform = "translateX(0)"; tabLogin.classList.add("active"); tabSignup.classList.remove("active"); clearMessages(); }
   function switchToSignup() { slider.style.transform = "translateX(-100%)"; tabSignup.classList.add("active"); tabLogin.classList.remove("active"); clearMessages(); }
   tabLogin.addEventListener("click", switchToLogin); tabSignup.addEventListener("click", switchToSignup);
   $("switchToSignup").addEventListener("click", switchToSignup); $("switchToLogin").addEventListener("click", switchToLogin);
 
-  // Password reveal
+  // ── Password reveal ──
   document.querySelectorAll(".reveal").forEach(btn => {
     btn.addEventListener("click", () => {
       const input = document.getElementById(btn.dataset.target);
@@ -246,7 +331,7 @@
   }
   function isValidPassword(pw) { return pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw); }
 
-  // Login
+  // ── Login (email/password) ──
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim(), password = $("loginPassword").value, err = $("loginErr");
     err.classList.remove("show");
@@ -269,13 +354,21 @@
           err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); return;
         } else { await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id); }
       }
-      // Mark user as online immediately on successful login
-      await supabase.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", profile.id);
       window.location.href = "index.html";
     } catch(e) { err.textContent = e.message || "Login failed."; err.classList.add("show"); }
   });
 
-  // Signup
+  // ── Google OAuth ──
+  $("googleLoginBtn").addEventListener("click", async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + "/user_login.html?onboarding=1",
+      },
+    });
+  });
+
+  // ── Signup (email/password) ──
   $("signupSubmit").addEventListener("click", async () => {
     const fn = $("signupFirstName").value.trim(), ln = $("signupLastName").value.trim();
     const country = $("signupCountry").value.trim(), username = $("signupUsername").value.trim();
@@ -301,8 +394,171 @@
     } catch(e) { err.textContent = e.message || "Registration failed."; err.classList.add("show"); }
   });
 
-  document.addEventListener("keydown", (e) => { if (e.key==="Enter") { tabLogin.classList.contains("active") ? $("loginSubmit").click() : $("signupSubmit").click(); } });
+  // ── ONBOARDING MODAL ──
+  const obDay = $("obDobDay"), obMonth = $("obDobMonth"), obYear = $("obDobYear");
+  const obAge = $("obAge");
+
+  // Populate onboarding DOB dropdowns
+  for (let i = 1; i <= 12; i++) { const o = document.createElement("option"); o.value = i; o.textContent = monthNames[i-1]; obMonth.appendChild(o); }
+  for (let y = currentYear; y >= 1900; y--) { const o = document.createElement("option"); o.value = y; o.textContent = y; obYear.appendChild(o); }
+  function populateObDays() {
+    const m = parseInt(obMonth.value), y = parseInt(obYear.value), days = getDaysInMonth(m||1, y||2000), cur = obDay.value ? parseInt(obDay.value) : 0;
+    obDay.innerHTML = '<option value="">Day</option>';
+    for (let d = 1; d <= days; d++) { const o = document.createElement("option"); o.value = d; o.textContent = d; obDay.appendChild(o); }
+    if (cur > 0 && cur <= days) obDay.value = cur; else obDay.value = "";
+  }
+  obMonth.addEventListener("change", populateObDays); obYear.addEventListener("change", populateObDays); populateObDays();
+  function updateObAge() {
+    const d = parseInt(obDay.value), m = parseInt(obMonth.value), y = parseInt(obYear.value);
+    if (!d || !m || !y) { obAge.value = ""; return; }
+    const dob = new Date(y, m-1, d), now = new Date();
+    let age = now.getFullYear() - dob.getFullYear();
+    const md = now.getMonth() - dob.getMonth(); if (md < 0 || (md === 0 && now.getDate() < dob.getDate())) age--;
+    obAge.value = age;
+  }
+  obDay.addEventListener("change", updateObAge); obMonth.addEventListener("change", updateObAge); obYear.addEventListener("change", updateObAge);
+
+  function showOnboardingModal() {
+    $("obUsername").value = "";
+    obDay.value = obMonth.value = obYear.value = "";
+    populateObDays();
+    obAge.value = "";
+    $("obCountry").value = "";
+    $("obErr").classList.remove("show");
+    $("obSuccess").classList.remove("show");
+    $("onboardingOverlay").classList.remove("hidden");
+  }
+
+  function hideOnboardingModal() {
+    $("onboardingOverlay").classList.add("hidden");
+  }
+
+  function showOnboardingError(msg) {
+    const err = $("obErr");
+    err.textContent = msg;
+    err.classList.add("show");
+    $("onboardingOverlay").classList.remove("hidden");
+  }
+
+  // Onboarding submit
+  $("obSubmit").addEventListener("click", async () => {
+    const username = $("obUsername").value.trim();
+    const country = $("obCountry").value.trim();
+    const day = parseInt(obDay.value), month = parseInt(obMonth.value), year = parseInt(obYear.value);
+    const err = $("obErr"), success = $("obSuccess");
+    err.classList.remove("show"); success.classList.remove("show");
+
+    if (!username || !country || !day || !month || !year) {
+      err.textContent = "All fields are required.";
+      err.classList.add("show");
+      return;
+    }
+    const age = parseInt(obAge.value, 10);
+    if (isNaN(age) || age < 14) {
+      err.textContent = "You must be at least 14 years old.";
+      err.classList.add("show");
+      return;
+    }
+    if (username.length < 3 || username.length > 20) {
+      err.textContent = "Username must be between 3 and 20 characters.";
+      err.classList.add("show");
+      return;
+    }
+
+    const btn = $("obSubmit");
+    const btnText = $("obSubmitText");
+    btn.disabled = true;
+    btnText.innerHTML = '<span class="loading-spinner"></span> Saving…';
+
+    try {
+      // Check uniqueness
+      const { data: exist } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
+      if (exist) {
+        err.textContent = "Username already taken.";
+        err.classList.add("show");
+        btn.disabled = false;
+        btnText.textContent = "Complete";
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Session expired. Please log in again.");
+
+      const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const { error: updateErr } = await supabase.from("profiles")
+        .update({ username, age, dob, country })
+        .eq("id", session.user.id);
+
+      if (updateErr) throw updateErr;
+
+      success.textContent = "Profile complete! Redirecting…";
+      success.classList.add("show");
+      setTimeout(() => {
+        hideOnboardingModal();
+        window.location.href = "index.html";
+      }, 3000);
+    } catch (e) {
+      err.textContent = e.message || "An error occurred.";
+      err.classList.add("show");
+      btn.disabled = false;
+      btnText.textContent = "Complete";
+    }
+  });
+
+  // ── Page‑load check for onboarding ──
+  async function checkOnboarding() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("onboarding") !== "1") return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      // No session – the OAuth redirect hasn't completed yet, or the user landed here manually
+      return;
+    }
+
+    let { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+
+    // If no profile, create one from Google metadata
+    if (!profile) {
+      const { error: insertErr } = await supabase.from("profiles").insert({
+        id: session.user.id,
+        email: session.user.email,
+        full_name: session.user.user_metadata?.name || '',
+        avatar_url: session.user.user_metadata?.picture || '',
+      });
+      if (insertErr) {
+        showOnboardingError("Failed to create profile: " + insertErr.message);
+        return;
+      }
+      // Re‑fetch the newly created profile
+      const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+      profile = newProfile;
+    }
+
+    // If profile is complete, redirect to home
+    if (profile && profile.username && profile.dob && profile.country) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    // Otherwise show the onboarding modal
+    showOnboardingModal();
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !$("onboardingOverlay").classList.contains("hidden")) {
+      $("obSubmit").click();
+    } else if (e.key === "Enter") {
+      tabLogin.classList.contains("active") ? $("loginSubmit").click() : $("signupSubmit").click();
+    }
+  });
+
   window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
+
+  // Kick off the onboarding check after a short delay to allow the session to load
+  window.addEventListener("load", () => {
+    setTimeout(checkOnboarding, 500);
+  });
 })();
 </script>
 </body>
