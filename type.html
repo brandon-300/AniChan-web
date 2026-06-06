@@ -6,7 +6,7 @@
 <title>AniChan · Anime Type</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
   :root{
@@ -23,6 +23,7 @@
     -webkit-font-smoothing:antialiased;
   }
 
+  /* Header */
   header.app{
     background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);padding:12px 16px;
@@ -72,6 +73,7 @@
     pointer-events:none;
   }
 
+  /* Floating search overlay */
   .search-results-dropdown{
     position:fixed;
     background:#1a1a1a;
@@ -95,10 +97,7 @@
   .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
-  .no-results{
-    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
-    background:#1a1a1a;
-  }
+  .no-results{padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;background:#1a1a1a}
 
   .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
     background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
@@ -106,78 +105,161 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  .container{max-width:1100px;margin:24px auto;padding:0 16px;width:100%;flex:1}
-
-  .glass-panel{
-    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border:1px solid var(--border);border-radius:20px;padding:20px;
-    margin-bottom:24px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+  /* ══════════ CARD STACK ══════════ */
+  .latest-section{
+    width:100%;
+    margin:0;
+    padding:0;
   }
-  .glass-panel h2{
-    font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
+  .latest-section h2{
+    margin:0;
+    padding:20px 16px 14px;
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:0;
+    color:#fff;
   }
 
-  .release-list{display:flex;flex-direction:column;gap:16px}
+  .release-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:0;
+    padding:0 10px;
+  }
+
   .release-card{
-    border-radius:18px;overflow:hidden;
-    border:1px solid var(--border);
-    background:var(--card);
-    display:flex;flex-direction:column;
-    transition:transform .15s ease,box-shadow .15s ease;
-    cursor:pointer;text-decoration:none;color:inherit;
-  }
-  .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
-
-  .card-image{
-    width:100%;aspect-ratio:16/9;
-    background-size:cover;background-position:center;
     position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    background-size:cover;
+    background-position:center;
+    background-color:#0a0a0a;
+    cursor:pointer;
+    text-decoration:none;
+    color:inherit;
+    border-radius:12px;
+    overflow:hidden;
+    transition:transform 0.1s ease;
   }
-  .card-image .overlay{
-    position:absolute;inset:0;
-    background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 50%, transparent 100%);
+  .release-card:hover{
+    transform:scale(1.005);
+    z-index:1;
+  }
+
+  /* Full‑card soft gradient */
+  .card-gradient{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(to top,
+      rgba(0,0,0,0.90) 0%,
+      rgba(0,0,0,0.55) 25%,
+      rgba(0,0,0,0.15) 60%,
+      transparent 100%
+    );
     pointer-events:none;
   }
-  .card-title-overlay{
-    position:absolute;bottom:0;left:0;right:0;
-    padding:12px 16px;
-    font-size:15px;font-weight:700;line-height:1.4;
-    color:#fff;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
+
+  /* ══════════ PLAY BUTTON ══════════ */
+  .play-icon-overlay{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    width: clamp(110px, 26vw, 160px);
+    height: clamp(110px, 26vw, 160px);
+    opacity:0;
+    pointer-events:none;
+    z-index:5;
+    transition:opacity 0.12s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .play-icon-overlay.show{
+    opacity:1;
+    transition:none;
+  }
+  @media (hover: hover) {
+    .release-card:hover .play-icon-overlay {
+      opacity:1;
+      transition:opacity 0.15s ease;
+    }
+  }
+
+  /* Bottom‑aligned text row */
+  .card-bottom{
+    position:absolute;
+    bottom:0;
+    left:0;
+    right:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:14px 12px 14px 16px;
+    background:transparent;
     z-index:2;
   }
+
+  .card-title-text{
+    color:#fff;
+    font-size:16px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    flex:1 1 0%;
+    min-width:0;
+    max-width:100%;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+
+  .card-ep-text{
+    color:#fff;
+    font-size:18px;
+    font-weight:700;
+    flex:0 0 auto;
+    opacity:1;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+
+  /* BD/DVD badge */
   .media-badge{
-    position:absolute;top:10px;left:10px;
-    background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+    position:absolute;
+    top:10px;
+    left:10px;
+    background:rgba(0,0,0,.75);
+    backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
-    color:var(--accent);font-size:12px;font-weight:700;
-    padding:3px 10px;border-radius:6px;
-    text-transform:uppercase;letter-spacing:.5px;
-    z-index:2;
+    color:var(--accent);
+    font-size:12px;
+    font-weight:700;
+    padding:3px 10px;
+    border-radius:6px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    z-index:3;
     display:none;
   }
   .media-badge.show{display:block}
-  .ep-badge-overlay{
-    position:absolute;bottom:10px;right:10px;
-    background:var(--accent);color:#0a2a28;
-    font-size:14px;font-weight:700;
-    padding:4px 14px;border-radius:20px;
-    z-index:2;
-  }
 
-  .empty{padding:32px;text-align:center;color:var(--muted);
-    border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px}
+  .empty{padding:32px 16px;text-align:center;color:var(--muted);
+    border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px;
+    margin:0 16px;}
 
-  .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
-  .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+  .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0}
+  .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
   .pagination button:disabled{opacity:.4;cursor:default}
   .pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
   .page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
 
-  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+  #toTop{position:fixed;right:18px;bottom:18px;width:46px;height:46px;border-radius:50%;
+    background:var(--accent);color:#0a2a28;font-size:20px;font-weight:800;
+    box-shadow:0 12px 28px rgba(81,218,211,.30);opacity:0;pointer-events:none;
+    transition:opacity .25s ease,transform .25s ease;z-index:40;transform:translateY(20px)}
+  #toTop.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+
+  footer{padding:30px 0 80px;text-align:center;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
@@ -207,8 +289,8 @@
     <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
   </div>
 
-  <main class="container">
-    <div class="glass-panel">
+  <main>
+    <div class="latest-section">
       <h2 id="pageTitle">Anime by Type</h2>
       <div class="release-list" id="releaseList"></div>
       <div class="pagination" id="paginationControls" style="display:none;">
@@ -218,6 +300,8 @@
       </div>
     </div>
   </main>
+
+  <button id="toTop" aria-label="Scroll to top">↑</button>
 
   <footer>AniChan · powered by Supabase</footer>
 
@@ -229,6 +313,7 @@
 
   const $ = id => document.getElementById(id);
   const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
 
   const ITEMS_PER_PAGE = 26;
   let library = [];
@@ -240,19 +325,22 @@
   if (!type) { alert('No type specified'); history.back(); return; }
   $('pageTitle').textContent = `Type: ${type}`;
 
+  // ── Hamburger menu ──
   (function renderHamburger() {
     const container = $("headerActions");
     const menuBtn = document.createElement("button");
     menuBtn.className = "menu-btn";
     menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
-    menuBtn.addEventListener("click", () => { $("navDropdown").classList.toggle("open"); });
+    menuBtn.addEventListener("click", () => {
+      $("navDropdown").classList.toggle("open");
+    });
     container.appendChild(menuBtn);
   })();
 
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // Live search
+  // ── Live search ──
   const navSearchInput = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
   const MAX_RESULTS = 15;
@@ -341,7 +429,7 @@
   window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
   window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
 
-  // Broadcast
+  // ── Broadcast ──
   async function loadBroadcast() {
     const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
     const msg = (data && data.value || "").trim();
@@ -349,6 +437,19 @@
     else { $("broadcast").classList.add("hidden"); }
   }
 
+  // ── Scroll to top ──
+  let lastScrollY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY;
+    const btn = $("toTop");
+    if (y < lastScrollY && y > 200) btn.classList.add("visible");
+    else if (y <= 200) btn.classList.remove("visible");
+    else if (y > lastScrollY) btn.classList.remove("visible");
+    lastScrollY = y;
+  }, { passive: true });
+  $("toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+  // ── Type data ──
   async function loadTypeAnime() {
     const { data, error } = await sb
       .from('anime')
@@ -365,6 +466,23 @@
     const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
     searchLibrary = data || [];
   })();
+
+  function clearAllPlayIcons() {
+    document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
+  }
+
+  const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%"><polygon points="6,2 20,12 6,22" fill="white" opacity="0.45"/></svg>';
+
+  let navTimeout = null;
+  function scheduleNav(href) {
+    if (navTimeout) clearTimeout(navTimeout);
+    navTimeout = setTimeout(() => {
+      navTimeout = null;
+      location.href = href;
+    }, 150);
+  }
+
+  window.addEventListener('pagehide', clearAllPlayIcons);
 
   function renderList() {
     const list = $('releaseList');
@@ -386,13 +504,11 @@
         const card = document.createElement('a');
         card.className = 'release-card';
         card.href = `anime_info.html?id=${a.id}`;
+        card.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
 
-        const imgDiv = document.createElement('div');
-        imgDiv.className = 'card-image';
-        imgDiv.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
-        const overlay = document.createElement('div');
-        overlay.className = 'overlay';
-        imgDiv.appendChild(overlay);
+        const gradient = document.createElement("div");
+        gradient.className = "card-gradient";
+        card.appendChild(gradient);
 
         const mediaBadge = document.createElement('span');
         mediaBadge.className = 'media-badge';
@@ -400,19 +516,55 @@
           mediaBadge.textContent = a.release_type;
           mediaBadge.classList.add('show');
         }
-        imgDiv.appendChild(mediaBadge);
+        card.appendChild(mediaBadge);
 
-        const titleOverlay = document.createElement('span');
-        titleOverlay.className = 'card-title-overlay';
-        titleOverlay.textContent = a.title || 'Untitled';
-        imgDiv.appendChild(titleOverlay);
+        const playIcon = document.createElement("div");
+        playIcon.className = "play-icon-overlay";
+        playIcon.innerHTML = PLAY_ICON_SVG;
+        card.appendChild(playIcon);
 
-        const epBadge = document.createElement('span');
-        epBadge.className = 'ep-badge-overlay';
-        epBadge.textContent = a.ep_total != null ? a.ep_total : '?';
-        imgDiv.appendChild(epBadge);
+        const bottomBar = document.createElement('div');
+        bottomBar.className = 'card-bottom';
 
-        card.appendChild(imgDiv);
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'card-title-text';
+        titleSpan.textContent = a.title || 'Untitled';
+
+        const epSpan = document.createElement('span');
+        epSpan.className = 'card-ep-text';
+        epSpan.textContent = a.ep_total != null ? a.ep_total : '?';
+
+        bottomBar.appendChild(titleSpan);
+        bottomBar.appendChild(epSpan);
+        card.appendChild(bottomBar);
+
+        // Play button behavior – identical to index page
+        let touchStartX = 0, touchStartY = 0, touchWasScroll = false, wasTouch = false;
+        card.addEventListener('touchstart', (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchWasScroll = false;
+        }, { passive: true });
+        card.addEventListener('touchmove', (e) => {
+          const dx = Math.abs(e.touches[0].clientX - touchStartX);
+          const dy = Math.abs(e.touches[0].clientY - touchStartY);
+          if (dx > 8 || dy > 8) touchWasScroll = true;
+        }, { passive: true });
+        card.addEventListener('touchend', (e) => {
+          if (touchWasScroll) return;
+          wasTouch = true;
+          clearAllPlayIcons();
+          playIcon.classList.add('show');
+          scheduleNav(card.href);
+        }, { passive: true });
+        card.addEventListener('click', (e) => {
+          if (wasTouch) { wasTouch = false; return; }
+          e.preventDefault();
+          clearAllPlayIcons();
+          playIcon.classList.add('show');
+          scheduleNav(card.href);
+        });
+
         list.appendChild(card);
       }
     }
