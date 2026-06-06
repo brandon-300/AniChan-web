@@ -118,7 +118,7 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  /* ══════════ LATEST RELEASES – pixel‑perfect Animepahe stack ══════════ */
+  /* ══════════ LATEST RELEASES ══════════ */
   .latest-section{
     width:100%;
     margin:0;
@@ -160,28 +160,29 @@
     z-index:1;
   }
 
-  /* Full‑card soft gradient */
+  /* ══════════ GRADIENT – no box line ══════════ */
   .card-gradient{
     position:absolute;
     inset:0;
     background:linear-gradient(to top,
       rgba(0,0,0,0.95) 0%,
-      rgba(0,0,0,0.7) 15%,
-      rgba(0,0,0,0.25) 50%,
-      transparent 75%
+      rgba(0,0,0,0.7) 20%,
+      rgba(0,0,0,0.3) 60%,
+      rgba(0,0,0,0.05) 85%,
+      transparent 95%
     );
     pointer-events:none;
   }
 
-  /* ══════════ PLAY BUTTON – ENLARGED ══════════ */
+  /* ══════════ PLAY BUTTON – massive triangle ══════════ */
   .play-icon-overlay{
     position:absolute;
     top:50%; left:50%;
     transform:translate(-50%, -50%);
     width:0; height:0;
-    border-left: 48px solid #fff;
-    border-top: 30px solid transparent;
-    border-bottom: 30px solid transparent;
+    border-left: 64px solid #fff;
+    border-top: 40px solid transparent;
+    border-bottom: 40px solid transparent;
     opacity:0;
     pointer-events:none;
     z-index:5;
@@ -605,15 +606,15 @@
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // ── Click to show play icon (only one at a time) ──
+        // ══════════ RELIABLE PLAY ICON TOGGLE ══════════
         card.addEventListener('click', function(e) {
-          // Remove 'show' from all other play icons
+          // Remove 'show' from ALL other play icons immediately
           clearAllPlayIcons();
-          // Add 'show' to this one
+          // Show this one
           playIcon.classList.add('show');
-          // Navigation continues via the <a> href
+          // Navigation still happens via the <a> tag
         });
-        // Also handle touchstart for mobile
+        // Also for touch devices (before the link navigates)
         card.addEventListener('touchstart', function(e) {
           clearAllPlayIcons();
           playIcon.classList.add('show');
