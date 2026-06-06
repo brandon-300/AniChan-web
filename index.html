@@ -7,7 +7,7 @@
 <meta name="description" content="Your personal anime tracker and library." />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
   :root{
@@ -118,26 +118,27 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  /* ══════════ LATEST RELEASES – full‑width minimal layout ══════════ */
+  /* ══════════ LATEST RELEASES – Animepahe‑style full‑width stack ══════════ */
   .latest-section{
     width:100%;
     margin:0;
     padding:0;
   }
   .latest-section h2{
-    margin:0 0 8px;
-    padding:16px 16px 8px;
-    font-size:24px;
-    font-weight:300;
-    letter-spacing:1px;
+    margin:0;
+    padding:20px 16px 18px;         /* more breathing room above first card */
+    font-size:20px;
+    font-weight:200;                 /* thin, elegant */
+    letter-spacing:2px;
     color:#fff;
-    border-bottom:1px solid var(--border);
   }
 
   .release-list{
     display:flex;
     flex-direction:column;
-    gap:0;                     /* zero vertical spacing */
+    gap:0;                          /* zero vertical space between cards */
+    margin:0;
+    padding:0;
   }
 
   .release-card{
@@ -150,9 +151,9 @@
     cursor:pointer;
     text-decoration:none;
     color:inherit;
-    border-radius:2px;          /* micro‑corners */
-    overflow:hidden;            /* keeps the bottom bar inside */
-    border-bottom:1px solid rgba(255,255,255,0.04); /* subtle separator */
+    border-radius:2px;               /* micro‑corners */
+    overflow:hidden;
+    /* no border, no margin → cards touch */
     transition:transform 0.1s ease;
   }
   .release-card:hover{
@@ -160,7 +161,7 @@
     z-index:1;
   }
 
-  /* Bottom‑aligned text bar (single row) */
+  /* Bottom‑aligned text row – taller, softer gradient */
   .card-bottom{
     position:absolute;
     bottom:0;
@@ -169,30 +170,36 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:10px 16px 12px;
-    background:linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+    padding:14px 16px 14px;
+    background:linear-gradient(to top,
+      rgba(0,0,0,0.95) 0%,
+      rgba(0,0,0,0.7) 30%,
+      rgba(0,0,0,0.3) 70%,
+      transparent 100%
+    );
   }
 
   .card-title-text{
     color:#fff;
     font-size:14px;
-    font-weight:600;
+    font-weight:500;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    flex:1;
+    flex:1 1 0%;                    /* takes as much width as possible */
+    min-width:0;
     margin-right:12px;
   }
 
   .card-ep-text{
     color:#fff;
     font-size:14px;
-    font-weight:700;
-    flex-shrink:0;
+    font-weight:600;
+    flex:0 0 auto;
     opacity:0.85;
   }
 
-  /* BD/DVD badge – keep it tiny, top‑left */
+  /* BD/DVD badge – top‑left */
   .media-badge{
     position:absolute;
     top:10px;
@@ -212,12 +219,10 @@
   }
   .media-badge.show{display:block}
 
-  /* Empty state */
-  .empty{padding:32px;text-align:center;color:var(--muted);
+  .empty{padding:32px 16px;text-align:center;color:var(--muted);
     border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px;
-    margin:16px;}
+    margin:0 16px;}
 
-  /* Pagination */
   .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0}
   .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
   .pagination button:disabled{opacity:.4;cursor:default}
@@ -263,7 +268,7 @@
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
   <main>
-    <!-- Broadcast (inside wrap to keep it contained) -->
+    <!-- Broadcast (kept inside a wrap so it doesn't stretch edge‑to‑edge) -->
     <div class="wrap">
       <div class="broadcast hidden" id="broadcast">
         <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
@@ -271,7 +276,7 @@
       </div>
     </div>
 
-    <!-- Latest Releases – full width, no container -->
+    <!-- Latest Releases – full width, zero padding -->
     <div class="latest-section" id="latestReleasesSection">
       <h2 id="latestReleasesHeading">Latest Releases</h2>
       <div class="release-list" id="releaseList"></div>
@@ -284,8 +289,6 @@
   </main>
 
   <button id="toTop" aria-label="Scroll to top">↑</button>
-
-  <!-- No messages modal here – it's completely removed -->
 
   <footer>AniChan · powered by Supabase</footer>
 
