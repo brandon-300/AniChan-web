@@ -280,6 +280,21 @@
   const tabLogin = $("tabLogin");
   const tabSignup = $("tabSignup");
 
+  // ── Redirect helper ──
+  function getRedirectUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    // 1. Check for explicit ?redirect=... (from email login)
+    if (urlParams.get('redirect')) return urlParams.get('redirect');
+    // 2. Check sessionStorage (set before Google OAuth)
+    const stored = sessionStorage.getItem('login_redirect');
+    if (stored) {
+      sessionStorage.removeItem('login_redirect');
+      return stored;
+    }
+    // 3. Default fallback
+    return 'index.html';
+  }
+
   // ── DOB dropdowns for SIGNUP ──
   const dobDay = $("dobDay"), dobMonth = $("dobMonth"), dobYear = $("dobYear");
   const signupAge = $("signupAge"), ageError = $("ageError");
@@ -354,12 +369,18 @@
           err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); return;
         } else { await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id); }
       }
-      window.location.href = "index.html";
+      // Redirect to original page if set, otherwise home
+      window.location.href = getRedirectUrl();
     } catch(e) { err.textContent = e.message || "Login failed."; err.classList.add("show"); }
   });
 
   // ── Google OAuth ──
   $("googleLoginBtn").addEventListener("click", async () => {
+    // Save the redirect URL if provided
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect');
+    if (redirect) sessionStorage.setItem('login_redirect', redirect);
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -495,7 +516,7 @@
       success.classList.add("show");
       setTimeout(() => {
         hideOnboardingModal();
-        window.location.href = "index.html";
+        window.location.href = getRedirectUrl();   // ← redirect to original page
       }, 3000);
     } catch (e) {
       err.textContent = e.message || "An error occurred.";
@@ -535,9 +556,9 @@
       profile = newProfile;
     }
 
-    // If profile is complete, redirect to home
+    // If profile is complete, redirect to original page (or home)
     if (profile && profile.username && profile.dob && profile.country) {
-      window.location.href = "index.html";
+      window.location.href = getRedirectUrl();   // ← redirect to original page
       return;
     }
 
