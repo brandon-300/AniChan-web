@@ -182,15 +182,16 @@
   }
   .genre-chip:hover{background:rgba(81,218,211,.25)}
 
-  /* Episode grid – new card style */
+  /* Episode grid – now single column, full‑width cards */
   .episode-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+    display:flex;
+    flex-direction:column;
     gap:12px;
     margin-bottom:20px;
   }
   .episode-card{
     position:relative;
+    width:100%;
     aspect-ratio:16/9;
     background-size:cover;
     background-position:center;
@@ -275,8 +276,8 @@
       width:100px;
       height:140px;
     }
-    .episode-grid{
-      grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+    .episode-card{
+      border-radius:8px;
     }
   }
 </style>
@@ -613,7 +614,7 @@
         $('adminEditBtn').appendChild(editBtn);
       }
 
-      // ── Episode grid (new card layout) ──
+      // ── Episode grid (single column, full‑width cards) ──
       const epTotal = data.ep_total || 0;
       const grid = $('episodeGrid');
       grid.innerHTML = '';
