@@ -118,7 +118,7 @@
     display:flex;gap:12px;align-items:flex-start}
   .broadcast.hidden{display:none}
 
-  /* ══════════ LATEST RELEASES – Animepahe‑style full‑width stack ══════════ */
+  /* ══════════ LATEST RELEASES – pixel‑perfect Animepahe stack ══════════ */
   .latest-section{
     width:100%;
     margin:0;
@@ -126,9 +126,9 @@
   }
   .latest-section h2{
     margin:0;
-    padding:20px 16px 18px;         /* more breathing room above first card */
+    padding:20px 16px 18px;
     font-size:20px;
-    font-weight:200;                 /* thin, elegant */
+    font-weight:200;
     letter-spacing:2px;
     color:#fff;
   }
@@ -136,7 +136,7 @@
   .release-list{
     display:flex;
     flex-direction:column;
-    gap:0;                          /* zero vertical space between cards */
+    gap:0;
     margin:0;
     padding:0;
   }
@@ -151,9 +151,8 @@
     cursor:pointer;
     text-decoration:none;
     color:inherit;
-    border-radius:2px;               /* micro‑corners */
+    border-radius:2px;
     overflow:hidden;
-    /* no border, no margin → cards touch */
     transition:transform 0.1s ease;
   }
   .release-card:hover{
@@ -161,7 +160,43 @@
     z-index:1;
   }
 
-  /* Bottom‑aligned text row – taller, softer gradient */
+  /* Full‑card soft gradient */
+  .card-gradient{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(to top,
+      rgba(0,0,0,0.95) 0%,
+      rgba(0,0,0,0.7) 15%,
+      rgba(0,0,0,0.25) 50%,
+      transparent 75%
+    );
+    pointer-events:none;
+  }
+
+  /* ══════════ PLAY BUTTON ══════════ */
+  .play-icon-overlay{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    width:0; height:0;
+    border-left: 24px solid #fff;
+    border-top: 14px solid transparent;
+    border-bottom: 14px solid transparent;
+    opacity:0;
+    transition:opacity 0.05s ease;
+    pointer-events:none;
+    z-index:5;
+    /* Size about one-third of a typical 16/9 card height – roughly 50-60px */
+    border-left-width: 28px;
+    border-top-width: 18px;
+    border-bottom-width: 18px;
+  }
+  .play-icon-overlay.show{
+    opacity:0.45;
+    transition:none;   /* instant snap */
+  }
+
+  /* Bottom‑aligned text row */
   .card-bottom{
     position:absolute;
     bottom:0;
@@ -170,13 +205,10 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:14px 16px 14px;
-    background:linear-gradient(to top,
-      rgba(0,0,0,0.95) 0%,
-      rgba(0,0,0,0.7) 30%,
-      rgba(0,0,0,0.3) 70%,
-      transparent 100%
-    );
+    gap:8px;
+    padding:14px 12px 14px 16px;
+    background:transparent;
+    z-index:2;
   }
 
   .card-title-text{
@@ -186,9 +218,9 @@
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    flex:1 1 0%;                    /* takes as much width as possible */
+    flex:1 1 0%;
     min-width:0;
-    margin-right:12px;
+    max-width:100%;
   }
 
   .card-ep-text{
@@ -199,7 +231,7 @@
     opacity:0.85;
   }
 
-  /* BD/DVD badge – top‑left */
+  /* BD/DVD badge */
   .media-badge{
     position:absolute;
     top:10px;
@@ -214,7 +246,7 @@
     border-radius:6px;
     text-transform:uppercase;
     letter-spacing:.5px;
-    z-index:2;
+    z-index:3;
     display:none;
   }
   .media-badge.show{display:block}
@@ -253,7 +285,6 @@
     </div>
   </header>
 
-  <!-- Full‑width navigation dropdown -->
   <div class="nav-dropdown" id="navDropdown">
     <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
     <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
@@ -264,11 +295,9 @@
     <div id="navUserSection"></div>
   </div>
 
-  <!-- Floating search results (outside nav dropdown) -->
   <div class="search-results-dropdown" id="searchResultsDropdown"></div>
 
   <main>
-    <!-- Broadcast (kept inside a wrap so it doesn't stretch edge‑to‑edge) -->
     <div class="wrap">
       <div class="broadcast hidden" id="broadcast">
         <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
@@ -276,7 +305,6 @@
       </div>
     </div>
 
-    <!-- Latest Releases – full width, zero padding -->
     <div class="latest-section" id="latestReleasesSection">
       <h2 id="latestReleasesHeading">Latest Releases</h2>
       <div class="release-list" id="releaseList"></div>
@@ -387,7 +415,6 @@
 
     const items = [
       { id: 'navFindFriends', icon: 'group', text: t('findFriends'), action: () => location.href = 'find_friends.html' },
-      // ★ Messages now goes directly to chat.html – NO modal
       { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat.html'; } },
       { id: 'navProfile', icon: 'person', text: t('profile'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'profile.html'; } }
     ];
@@ -546,6 +573,11 @@
         card.href = `anime_info.html?id=${a.id}`;
         card.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
 
+        // Full‑card gradient overlay
+        const gradient = document.createElement("div");
+        gradient.className = "card-gradient";
+        card.appendChild(gradient);
+
         // BD/DVD badge (top‑left)
         const mediaBadge = document.createElement("span");
         mediaBadge.className = "media-badge";
@@ -555,7 +587,12 @@
         }
         card.appendChild(mediaBadge);
 
-        // Bottom bar with title and episode
+        // Play icon (hidden by default)
+        const playIcon = document.createElement("div");
+        playIcon.className = "play-icon-overlay";
+        card.appendChild(playIcon);
+
+        // Bottom text row (title + episode number)
         const bottomBar = document.createElement("div");
         bottomBar.className = "card-bottom";
 
@@ -570,6 +607,17 @@
         bottomBar.appendChild(titleSpan);
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
+
+        // ── Click to show play icon, then navigate ──
+        card.addEventListener('click', function(e) {
+          // Show play icon immediately
+          playIcon.classList.add('show');
+          // Navigation continues naturally via the <a> href
+        });
+        // Also handle touchstart for mobile responsiveness
+        card.addEventListener('touchstart', function(e) {
+          playIcon.classList.add('show');
+        }, { passive: true });
 
         list.appendChild(card);
       }
@@ -612,7 +660,6 @@
     window.addEventListener("offline", syncOffline);
     const { data: { session } } = await sb.auth.getSession();
     currentSession = session;
-    // Keep is_online=true while user is on any page of the site
     if (session?.user) {
       await sb.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", session.user.id);
     }
