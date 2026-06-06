@@ -21,7 +21,6 @@
     padding:20px;position:relative;overflow:hidden;
     -webkit-font-smoothing:antialiased;
   }
-  /* Background radial gradients */
   .bg-glow{
     position:absolute;inset:0;z-index:0;
   }
@@ -38,7 +37,6 @@
     width:400px;height:400px;background:var(--accent);
     bottom:-20%;right:-10%;opacity:0.08;
   }
-  /* Glass card */
   .login-card{
     position:relative;z-index:1;width:100%;max-width:420px;
     background:rgba(26,26,26,.70);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -77,12 +75,13 @@
   .pwd-wrap .reveal:hover{color:var(--text)}
   .signin-btn{
     width:100%;padding:14px;border:none;border-radius:12px;
-    background:var(--accent);color:#0a2a28;font-size:16px;font-weight:700;
-    cursor:pointer;transition:filter .15s,transform .1s;
-    margin-top:8px;
+    background:var(--accent);color:#0a2a28;font-size:15px;font-weight:700;
+    cursor:pointer;transition:filter .15s,opacity .15s;
+    margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;
   }
   .signin-btn:hover{filter:brightness(1.08)}
   .signin-btn:active{transform:scale(.97)}
+  .signin-btn:disabled{opacity:.7;cursor:not-allowed;filter:none}
   .err-msg{
     font-size:13px;color:var(--danger);margin-top:12px;text-align:center;
     display:none;
@@ -93,6 +92,14 @@
     color:var(--muted);text-decoration:none;transition:color .15s;
   }
   .back-link:hover{color:var(--text)}
+
+  /* Loading spinner */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-spinner{
+    width:20px;height:20px;border:2px solid transparent;
+    border-top-color:#0a2a28;border-radius:50%;animation:spin .7s linear infinite;
+    display:inline-block;
+  }
 
   /* Shake animation */
   @keyframes shake{
@@ -125,7 +132,9 @@
 
     <div class="err-msg" id="loginErr"></div>
 
-    <button class="signin-btn" id="signinBtn">Sign In</button>
+    <button class="signin-btn" id="signinBtn">
+      <span id="signinBtnText">Sign In</span>
+    </button>
 
     <a href="index.html" class="back-link">← Back to Home</a>
   </div>
@@ -152,12 +161,14 @@
     }
   });
 
-  // Sign in
+  // Sign in with loading state
   $("signinBtn").addEventListener("click", async () => {
     const email = $("adminEmail").value.trim();
     const password = $("adminPassword").value;
     const err = $("loginErr");
     const card = $("loginCard");
+    const btn = $("signinBtn");
+    const btnText = $("signinBtnText");
 
     err.classList.remove("show");
 
@@ -176,13 +187,14 @@
       return;
     }
 
-    // Scale effect
-    $("signinBtn").style.transform = "scale(0.96)";
-    setTimeout(() => $("signinBtn").style.transform = "", 150);
+    // Show loading state
+    btn.disabled = true;
+    btnText.innerHTML = '<span class="loading-spinner"></span> Logging in…';
 
     try {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
       // Fade-out on success
       card.style.opacity = "0";
       card.style.transform = "scale(0.95)";
@@ -193,6 +205,10 @@
       err.classList.add("show");
       card.classList.add("shake");
       setTimeout(() => card.classList.remove("shake"), 500);
+
+      // Restore button
+      btn.disabled = false;
+      btnText.textContent = "Sign In";
     }
   });
 
