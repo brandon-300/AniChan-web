@@ -72,6 +72,14 @@
     pointer-events:none;
   }
 
+  .broadcast.hidden{display:none}
+  .broadcast{
+    margin:16px 0;padding:14px 16px;border-radius:16px;
+    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;gap:12px;align-items:flex-start
+  }
+
   .container{max-width:1100px;margin:0 auto;padding:16px 16px 40px;width:100%;flex:1;}
 
   /* Video player frame */
@@ -217,6 +225,12 @@
   </div>
 
   <main class="container">
+    <!-- Broadcast message (hidden if empty) -->
+    <div class="broadcast hidden" id="broadcast">
+      <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
+      <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
+    </div>
+
     <!-- Video Player (static overlay, no JS for video) -->
     <div class="video-frame" id="videoFrame">
       <div class="video-overlay">
@@ -332,6 +346,14 @@
 
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
+
+  // ── Broadcast ──
+  async function loadBroadcast() {
+    const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
+    const msg = (data && data.value || "").trim();
+    if (msg) { $("broadcastMsg").textContent = msg; $("broadcast").classList.remove("hidden"); }
+    else { $("broadcast").classList.add("hidden"); }
+  }
 
   // ── Generic Custom Dropdown Logic ──
   function setupDropdown(toggleId, menuId, labelId, badgeId, onSelect) {
@@ -475,7 +497,10 @@
     episodeLabel.textContent = `Episode ${epNum}`;
   }
 
-  document.addEventListener("DOMContentLoaded", loadEpisodeInfo);
+  document.addEventListener("DOMContentLoaded", () => {
+    loadBroadcast();
+    loadEpisodeInfo();
+  });
 })();
 </script>
 </body>
