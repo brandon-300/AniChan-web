@@ -63,8 +63,10 @@
   .field input:focus{border-color:var(--accent)}
   .field .icon{
     position:absolute;left:14px;top:50%;transform:translateY(-50%);
-    font-size:18px;color:var(--muted);pointer-events:none;
+    font-size:20px;color:var(--muted);pointer-events:none;
+    z-index:1;
   }
+  /* Adjust for the password field: the icon is inside .field, before .pwd-wrap */
   .pwd-wrap{position:relative}
   .pwd-wrap input{padding-right:48px}
   .pwd-wrap .reveal{
