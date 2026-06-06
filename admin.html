@@ -23,7 +23,6 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 img{display:block;max-width:100%}
 
-/* ══ SPINNER ══ */
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{
   display:inline-block;width:14px;height:14px;
@@ -35,7 +34,6 @@ img{display:block;max-width:100%}
   flex-shrink:0;
 }
 
-/* ══ DESKTOP LAYOUT ══ */
 .app-layout{display:flex;min-height:100vh;}
 
 .sidebar{
@@ -63,15 +61,12 @@ img{display:block;max-width:100%}
 }
 .logout-btn-side:hover{background:rgba(255,71,87,.12)}
 
-/* ══ MAIN AREA ══ */
 .main-area{flex:1;min-width:0;display:flex;flex-direction:column;}
 
-/* Desktop top bar hidden on desktop — just the sidebar handles nav */
 .top-bar-mobile{display:none;}
 
 .content{padding:20px 24px;flex:1;}
 
-/* ══ GLASS PANELS ══ */
 .glass-panel{
   background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -153,15 +148,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .star-rating .star.empty{color:var(--muted);opacity:0.4;}
 .added-date{font-size:10px;color:var(--muted);margin-top:2px}
 
-/* ══ BOTTOM NAB BAR — mobile only ══ */
 .bottom-nav{display:none;}
 
-/* ══ MOBILE OVERRIDES ══ */
 @media(max-width:768px){
-  /* Kill the desktop sidebar completely */
   .sidebar{display:none !important;}
-
-  /* Simple sticky header */
   .top-bar-mobile{
     display:flex;
     position:sticky;top:0;left:0;right:0;z-index:50;
@@ -180,16 +170,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   }
   .logout-btn-mobile:hover{background:rgba(255,71,87,.12)}
 
-  /* Main scrolls freely — no overflow trap */
   .app-layout{flex-direction:column;min-height:100vh;}
   .main-area{flex:1;}
-  .content{padding:14px 12px 100px;}/* bottom padding for bottom-nav */
+  .content{padding:14px 12px 100px;}
 
-  /* Single column */
   .bento-grid{grid-template-columns:1fr !important;}
   .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1 !important;}
 
-  /* Bottom navigation bar */
   .bottom-nav{
     display:flex;
     position:fixed;bottom:0;left:0;right:0;z-index:50;
@@ -209,14 +196,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   .bottom-nav-item.active,.bottom-nav-item:active{color:var(--accent);}
   .bottom-nav-item .nav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center;}
 
-  /* Section visibility on mobile — only show active section */
   .bento-section{display:none;}
   .bento-section.mobile-active{display:block;}
 
-  .toast{bottom:80px;} /* above bottom-nav */
+  .toast{bottom:80px;}
 }
 
-/* Desktop: all sections visible always */
 @media(min-width:769px){
   .bento-section{display:contents;}
 }
@@ -225,7 +210,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 <body>
 <div class="app-layout">
 
-  <!-- ══ DESKTOP SIDEBAR ══ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">Ani<span class="accent">Chan</span></div>
     <nav class="sidebar-nav">
@@ -240,23 +224,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="logout-btn-side" id="logoutBtn"><span class="material-symbols-outlined">logout</span> Logout</button>
   </aside>
 
-  <!-- ══ MAIN AREA ══ -->
   <div class="main-area">
 
-    <!-- Mobile top header -->
     <div class="top-bar-mobile">
       <div class="brand">Ani<span class="accent">Chan</span></div>
       <button class="logout-btn-mobile" id="logoutBtnMobile"><span class="material-symbols-outlined">logout</span> Logout</button>
     </div>
 
-    <!-- Gate -->
     <div id="gate" style="display:none;min-height:60vh;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px">
       <h2>Checking access…</h2>
       <p id="gateMsg" style="color:var(--muted)">Verifying your session.</p>
       <a href="index.html" class="btn" style="margin-top:16px">← Back to Home</a>
     </div>
 
-    <!-- App content -->
     <div id="app" style="display:none;flex:1">
       <div class="content">
         <div class="bento-grid">
@@ -305,7 +285,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
-          <!-- Add/Edit Anime Form -->
+          <!-- Add/Edit Anime Form – only English and Japanese title fields -->
           <div class="bento-section glass-panel span-2" id="anime-form-section">
             <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
             <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the main title is required.</p>
@@ -313,9 +293,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div style="grid-column:span 2"><label for="titleInput">Title (English) *</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
               <div><label for="titleJpInput">Japanese</label><input id="titleJpInput" type="text" placeholder="日本語タイトル" /></div>
-              <div><label for="titleZhInput">Chinese</label><input id="titleZhInput" type="text" placeholder="中文标题" /></div>
-              <div><label for="titleDeInput">German</label><input id="titleDeInput" type="text" placeholder="Deutscher Titel" /></div>
-              <div><label for="titleFrInput">French</label><input id="titleFrInput" type="text" placeholder="Titre français" /></div>
               <div><label for="imageInput">Image URL</label><input id="imageInput" type="url" placeholder="https://…" /></div>
               <div>
                 <label for="statusInput">Status</label>
@@ -380,38 +357,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
-        </div><!-- /.bento-grid -->
-      </div><!-- /.content -->
-    </div><!-- /#app -->
-  </div><!-- /.main-area -->
-</div><!-- /.app-layout -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- ══ MOBILE BOTTOM NAV ══ -->
+<!-- Mobile bottom nav -->
 <nav class="bottom-nav" id="bottomNav" style="display:none">
-  <button class="bottom-nav-item active" data-section="broadcast-section">
-    <span class="material-symbols-outlined">campaign</span>
-    <span class="nav-label">Broadcast</span>
-  </button>
-  <button class="bottom-nav-item" data-section="logo-section">
-    <span class="material-symbols-outlined">image</span>
-    <span class="nav-label">Logo</span>
-  </button>
-  <button class="bottom-nav-item" data-section="autofetch-section">
-    <span class="material-symbols-outlined">search</span>
-    <span class="nav-label">Fetch</span>
-  </button>
-  <button class="bottom-nav-item" data-section="anime-form-section">
-    <span class="material-symbols-outlined">edit_note</span>
-    <span class="nav-label">Add/Edit</span>
-  </button>
-  <button class="bottom-nav-item" data-section="member-section">
-    <span class="material-symbols-outlined">group</span>
-    <span class="nav-label">Members</span>
-  </button>
-  <button class="bottom-nav-item" data-section="collection-section">
-    <span class="material-symbols-outlined">library_books</span>
-    <span class="nav-label">Collection</span>
-  </button>
+  <button class="bottom-nav-item active" data-section="broadcast-section"><span class="material-symbols-outlined">campaign</span><span class="nav-label">Broadcast</span></button>
+  <button class="bottom-nav-item" data-section="logo-section"><span class="material-symbols-outlined">image</span><span class="nav-label">Logo</span></button>
+  <button class="bottom-nav-item" data-section="autofetch-section"><span class="material-symbols-outlined">search</span><span class="nav-label">Fetch</span></button>
+  <button class="bottom-nav-item" data-section="anime-form-section"><span class="material-symbols-outlined">edit_note</span><span class="nav-label">Add/Edit</span></button>
+  <button class="bottom-nav-item" data-section="member-section"><span class="material-symbols-outlined">group</span><span class="nav-label">Members</span></button>
+  <button class="bottom-nav-item" data-section="collection-section"><span class="material-symbols-outlined">library_books</span><span class="nav-label">Collection</span></button>
 </nav>
 
 <!-- Suspend/Delete dialog -->
@@ -441,7 +400,6 @@ const ADMIN_ITEMS_PER_PAGE = 20;
 let totalAnimeCount = 0, adminPage = 1, cancelFlag = false;
 let memberAction = null, selectedUserId = null;
 
-// ── Button loading helper ──
 function setLoading(btn, loading, label) {
   if (loading) {
     btn._origHTML = btn.innerHTML;
@@ -456,7 +414,6 @@ function setLoading(btn, loading, label) {
   }
 }
 
-// ── Mobile nav ──
 const isMobile = () => window.innerWidth <= 768;
 
 function initMobileNav() {
@@ -464,13 +421,11 @@ function initMobileNav() {
   const bottomNav = $('bottomNav');
   bottomNav.style.display = 'flex';
 
-  // Show only first section initially
   const sections = document.querySelectorAll('.bento-section');
   sections.forEach(s => s.classList.remove('mobile-active'));
   const firstSection = document.querySelector('.bento-section');
   if (firstSection) firstSection.classList.add('mobile-active');
 
-  // Bottom nav clicks
   bottomNav.querySelectorAll('.bottom-nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const targetId = btn.dataset.section;
@@ -483,7 +438,6 @@ function initMobileNav() {
     });
   });
 
-  // Desktop sidebar links — same behavior on mobile via data-section
   document.querySelectorAll('.sidebar-link[data-section]').forEach(link => {
     link.addEventListener('click', e => {
       e.preventDefault();
@@ -492,7 +446,6 @@ function initMobileNav() {
         sections.forEach(s => s.classList.remove('mobile-active'));
         const target = $(targetId);
         if (target) target.classList.add('mobile-active');
-        // Sync bottom nav
         bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => {
           b.classList.toggle('active', b.dataset.section === targetId);
         });
@@ -505,7 +458,6 @@ function initMobileNav() {
   });
 }
 
-// ── Session timeout ──
 const IDLE_LIMIT = 5 * 60 * 1000;
 let idleTimer;
 window.isLoggingOut = false;
@@ -530,7 +482,6 @@ window.addEventListener('load', () => {
   document.addEventListener(evt, resetIdleTimer, { passive: true })
 );
 
-// ── Stars ──
 function updateStarRating(score) {
   const container = $('starRating'); if (!container) return; container.innerHTML = '';
   const stars = score ? Math.round(score / 2) : 0;
@@ -541,7 +492,6 @@ function updateStarRating(score) {
   }
 }
 
-// ── Gate ──
 async function gate() {
   $("gate").style.display = "flex";
   const { data: { session } } = await sb.auth.getSession();
@@ -553,14 +503,12 @@ async function gate() {
   return true;
 }
 
-// ── Toast ──
 let toastTimer;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-// ── Logout ──
 async function handleLogout() {
   clearTimeout(idleTimer); sessionStorage.removeItem('admin_unload'); window.isLoggingOut = true;
   await sb.auth.signOut(); window.location.replace("index.html");
@@ -568,7 +516,6 @@ async function handleLogout() {
 $("logoutBtn").addEventListener("click", handleLogout);
 $("logoutBtnMobile").addEventListener("click", handleLogout);
 
-// ── Broadcast ──
 async function loadBroadcast() {
   const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
   $("broadcastInput").value = (data && data.value) || "";
@@ -592,7 +539,6 @@ $("broadcastClear").addEventListener("click", async () => {
   else toast("Broadcast cleared");
 });
 
-// ── Logo ──
 async function loadCurrentLogo() {
   const { data } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
   const url = data?.value || "";
@@ -617,16 +563,20 @@ $("uploadLogoBtn").addEventListener("click", async () => {
   finally { setLoading(btn, false); }
 });
 
-// ── Helpers ──
 function extractLanguageTitles(jikanAnime) {
-  const titles = jikanAnime.titles || []; const result = { en:null,jp:null,zh:null,de:null,fr:null };
-  for (const t of titles) { switch(t.type){ case'English':result.en=t.title;break;case'Japanese':result.jp=t.title;break;case'German':result.de=t.title;break;case'French':result.fr=t.title;break;case'Chinese':result.zh=t.title;break; } }
+  const titles = jikanAnime.titles || []; const result = { en:null, jp:null };
+  for (const t of titles) { if(t.type==='English')result.en=t.title; if(t.type==='Japanese')result.jp=t.title; }
   if (!result.en && jikanAnime.title_english) result.en = jikanAnime.title_english;
   if (!result.jp && jikanAnime.title_japanese) result.jp = jikanAnime.title_japanese;
   return result;
 }
 function getAllTitleVariations(anime) {
-  return ['title','title_en','title_jp','title_zh','title_de','title_fr'].map(k => anime[k] && anime[k].trim().toLowerCase()).filter(Boolean);
+  // Only English, Japanese, and main title
+  const titles = [];
+  if (anime.title && anime.title.trim()) titles.push(anime.title.trim().toLowerCase());
+  if (anime.title_en && anime.title_en.trim()) titles.push(anime.title_en.trim().toLowerCase());
+  if (anime.title_jp && anime.title_jp.trim()) titles.push(anime.title_jp.trim().toLowerCase());
+  return titles;
 }
 function normalizeType(t){ if (!t) return ""; const opts=["TV","Movie","OVA","ONA","Special","Music"]; return opts.find(o=>o.toLowerCase()===t.toLowerCase())||""; }
 function parseGenres(str){ return String(str||"").split(",").map(s=>s.trim()).filter(Boolean); }
@@ -644,7 +594,6 @@ function renderGenreChips(){
 }
 $("genresInput").addEventListener("input", renderGenreChips);
 
-// ── Search ──
 let searchAbort;
 $("searchBtn").addEventListener("click", async () => {
   const btn = $("searchBtn");
@@ -680,7 +629,6 @@ $("searchBtn").addEventListener("click", async () => {
       btn2.addEventListener("click", () => {
         fillFormFromJikan(a, src);
         toast("Filled from Jikan — review and Save");
-        // On mobile, switch to the form section
         if (isMobile()) {
           document.querySelectorAll('.bento-section').forEach(s => s.classList.remove('mobile-active'));
           $('anime-form-section').classList.add('mobile-active');
@@ -701,9 +649,6 @@ function fillFormFromJikan(a, imgSrc){
   const lang = extractLanguageTitles(a);
   $("titleInput").value = lang.en || a.title || "";
   $("titleJpInput").value = lang.jp || "";
-  $("titleZhInput").value = lang.zh || "";
-  $("titleDeInput").value = lang.de || "";
-  $("titleFrInput").value = lang.fr || "";
   $("imageInput").value = imgSrc || "";
   $("typeInput").value = normalizeType(a.type);
   $("releaseTypeInput").value = "";
@@ -720,9 +665,6 @@ function setEditMode(item){
   $("editId").value = item.id;
   $("titleInput").value = item.title_en||item.title||"";
   $("titleJpInput").value = item.title_jp||"";
-  $("titleZhInput").value = item.title_zh||"";
-  $("titleDeInput").value = item.title_de||"";
-  $("titleFrInput").value = item.title_fr||"";
   $("imageInput").value = item.image_url||"";
   $("statusInput").value = item.status||"";
   $("typeInput").value = normalizeType(item.type);
@@ -737,7 +679,6 @@ function setEditMode(item){
   renderGenreChips();
   $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Edit Item';
   $("cancelEdit").style.display = "inline-flex";
-  // On mobile, switch to form section
   if (isMobile()) {
     document.querySelectorAll('.bento-section').forEach(s => s.classList.remove('mobile-active'));
     $('anime-form-section').classList.add('mobile-active');
@@ -749,9 +690,7 @@ function setEditMode(item){
 
 function clearForm(){
   $("editId").value = "";
-  ["titleInput","titleJpInput","titleZhInput","titleDeInput","titleFrInput",
-   "imageInput","statusInput","typeInput","releaseTypeInput","scoreInput","epTotalInput","yearInput",
-   "genresInput","studioInput","notesInput"].forEach(id => $(id).value = "");
+  ["titleInput","titleJpInput","imageInput","statusInput","typeInput","releaseTypeInput","scoreInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"].forEach(id => $(id).value = "");
   updateStarRating(null); renderGenreChips();
   $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Add to Latest Releases';
   $("cancelEdit").style.display = "none";
@@ -766,9 +705,6 @@ $("saveItem").addEventListener("click", async () => {
   const payload = {
     title: titleEn, title_en: titleEn,
     title_jp: $("titleJpInput").value.trim()||null,
-    title_zh: $("titleZhInput").value.trim()||null,
-    title_de: $("titleDeInput").value.trim()||null,
-    title_fr: $("titleFrInput").value.trim()||null,
     image_url: $("imageInput").value.trim()||null,
     status: $("statusInput").value||null,
     type: normalizeType($("typeInput").value)||null,
@@ -790,7 +726,6 @@ $("saveItem").addEventListener("click", async () => {
   clearForm(); await loadAnimeList();
 });
 
-// ── Collection ──
 async function loadAnimeList() {
   const { count } = await sb.from("anime").select("*", { count:"exact", head:true });
   totalAnimeCount = count || 0;
@@ -852,7 +787,6 @@ async function loadAnimeList() {
 $("prevPageBtn").addEventListener("click", () => { if (adminPage>1){adminPage--;loadAnimeList();} });
 $("nextPageBtn").addEventListener("click", () => { const tp=Math.ceil(totalAnimeCount/ADMIN_ITEMS_PER_PAGE); if(adminPage<tp){adminPage++;loadAnimeList();} });
 
-// ── Cancel operation ──
 function showCancelButton() { $("cancelOperationBtn").style.display="inline-flex"; cancelFlag=false; }
 function hideCancelButton() { $("cancelOperationBtn").style.display="none"; }
 $("cancelOperationBtn").addEventListener("click", () => {
@@ -861,7 +795,6 @@ $("cancelOperationBtn").addEventListener("click", () => {
   }
 });
 
-// ── Bulk Import ──
 $("bulkImportBtn").addEventListener("click", async () => {
   const btn = $("bulkImportBtn"), status = $("bulkStatus");
   setLoading(btn, true, 'Importing…');
@@ -871,7 +804,7 @@ $("bulkImportBtn").addEventListener("click", async () => {
   try {
     let from=0;
     while(true){
-      const{data:batch,error}=await sb.from("anime").select("title,title_en,title_jp,title_zh,title_de,title_fr").range(from,from+999);
+      const{data:batch,error}=await sb.from("anime").select("title,title_en,title_jp").range(from,from+999);
       if(error)throw error; if(!batch?.length)break;
       for(const item of batch) for(const v of getAllTitleVariations(item)) existingTitlesSet.add(v);
       if(batch.length<1000)break; from+=1000;
@@ -888,7 +821,7 @@ $("bulkImportBtn").addEventListener("click", async () => {
       for(const a of list){
         if(cancelFlag||insertsAccum.length>=50)break;
         const mainTitle=(a.title||'').trim(); const lang=extractLanguageTitles(a);
-        const candidate={title:mainTitle,title_en:lang.en,title_jp:lang.jp,title_zh:lang.zh,title_de:lang.de,title_fr:lang.fr};
+        const candidate={title:mainTitle,title_en:lang.en,title_jp:lang.jp};
         const candVars=getAllTitleVariations(candidate);
         if(candVars.some(v=>existingTitlesSet.has(v)))continue;
         if(insertsAccum.some(ex=>getAllTitleVariations(ex).some(v=>candVars.includes(v))))continue;
@@ -897,7 +830,7 @@ $("bulkImportBtn").addEventListener("click", async () => {
         const year=a.year||(a.aired?.from?new Date(a.aired.from).getFullYear():null);
         const genres=(a.genres||[]).map(g=>g.name).filter(Boolean);
         const studio=(a.studios||[]).map(s=>s.name).join(", ")||null;
-        const entry={title:lang.en||mainTitle,title_en:lang.en,title_jp:lang.jp,title_zh:lang.zh,title_de:lang.de,title_fr:lang.fr,image_url,type,year,genres,studio,score:a.score||null,ep_total:a.episodes!=null?a.episodes:null,status:mapAiringStatus(a.status)||'Not yet aired',release_type:null,aired_from:a.aired?.from?new Date(a.aired.from).toISOString():null,aired_to:a.aired?.to?new Date(a.aired.to).toISOString():null};
+        const entry={title:lang.en||mainTitle,title_en:lang.en,title_jp:lang.jp,image_url,type,year,genres,studio,score:a.score||null,ep_total:a.episodes!=null?a.episodes:null,status:mapAiringStatus(a.status)||'Not yet aired',release_type:null,aired_from:a.aired?.from?new Date(a.aired.from).toISOString():null,aired_to:a.aired?.to?new Date(a.aired.to).toISOString():null};
         insertsAccum.push(entry); for(const v of candVars) existingTitlesSet.add(v);
       }
       page++; await new Promise(r=>setTimeout(r,300));
@@ -913,7 +846,6 @@ $("bulkImportBtn").addEventListener("click", async () => {
   finally { setLoading(btn,false); hideCancelButton(); cancelFlag=false; }
 });
 
-// ── Fix All ──
 class RateLimiter{
   constructor(max,ms){this.max=max;this.ms=ms;this.calls=[];}
   async wait(){
@@ -935,7 +867,7 @@ $("fixAllBtn").addEventListener("click", async () => {
   try{
     let from=0;
     while(true){
-      const{data,error}=await sb.from("anime").select("id,title,status,title_en,title_jp,title_zh,title_de,title_fr,aired_from,aired_to,score,ep_total,genres,studio,release_type").range(from,from+999);
+      const{data,error}=await sb.from("anime").select("id,title,status,title_en,title_jp,aired_from,aired_to,score,ep_total,genres,studio,release_type").range(from,from+999);
       if(error)throw error; if(!data?.length)break;
       for(const a of data){
         if(!a.title_en||!a.title_jp||(a.status==='Currently Airing'&&a.aired_to&&new Date(a.aired_to)<new Date())||a.score==null||a.ep_total==null||!a.genres||(Array.isArray(a.genres)&&a.genres.length===0)||!a.studio) incompleteAnime.push(a);
@@ -956,9 +888,6 @@ $("fixAllBtn").addEventListener("click", async () => {
       const lang=extractLanguageTitles(match);
       if(lang.en&&lang.en!==anime.title_en)updates.title_en=lang.en;
       if(lang.jp&&lang.jp!==anime.title_jp)updates.title_jp=lang.jp;
-      if(lang.zh&&lang.zh!==anime.title_zh)updates.title_zh=lang.zh;
-      if(lang.de&&lang.de!==anime.title_de)updates.title_de=lang.de;
-      if(lang.fr&&lang.fr!==anime.title_fr)updates.title_fr=lang.fr;
       if(match.aired?.from){const f=new Date(match.aired.from).toISOString();if(f!==anime.aired_from)updates.aired_from=f;}
       if(match.aired?.to){const t=new Date(match.aired.to).toISOString();if(t!==anime.aired_to)updates.aired_to=t;}
       if(anime.score==null&&match.score!=null)updates.score=match.score;
@@ -973,7 +902,7 @@ $("fixAllBtn").addEventListener("click", async () => {
     status.textContent="Reverting changes…";
     for(const id of updatedIds){
       const orig=incompleteAnime.find(a=>a.id===id);
-      if(orig)await sb.from("anime").update({status:orig.status,title_en:orig.title_en,title_jp:orig.title_jp,title_zh:orig.title_zh,title_de:orig.title_de,title_fr:orig.title_fr,aired_from:orig.aired_from,aired_to:orig.aired_to,score:orig.score,ep_total:orig.ep_total,genres:orig.genres,studio:orig.studio}).eq("id",id);
+      if(orig)await sb.from("anime").update({status:orig.status,title_en:orig.title_en,title_jp:orig.title_jp,aired_from:orig.aired_from,aired_to:orig.aired_to,score:orig.score,ep_total:orig.ep_total,genres:orig.genres,studio:orig.studio}).eq("id",id);
     }
     toast("Cancelled — changes reverted."); status.textContent="Cancelled.";
   } else {
@@ -984,14 +913,13 @@ $("fixAllBtn").addEventListener("click", async () => {
   setLoading(btn,false); hideCancelButton(); cancelFlag=false;
 });
 
-// ── Delete Duplicates ──
 $("deleteDupBtn").addEventListener("click", async () => {
   const btn=$("deleteDupBtn"),status=$("bulkStatus");
   setLoading(btn,true,'Scanning duplicates…'); status.textContent="Loading all anime…";
   try{
     let allAnime=[],from=0;
     while(true){
-      const{data,error}=await sb.from("anime").select("id,title,title_en,title_jp,title_zh,title_de,title_fr,created_at").range(from,from+999);
+      const{data,error}=await sb.from("anime").select("id,title,title_en,title_jp,created_at").range(from,from+999);
       if(error)throw error; if(!data?.length)break; allAnime=[...allAnime,...data]; if(data.length<1000)break; from+=1000;
     }
     const seen=new Set(),toDelete=[];
@@ -1013,7 +941,6 @@ $("deleteDupBtn").addEventListener("click", async () => {
   finally{setLoading(btn,false);}
 });
 
-// ── Members ──
 async function loadMembers() {
   const btn=$("refreshMembers"); setLoading(btn,true,'Loading members…');
   const{data,error}=await sb.from("profiles").select("*").order("created_at",{ascending:false});
@@ -1064,7 +991,6 @@ $("memberModalConfirm").addEventListener("click", async ()=>{
   else{toast(memberAction==="delete"?"User deleted ✓":memberAction==="suspend"?"User suspended ✓":"User unsuspended ✓"); await loadMembers();}
 });
 
-// ── Action Log ──
 async function loadActionLog(){
   const{data,error}=await sb.from("admin_log").select("*").order("created_at",{ascending:false}).limit(30);
   const log=$("actionLog");
@@ -1072,7 +998,6 @@ async function loadActionLog(){
   log.innerHTML=data.map(e=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${e.action||"Action"}</span><span style="float:right;font-size:10px">${new Date(e.created_at).toLocaleString()}</span></div>`).join("");
 }
 
-// ── Init ──
 (async()=>{
   resetIdleTimer();
   const ok = await gate();
