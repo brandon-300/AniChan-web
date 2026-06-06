@@ -73,6 +73,7 @@
     transition:transform .1s;
   }
   .pencil-btn:active{transform:scale(0.95)}
+  .pencil-btn:disabled{opacity:0.7; cursor:not-allowed;}
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
@@ -107,9 +108,37 @@
     background:var(--danger);color:#fff;border:none;
     padding:12px 24px;border-radius:12px;font-weight:600;font-size:14px;
     cursor:pointer;transition:filter .15s;
+    display:inline-flex;align-items:center;gap:6px;
   }
   .btn-red:hover{filter:brightness(1.1)}
+  .btn-red:disabled{opacity:0.6;cursor:not-allowed;filter:none;}
   .avatar-upload-input{display:none}
+
+  /* Spinner for buttons */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .btn-spinner{
+    display:inline-block;width:14px;height:14px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-top-color:currentColor;
+    border-radius:50%;animation:spin .6s linear infinite;
+    vertical-align:middle;flex-shrink:0;
+  }
+  /* Adjust spinner color for primary/accent buttons */
+  .btn.primary .btn-spinner{
+    border:2px solid rgba(0,0,0,0.2);
+    border-top-color:#0a2a28;
+  }
+  .btn-red .btn-spinner{
+    border:2px solid rgba(255,255,255,0.3);
+    border-top-color:#fff;
+  }
+  /* Smaller spinner for the pencil button */
+  .pencil-btn .btn-spinner{
+    width:12px; height:12px;
+    border-width:2px;
+    border-color: rgba(0,0,0,0.2);
+    border-top-color:#0a2a28;
+  }
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 
@@ -132,7 +161,9 @@
         <div class="avatar-section" id="avatarSection">
           <img class="avatar-img" id="avatarImg" src="" alt="Profile picture" />
           <div class="online-dot" id="onlineDot"></div>
-          <button class="pencil-btn" id="pencilBtn" title="Change photo"><span class="material-symbols-outlined" style="font-size:16px">edit</span></button>
+          <button class="pencil-btn" id="pencilBtn" title="Change photo">
+            <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+          </button>
           <input type="file" class="avatar-upload-input" id="avatarInput" accept="image/*" />
         </div>
         <div class="user-info">
@@ -256,13 +287,13 @@
     updateHeaderButtons();
   }
 
-  // Helper: set loading state on button
+  // Helper to set loading state on any button
   function setButtonLoading(btn, loading, label) {
     if (loading) {
       btn._originalHTML = btn.innerHTML;
       btn._originalDisabled = btn.disabled;
       btn.disabled = true;
-      btn.innerHTML = `<span class="spinner"></span> ${label || 'Loading…'}`;
+      btn.innerHTML = `<span class="btn-spinner"></span> ${label || ''}`;
     } else {
       btn.innerHTML = btn._originalHTML || btn.innerHTML;
       btn.disabled = btn._originalDisabled || false;
@@ -270,17 +301,6 @@
       delete btn._originalDisabled;
     }
   }
-
-  // Spinner CSS injected via JS
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;flex-shrink:0;}
-    .btn .spinner{width:14px;height:14px;}
-    .btn-red .spinner{border:2px solid rgba(255,255,255,.25);border-top-color:white;}
-    .btn.primary .spinner{border:2px solid rgba(0,0,0,.2);border-top-color:#0a2a28;}
-  `;
-  document.head.appendChild(style);
 
   function updateHeaderButtons() {
     const container = $('headerActions');
@@ -404,32 +424,47 @@
     if (profile) renderProfile(profile); else renderProfile({});
     updateHeaderButtons();
 
+    // Avatar upload with local loading state for pencil button
+    const pencilBtn = $('pencilBtn');
     $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
     $('avatarInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const pencilBtn = $('pencilBtn');
-      setButtonLoading(pencilBtn, true, 'Uploading…');
+
+      // Show spinner in pencil button
+      pencilBtn.disabled = true;
+      pencilBtn.innerHTML = '<span class="btn-spinner"></span>';
+
       try {
         await uploadAvatar(file);
-        $('updateSuccess').textContent = t('avatarUpdated'); $('updateSuccess').classList.add('show');
-      } catch(err) { $('updateErr').textContent = err.message; $('updateErr').classList.add('show'); }
-      finally {
-        setButtonLoading(pencilBtn, false);
-        e.target.value = '';
+        $('updateSuccess').textContent = t('avatarUpdated');
+        $('updateSuccess').classList.add('show');
+      } catch(err) {
+        $('updateErr').textContent = err.message;
+        $('updateErr').classList.add('show');
+      } finally {
+        // Restore pencil button icon
+        pencilBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">edit</span>';
+        pencilBtn.disabled = false;
+        e.target.value = ''; // allow re-upload of same file
       }
     });
 
     const bottom = $('bottomActions');
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn-red';
-    logoutBtn.textContent = t('logout');
+    logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span> ' + t('logout');
     logoutBtn.addEventListener('click', async () => {
       setButtonLoading(logoutBtn, true, 'Logging out…');
       await handleLogout();
+      // handleLogout redirects, but just in case:
+      setButtonLoading(logoutBtn, false);
     });
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn-red'; deleteBtn.style.background = 'transparent'; deleteBtn.style.border = '1px solid rgba(255,71,87,.25)'; deleteBtn.style.color = 'var(--danger)';
+    deleteBtn.className = 'btn-red';
+    deleteBtn.style.background = 'transparent';
+    deleteBtn.style.border = '1px solid rgba(255,71,87,.25)';
+    deleteBtn.style.color = 'var(--danger)';
     deleteBtn.textContent = t('deleteAccount');
     deleteBtn.addEventListener('click', async () => {
       if (!confirm(t('deleteAccountConfirm'))) return;
@@ -439,8 +474,10 @@
       stopHeartbeat(); clearTimeout(inactivityTimer);
       await supabase.auth.signOut();
       location.href = "user_login.html";
+      // No need to restore button because we navigate away
     });
-    bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
+    bottom.appendChild(logoutBtn);
+    bottom.appendChild(deleteBtn);
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) { setOnlineStatus(true); resetInactivity(); }
