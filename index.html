@@ -631,20 +631,41 @@
         card.appendChild(bottomBar);
 
         // ── Event listeners with 150ms delay ──
-        // touchstart + click both fire on mobile; preventDefault on touchstart
-        // suppresses the synthetic click. scheduleNav cancels any pending nav
-        // so rapid taps correctly transfer the play icon to the new card.
-        const handleActivate = (e) => {
+        // On mobile we split touch into three phases so scroll is never blocked:
+        //   touchstart  → record finger position (passive, never preventDefault)
+        //   touchmove   → if finger moved >8px mark as scroll
+        //   touchend    → only activate if NOT a scroll gesture
+        // The synthetic click is suppressed by a wasTouch flag instead of preventDefault.
+        let touchStartX = 0, touchStartY = 0, touchWasScroll = false, wasTouch = false;
+
+        card.addEventListener('touchstart', (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchWasScroll = false;
+        }, { passive: true });
+
+        card.addEventListener('touchmove', (e) => {
+          const dx = Math.abs(e.touches[0].clientX - touchStartX);
+          const dy = Math.abs(e.touches[0].clientY - touchStartY);
+          if (dx > 8 || dy > 8) touchWasScroll = true;
+        }, { passive: true });
+
+        card.addEventListener('touchend', (e) => {
+          if (touchWasScroll) return;   // finger dragged → it was a scroll, ignore
+          wasTouch = true;
+          clearAllPlayIcons();
+          playIcon.classList.add('show');
+          scheduleNav(card.href);
+        }, { passive: true });
+
+        // Click handler for mouse devices; skipped if the tap already fired touchend
+        card.addEventListener('click', (e) => {
+          if (wasTouch) { wasTouch = false; return; }
           e.preventDefault();
           clearAllPlayIcons();
           playIcon.classList.add('show');
           scheduleNav(card.href);
-        };
-
-        card.addEventListener('click', handleActivate);
-
-        // Must be non‑passive so preventDefault suppresses the synthetic click
-        card.addEventListener('touchstart', handleActivate, { passive: false });
+        });
 
         list.appendChild(card);
       }
