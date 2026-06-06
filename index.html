@@ -619,22 +619,24 @@
         card.appendChild(bottomBar);
 
         // ── Event listeners with 150ms delay ──
+        // Guard flag prevents touchstart + click both firing on mobile
+        let navigating = false;
         const navigate = () => { location.href = card.href; };
 
-        card.addEventListener('click', function(e) {
+        const handleActivate = (e) => {
           e.preventDefault();
+          if (navigating) return;
+          navigating = true;
           clearAllPlayIcons();
           playIcon.classList.add('show');
           setTimeout(navigate, 150);
-        });
+        };
 
-        // Mobile touch – must be non‑passive so preventDefault works
-        card.addEventListener('touchstart', function(e) {
-          e.preventDefault();
-          clearAllPlayIcons();
-          playIcon.classList.add('show');
-          setTimeout(navigate, 150);
-        }, { passive: false });
+        card.addEventListener('click', handleActivate);
+
+        // Mobile touch – must be non‑passive so preventDefault works;
+        // calling preventDefault on touchstart suppresses the synthetic click entirely
+        card.addEventListener('touchstart', handleActivate, { passive: false });
 
         list.appendChild(card);
       }
