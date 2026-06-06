@@ -166,9 +166,6 @@
         <div class="lang-selector">
           <button class="lang-btn" onclick="setLanguage('en')">English</button>
           <button class="lang-btn" onclick="setLanguage('ja')">日本語</button>
-          <button class="lang-btn" onclick="setLanguage('zh')">中文</button>
-          <button class="lang-btn" onclick="setLanguage('de')">Deutsch</button>
-          <button class="lang-btn" onclick="setLanguage('fr')">Français</button>
         </div>
       </div>
     </div>
@@ -259,6 +256,32 @@
     updateHeaderButtons();
   }
 
+  // Helper: set loading state on button
+  function setButtonLoading(btn, loading, label) {
+    if (loading) {
+      btn._originalHTML = btn.innerHTML;
+      btn._originalDisabled = btn.disabled;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> ${label || 'Loading…'}`;
+    } else {
+      btn.innerHTML = btn._originalHTML || btn.innerHTML;
+      btn.disabled = btn._originalDisabled || false;
+      delete btn._originalHTML;
+      delete btn._originalDisabled;
+    }
+  }
+
+  // Spinner CSS injected via JS
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.25);border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;flex-shrink:0;}
+    .btn .spinner{width:14px;height:14px;}
+    .btn-red .spinner{border:2px solid rgba(255,255,255,.25);border-top-color:white;}
+    .btn.primary .spinner{border:2px solid rgba(0,0,0,.2);border-top-color:#0a2a28;}
+  `;
+  document.head.appendChild(style);
+
   function updateHeaderButtons() {
     const container = $('headerActions');
     container.innerHTML = '';
@@ -286,9 +309,15 @@
 
     if (isEditing) {
       const saveBtn = document.createElement('button');
-      saveBtn.className = 'btn primary'; saveBtn.textContent = t('save'); saveBtn.addEventListener('click', saveProfile);
+      saveBtn.className = 'btn primary'; saveBtn.textContent = t('save');
+      saveBtn.addEventListener('click', async () => {
+        setButtonLoading(saveBtn, true, t('save'));
+        await saveProfile();
+        setButtonLoading(saveBtn, false);
+      });
       const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn'; cancelBtn.textContent = t('cancel'); cancelBtn.addEventListener('click', cancelEdit);
+      cancelBtn.className = 'btn'; cancelBtn.textContent = t('cancel');
+      cancelBtn.addEventListener('click', cancelEdit);
       container.appendChild(saveBtn);
       container.appendChild(cancelBtn);
     } else {
@@ -379,19 +408,33 @@
     $('avatarInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      const pencilBtn = $('pencilBtn');
+      setButtonLoading(pencilBtn, true, 'Uploading…');
       try {
         await uploadAvatar(file);
         $('updateSuccess').textContent = t('avatarUpdated'); $('updateSuccess').classList.add('show');
       } catch(err) { $('updateErr').textContent = err.message; $('updateErr').classList.add('show'); }
-      finally { e.target.value = ''; }
+      finally {
+        setButtonLoading(pencilBtn, false);
+        e.target.value = '';
+      }
     });
 
     const bottom = $('bottomActions');
-    const logoutBtn = document.createElement('button'); logoutBtn.className = 'btn-red'; logoutBtn.textContent = t('logout'); logoutBtn.addEventListener('click', handleLogout);
-    const deleteBtn = document.createElement('button'); deleteBtn.className = 'btn-red'; deleteBtn.style.background = 'transparent'; deleteBtn.style.border = '1px solid rgba(255,71,87,.25)'; deleteBtn.style.color = 'var(--danger)'; deleteBtn.textContent = t('deleteAccount');
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'btn-red';
+    logoutBtn.textContent = t('logout');
+    logoutBtn.addEventListener('click', async () => {
+      setButtonLoading(logoutBtn, true, 'Logging out…');
+      await handleLogout();
+    });
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn-red'; deleteBtn.style.background = 'transparent'; deleteBtn.style.border = '1px solid rgba(255,71,87,.25)'; deleteBtn.style.color = 'var(--danger)';
+    deleteBtn.textContent = t('deleteAccount');
     deleteBtn.addEventListener('click', async () => {
       if (!confirm(t('deleteAccountConfirm'))) return;
       if (!confirm(t('deleteAccountFinal'))) return;
+      setButtonLoading(deleteBtn, true, 'Deleting…');
       await supabase.from('profiles').delete().eq('id', currentUserId);
       stopHeartbeat(); clearTimeout(inactivityTimer);
       await supabase.auth.signOut();
@@ -400,7 +443,6 @@
     bottom.appendChild(logoutBtn); bottom.appendChild(deleteBtn);
 
     document.addEventListener('visibilitychange', () => {
-      // Don't set offline on tab hide — only explicit logout does that
       if (!document.hidden) { setOnlineStatus(true); resetInactivity(); }
     });
   }
