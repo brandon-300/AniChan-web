@@ -169,10 +169,15 @@
     display:flex; gap:16px; align-items:flex-start;
     padding-top:12px;
   }
+  .meta-poster-link {
+    display:block; flex-shrink:0;
+    width:100px; height:140px;
+    border-radius:0;
+  }
   .meta-poster {
-    width:100px; height:140px; object-fit:cover;
+    width:100%; height:100%; object-fit:cover;
     border-radius:0; background:var(--panel);
-    border:1px solid var(--border); flex-shrink:0;
+    border:1px solid var(--border);
   }
   .meta-text {
     flex:1; min-width:0;
@@ -284,7 +289,9 @@
 
     <!-- Metadata Footer (poster + details) -->
     <div class="meta-footer">
-      <img class="meta-poster" id="posterImg" src="" alt="Poster" />
+      <a class="meta-poster-link" id="posterLink" href="#">
+        <img class="meta-poster" id="posterImg" src="" alt="Poster" />
+      </a>
       <div class="meta-text">
         <a class="show-title" id="showTitleLink" href="#">Loading...</a>
         <div class="ep-metrics" id="epMetrics"></div>
@@ -307,6 +314,7 @@
   if (!animeId) {
     $('showTitleLink').textContent = 'Missing anime ID';
     $('showTitleLink').removeAttribute('href');
+    $('posterLink').removeAttribute('href');
     return;
   }
 
@@ -389,8 +397,6 @@
   });
 
   // ── Episode dropdown ──
-  // We set it up but the menu is empty until anime data loads
-  // We need a separate function to repopulate it
   let episodeLabel = $('episodeLabel');
   let episodeMenu = $('episodeMenu');
 
@@ -412,15 +418,17 @@
     if (error || !data) {
       $('showTitleLink').textContent = 'Anime not found';
       $('showTitleLink').removeAttribute('href');
+      $('posterLink').removeAttribute('href');
       return;
     }
 
     const anime = data;
 
-    // Set poster
+    // Set poster (clickable link)
     const fallbackSvg = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140"><rect width="100" height="140" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No img</text></svg>');
     $('posterImg').src = anime.image_url || fallbackSvg;
     $('posterImg').onerror = () => { $('posterImg').src = fallbackSvg; };
+    $('posterLink').href = `anime_info.html?id=${animeId}`;
 
     // Title — clickable, links back to anime_info.html
     const title = anime.title_en || anime.title || 'Untitled';
