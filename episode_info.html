@@ -120,9 +120,24 @@
   .custom-dropdown .dropdown-menu li {
     padding:10px 14px;border-radius:8px;font-size:14px;font-weight:500;
     cursor:pointer;transition:background 0.1s;color:var(--text);
+    display:flex;align-items:center;gap:8px;
   }
   .custom-dropdown .dropdown-menu li:hover { background:var(--panel);color:var(--accent); }
   .custom-dropdown .dropdown-menu li.active { color:var(--accent); font-weight:700; }
+
+  /* Subtitle badge inside dropdown items */
+  .dropdown-menu li .mini-badge {
+    background:rgba(81,218,211,0.12);border:1px solid rgba(81,218,211,0.35);
+    color:var(--accent);border-radius:20px;padding:2px 8px;
+    font-size:11px;font-weight:700;margin-left:auto;
+  }
+
+  /* Subtitle badge in the quality toggle button */
+  .toggle-badge {
+    background:rgba(81,218,211,0.12);border:1px solid rgba(81,218,211,0.35);
+    color:var(--accent);border-radius:20px;padding:2px 8px;
+    font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;
+  }
 
   /* Row structures */
   .ctrl-row-split {
@@ -131,7 +146,13 @@
   .ctrl-row-center {
     display:flex; justify-content:center; align-items:center;
     margin-bottom:10px;
-    font-size:14px; color:var(--muted);
+  }
+  .ctrl-row-center .custom-dropdown {
+    flex:0 1 auto;
+    min-width:280px;
+  }
+  .ctrl-row-center .dropdown-toggle {
+    justify-content:center;
   }
   .download-btn {
     width:100%; padding:12px 18px; border-radius:12px;
@@ -142,12 +163,6 @@
     margin-bottom:24px;
   }
   .download-btn:hover{border-color:var(--accent);background:var(--card);}
-  .subtitle-badge{
-    background:rgba(81,218,211,0.12);border:1px solid rgba(81,218,211,0.35);
-    color:var(--accent);border-radius:20px;padding:4px 12px;
-    font-size:12px;font-weight:700;margin-left:6px;
-    display:inline-flex;align-items:center;gap:4px;
-  }
 
   /* ── Metadata Footer (poster + text) ── */
   .meta-footer {
@@ -156,7 +171,7 @@
   }
   .meta-poster {
     width:100px; height:140px; object-fit:cover;
-    border-radius:0; /* sharp corners */ background:var(--panel);
+    border-radius:0; background:var(--panel);
     border:1px solid var(--border); flex-shrink:0;
   }
   .meta-text {
@@ -164,8 +179,10 @@
   }
   .meta-text .show-title {
     font-size:20px; font-weight:700; color:#fff; margin-bottom:4px;
-    line-height:1.3;
+    line-height:1.3; text-decoration:none; display:block;
+    transition:color 0.15s;
   }
+  .meta-text .show-title:hover { color:var(--accent); }
   .meta-text .ep-metrics {
     font-size:14px; color:var(--muted); margin-bottom:4px;
   }
@@ -195,7 +212,7 @@
   </div>
 
   <main class="container">
-    <!-- Video Player (static overlay, no JS) -->
+    <!-- Video Player (static overlay, no JS for video) -->
     <div class="video-frame" id="videoFrame">
       <div class="video-overlay">
         <span class="material-symbols-outlined">replay</span>
@@ -214,7 +231,6 @@
         </button>
         <ul class="dropdown-menu" id="serverMenu">
           <li data-value="supabase" class="active">Supabase</li>
-          <!-- more servers can be added dynamically -->
         </ul>
       </div>
       <!-- Episode dropdown -->
@@ -227,10 +243,38 @@
       </div>
     </div>
 
-    <!-- Row 2: Quality & subtitle info centered -->
+    <!-- Row 2: Quality & Subtitle selector (now a custom dropdown) -->
     <div class="ctrl-row-center">
-      <span>AniChan · 720p</span>
-      <span class="subtitle-badge">Eng</span>
+      <div class="custom-dropdown" id="qualityDropdown">
+        <button class="dropdown-toggle" id="qualityToggle">
+          <span id="qualityLabel">AniChan · 720p</span>
+          <span class="toggle-badge" id="qualityBadge">Eng</span>
+          <span class="material-symbols-outlined">arrow_drop_down</span>
+        </button>
+        <ul class="dropdown-menu" id="qualityMenu">
+          <li data-value="1080p-eng" class="active">
+            <span>AniChan · 1080p</span>
+            <span class="mini-badge">Eng</span>
+          </li>
+          <li data-value="720p-eng">
+            <span>AniChan · 720p</span>
+            <span class="mini-badge">Eng</span>
+          </li>
+          <li data-value="360p-eng">
+            <span>AniChan · 360p</span>
+            <span class="mini-badge">Eng</span>
+          </li>
+          <li data-value="1080p-raw">
+            <span>AniChan · 1080p</span>
+          </li>
+          <li data-value="720p-raw">
+            <span>AniChan · 720p</span>
+          </li>
+          <li data-value="360p-raw">
+            <span>AniChan · 360p</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Row 3: Download button (static, no JS for functionality) -->
@@ -242,7 +286,7 @@
     <div class="meta-footer">
       <img class="meta-poster" id="posterImg" src="" alt="Poster" />
       <div class="meta-text">
-        <div class="show-title" id="showTitle">Loading...</div>
+        <a class="show-title" id="showTitleLink" href="#">Loading...</a>
         <div class="ep-metrics" id="epMetrics"></div>
         <div class="release-season" id="releaseSeason"></div>
       </div>
@@ -261,7 +305,8 @@
   let epNum = parseInt(params.get('ep')) || 1;
 
   if (!animeId) {
-    $('showTitle').textContent = 'Missing anime ID';
+    $('showTitleLink').textContent = 'Missing anime ID';
+    $('showTitleLink').removeAttribute('href');
     return;
   }
 
@@ -280,11 +325,12 @@
   $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Custom Dropdown Logic ──
-  function setupDropdown(toggleId, menuId, labelId, onSelect) {
+  // ── Generic Custom Dropdown Logic ──
+  function setupDropdown(toggleId, menuId, labelId, badgeId, onSelect) {
     const toggle = $(toggleId);
     const menu = $(menuId);
     const label = $(labelId);
+    const badge = badgeId ? $(badgeId) : null;
 
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -299,13 +345,29 @@
       const li = e.target.closest('li');
       if (!li) return;
       const value = li.dataset.value;
-      const text = li.textContent.trim();
-      label.textContent = text;
+
+      // Extract the main text (first span) and optional badge text
+      const mainSpan = li.querySelector('span');
+      const badgeSpan = li.querySelector('.mini-badge');
+      const mainText = mainSpan ? mainSpan.textContent.trim() : li.textContent.trim();
+      const badgeText = badgeSpan ? badgeSpan.textContent.trim() : '';
+
+      // Update the toggle button
+      label.textContent = mainText;
+      if (badge) {
+        if (badgeText) {
+          badge.textContent = badgeText;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
       menu.classList.remove('open');
       // Update active class
       menu.querySelectorAll('li').forEach(l => l.classList.remove('active'));
       li.classList.add('active');
-      if (onSelect) onSelect(value, text);
+      if (onSelect) onSelect(value, mainText, badgeText);
     });
 
     // Close on outside click
@@ -314,48 +376,58 @@
     });
   }
 
-  // Server dropdown – no action yet
-  setupDropdown('serverToggle', 'serverMenu', 'serverLabel', (val) => {
+  // ── Server dropdown ──
+  setupDropdown('serverToggle', 'serverMenu', 'serverLabel', null, (val) => {
     console.log('Server selected:', val);
-    // future server switching logic
+    // future server switching
   });
 
-  // Episode dropdown – will be populated after we fetch anime data
-  let episodeMenu = $('episodeMenu');
-  let episodeToggle = $('episodeToggle');
-  let episodeLabel = $('episodeLabel');
+  // ── Quality dropdown ──
+  setupDropdown('qualityToggle', 'qualityMenu', 'qualityLabel', 'qualityBadge', (val, label, badge) => {
+    console.log('Quality selected:', val, badge);
+    // future quality switching
+  });
 
-  // Global function to reload page with new episode number
+  // ── Episode dropdown ──
+  // We set it up but the menu is empty until anime data loads
+  // We need a separate function to repopulate it
+  let episodeLabel = $('episodeLabel');
+  let episodeMenu = $('episodeMenu');
+
   function goToEpisode(newEp) {
     const url = new URL(window.location);
     url.searchParams.set('ep', newEp);
     window.location.href = url.toString();
   }
 
-  setupDropdown('episodeToggle', 'episodeMenu', 'episodeLabel', (value) => {
+  // Initial setup with placeholder
+  setupDropdown('episodeToggle', 'episodeMenu', 'episodeLabel', null, (value) => {
     const ep = parseInt(value);
     if (!isNaN(ep)) goToEpisode(ep);
   });
 
-  // ── Fetch anime data and populate UI ──
+  // ── Fetch anime data and populate everything ──
   async function loadEpisodeInfo() {
     const { data, error } = await sb.from('anime').select('*').eq('id', animeId).single();
     if (error || !data) {
-      $('showTitle').textContent = 'Anime not found';
+      $('showTitleLink').textContent = 'Anime not found';
+      $('showTitleLink').removeAttribute('href');
       return;
     }
 
     const anime = data;
 
     // Set poster
-    $('posterImg').src = anime.image_url || 'data:image/svg+xml,...'; // fallback
-    $('posterImg').onerror = () => { $('posterImg').src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140"><rect width="100" height="140" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No img</text></svg>'); };
+    const fallbackSvg = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140"><rect width="100" height="140" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No img</text></svg>');
+    $('posterImg').src = anime.image_url || fallbackSvg;
+    $('posterImg').onerror = () => { $('posterImg').src = fallbackSvg; };
 
-    // Title
+    // Title — clickable, links back to anime_info.html
     const title = anime.title_en || anime.title || 'Untitled';
-    $('showTitle').textContent = title + ' - ' + epNum;
+    $('showTitleLink').textContent = title + ' - ' + epNum;
+    $('showTitleLink').href = `anime_info.html?id=${animeId}`;
 
-    // Episode metrics: e.g., "TV - 24 Episodes (Finished Airing)"
+    // Episode metrics
     const type = anime.type || '?';
     const epsTotal = anime.ep_total != null ? anime.ep_total : '?';
     const status = anime.status || '';
@@ -363,10 +435,9 @@
     if (status === 'Aired') statusText = 'Finished Airing';
     else if (status === 'Currently Airing') statusText = 'Currently Airing';
     else if (status === 'Not yet aired') statusText = 'Not yet aired';
-    const metrics = `${type} - ${epsTotal} Episodes${statusText ? ' (' + statusText + ')' : ''}`;
-    $('epMetrics').textContent = metrics;
+    $('epMetrics').textContent = `${type} - ${epsTotal} Episodes${statusText ? ' (' + statusText + ')' : ''}`;
 
-    // Release season (from aired_from)
+    // Release season
     let seasonText = '';
     if (anime.aired_from) {
       const d = new Date(anime.aired_from);
@@ -381,7 +452,7 @@
     }
     $('releaseSeason').textContent = seasonText;
 
-    // Populate episode dropdown list (1..ep_total)
+    // Populate episode dropdown
     const total = anime.ep_total || 0;
     episodeMenu.innerHTML = '';
     for (let i = 1; i <= total; i++) {
@@ -392,7 +463,7 @@
       episodeMenu.appendChild(li);
     }
 
-    // Update the label to match current episode
+    // Sync the episode label to the current episode
     episodeLabel.textContent = `Episode ${epNum}`;
   }
 
