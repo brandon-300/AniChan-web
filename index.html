@@ -174,12 +174,12 @@
     pointer-events:none;
   }
 
-  /* ══════════ PLAY BUTTON – large SVG triangle ══════════ */
+  /* ══════════ PLAY BUTTON – real dimensions + SVG ══════════ */
   .play-icon-overlay{
     position:absolute;
     top:50%; left:50%;
     transform:translate(-50%, -50%);
-    width:80px;                      /* real dimensions */
+    width:80px;
     height:80px;
     opacity:0;
     pointer-events:none;
@@ -190,13 +190,13 @@
     justify-content:center;
   }
   .play-icon-overlay.show{
-    opacity:0.45;
+    opacity:1;                    /* full opacity of the container – the SVG itself is translucent */
     transition:none;
   }
-  /* hover only for mouse users */
+  /* hover only for devices with a mouse */
   @media (hover: hover) {
     .release-card:hover .play-icon-overlay {
-      opacity:0.4;
+      opacity:1;
       transition:opacity 0.15s ease;
     }
   }
@@ -560,8 +560,8 @@
     document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
   }
 
-  // ── Play icon SVG string ──
-  const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="64" height="64"><polygon points="6,2 20,12 6,22"/></svg>';
+  // ── Pure white play triangle SVG (opacity 0.45) ──
+  const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="80" height="80"><polygon points="6,2 20,12 6,22" fill="white" opacity="0.45"/></svg>';
 
   function renderReleases() {
     const list = $("releaseList");
@@ -602,7 +602,7 @@
         // Play icon container (hidden by default)
         const playIcon = document.createElement("div");
         playIcon.className = "play-icon-overlay";
-        playIcon.innerHTML = PLAY_ICON_SVG;               // ← real SVG triangle
+        playIcon.innerHTML = PLAY_ICON_SVG;   // ← real SVG triangle with opacity
         card.appendChild(playIcon);
 
         // Bottom text row
@@ -618,24 +618,23 @@
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // ══════════ FIXED EVENT LISTENERS ══════════
-        // 1) Desktop hover is handled by CSS :hover (no JS needed)
-        // 2) Touch / click – prevent default, flash icon, navigate after 150ms
+        // ── Event listeners with 150ms delay ──
         const navigate = () => { location.href = card.href; };
 
         card.addEventListener('click', function(e) {
-          e.preventDefault();                           // stop instant navigation
-          clearAllPlayIcons();                         // remove any other visible icon
-          playIcon.classList.add('show');              // show THIS card's icon
-          setTimeout(navigate, 150);                   // wait, then go
-        });
-
-        card.addEventListener('touchstart', function(e) {
-          e.preventDefault();                           // prevent immediate navigation
+          e.preventDefault();
           clearAllPlayIcons();
           playIcon.classList.add('show');
           setTimeout(navigate, 150);
-        }, { passive: false });                        // passive:false allows preventDefault()
+        });
+
+        // Mobile touch – must be non‑passive so preventDefault works
+        card.addEventListener('touchstart', function(e) {
+          e.preventDefault();
+          clearAllPlayIcons();
+          playIcon.classList.add('show');
+          setTimeout(navigate, 150);
+        }, { passive: false });
 
         list.appendChild(card);
       }
