@@ -39,7 +39,6 @@
   }
   .header-actions{display:flex;align-items:center;gap:8px}
 
-  /* Hamburger menu button */
   .menu-btn{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
@@ -47,7 +46,6 @@
   }
   .menu-btn:hover{border-color:var(--accent);background:var(--card)}
 
-  /* Full‑width navigation dropdown */
   .nav-dropdown{
     display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
     -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
@@ -63,7 +61,6 @@
   .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
   .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
 
-  /* Search inside nav dropdown */
   .nav-search-wrap{margin-top:8px;position:relative}
   .nav-search-wrap input{
     width:100%;padding:12px 14px 12px 44px;border-radius:12px;
@@ -100,12 +97,8 @@
   .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
-  .no-results{
-    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
-    background:#1a1a1a;
-  }
+  .no-results{padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;background:#1a1a1a}
 
-  /* Broadcast banner */
   .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
     background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -114,7 +107,7 @@
 
   .container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
 
-  /* Hero section – poster centred */
+  /* Hero section */
   .hero{
     position:relative;width:100%;aspect-ratio:16/9;
     background-size:cover;background-position:center;
@@ -163,6 +156,7 @@
     content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;
     background:var(--accent);border-radius:2px 2px 0 0;
   }
+
   .tab-content{display:none}
   .tab-content.active{display:block}
 
@@ -188,21 +182,70 @@
   }
   .genre-chip:hover{background:rgba(81,218,211,.25)}
 
-  /* Episode grid */
+  /* Episode grid – new card style */
   .episode-grid{
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+    gap:12px;
     margin-bottom:20px;
   }
-  .ep-card{
-    aspect-ratio:16/9;background:var(--panel);border:2px solid var(--border);
-    border-radius:10px;display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;
+  .episode-card{
     position:relative;
+    aspect-ratio:16/9;
+    background-size:cover;
+    background-position:center;
+    background-color:#0a0a0a;
+    border-radius:12px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform 0.1s ease, box-shadow 0.15s;
+    border:2px solid transparent;
   }
-  .ep-card.watched{border-color:var(--accent);background:rgba(81,218,211,.08)}
-  .ep-card:hover{border-color:var(--accent)}
-  .ep-card .play-icon{font-size:24px;color:var(--muted)}
-  .ep-card.watched .play-icon{color:var(--accent)}
+  .episode-card:hover{
+    transform:scale(1.02);
+  }
+  .episode-card.watched{
+    border-color:var(--accent);
+    box-shadow:0 0 10px rgba(81,218,211,.3);
+  }
+  .episode-card .card-gradient{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(to top,
+      rgba(0,0,0,0.85) 0%,
+      rgba(0,0,0,0.4) 40%,
+      transparent 70%
+    );
+    pointer-events:none;
+  }
+  .episode-card .episode-number{
+    position:absolute;
+    bottom:10px;
+    left:10px;
+    color:#fff;
+    font-size:18px;
+    font-weight:700;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+  .episode-card .watched-badge{
+    position:absolute;
+    top:10px;
+    right:10px;
+    background:var(--accent);
+    color:#0a2a28;
+    border-radius:50%;
+    width:28px;
+    height:28px;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+    font-weight:700;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  .episode-card.watched .watched-badge{
+    display:flex;
+  }
 
   /* Recommendations */
   .rec-list{display:flex;flex-direction:column;gap:12px}
@@ -231,6 +274,9 @@
     .hero-poster{
       width:100px;
       height:140px;
+    }
+    .episode-grid{
+      grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
     }
   }
 </style>
@@ -315,7 +361,7 @@
 
     let animeData = null;
     let user = null;
-    let library = []; // for live search
+    let library = [];
 
     // ── Hamburger menu ──
     (function renderHamburger() {
@@ -557,7 +603,6 @@
         extContainer.appendChild(a);
       });
 
-      // Admin edit button (inside content)
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user.email === ADMIN_EMAIL) {
         const editBtn = document.createElement('a');
@@ -568,23 +613,43 @@
         $('adminEditBtn').appendChild(editBtn);
       }
 
-      // Episode grid
+      // ── Episode grid (new card layout) ──
       const epTotal = data.ep_total || 0;
       const grid = $('episodeGrid');
       grid.innerHTML = '';
-      if (epTotal > 0 && user) {
-        const { data: watched } = await sb.from('user_episode_progress')
-          .select('episode_number')
-          .eq('user_id', user.id)
-          .eq('anime_id', animeId)
-          .eq('watched', true);
-        const watchedSet = new Set((watched || []).map(w => w.episode_number));
+      if (epTotal > 0) {
+        let watchedSet = new Set();
+        if (user) {
+          const { data: watched } = await sb.from('user_episode_progress')
+            .select('episode_number')
+            .eq('user_id', user.id)
+            .eq('anime_id', animeId)
+            .eq('watched', true);
+          watchedSet = new Set((watched || []).map(w => w.episode_number));
+        }
+
         for (let ep = 1; ep <= epTotal; ep++) {
           const card = document.createElement('div');
-          card.className = `ep-card ${watchedSet.has(ep) ? 'watched' : ''}`;
-          card.innerHTML = `<span class="play-icon">▶</span>`;
+          card.className = `episode-card ${watchedSet.has(ep) ? 'watched' : ''}`;
+          card.style.backgroundImage = `url('${data.image_url || DEFAULT_AVATAR}')`;
           card.title = `Episode ${ep}`;
+
+          const gradient = document.createElement('div');
+          gradient.className = 'card-gradient';
+          card.appendChild(gradient);
+
+          const epNum = document.createElement('span');
+          epNum.className = 'episode-number';
+          epNum.textContent = `Ep. ${ep}`;
+          card.appendChild(epNum);
+
+          const badge = document.createElement('span');
+          badge.className = 'watched-badge';
+          badge.textContent = '✓';
+          card.appendChild(badge);
+
           card.addEventListener('click', async () => {
+            if (!user) return;
             const isWatched = card.classList.contains('watched');
             if (isWatched) {
               await sb.from('user_episode_progress').delete().eq('user_id', user.id).eq('anime_id', animeId).eq('episode_number', ep);
@@ -594,10 +659,11 @@
               card.classList.add('watched');
             }
           });
+
           grid.appendChild(card);
         }
       } else {
-        grid.innerHTML = '<div style="color:var(--muted);font-size:13px">No episode data</div>';
+        grid.innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">No episode data</div>';
       }
 
       // Duration fetch
