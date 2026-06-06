@@ -160,7 +160,7 @@
     z-index:1;
   }
 
-  /* Full‑card soft gradient – no box line */
+  /* Full‑card soft gradient */
   .card-gradient{
     position:absolute;
     inset:0;
@@ -174,28 +174,26 @@
     pointer-events:none;
   }
 
-  /* ══════════ PLAY BUTTON – huge triangle, hidden until interaction ══════════ */
+  /* ══════════ PLAY BUTTON – large SVG triangle ══════════ */
   .play-icon-overlay{
     position:absolute;
     top:50%; left:50%;
     transform:translate(-50%, -50%);
-    width:0; height:0;
-    /* roughly half the card height on most screens */
-    border-left: 80px solid #fff;
-    border-top: 50px solid transparent;
-    border-bottom: 50px solid transparent;
+    width:80px;                      /* real dimensions */
+    height:80px;
     opacity:0;
     pointer-events:none;
     z-index:5;
-    /* instant snap when added via JS, smooth fade on hover */
     transition:opacity 0.12s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
   }
-  /* show state for touch devices */
   .play-icon-overlay.show{
     opacity:0.45;
-    transition:none;               /* instant */
+    transition:none;
   }
-  /* hover behaviour – only for devices with a mouse */
+  /* hover only for mouse users */
   @media (hover: hover) {
     .release-card:hover .play-icon-overlay {
       opacity:0.4;
@@ -562,6 +560,9 @@
     document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
   }
 
+  // ── Play icon SVG string ──
+  const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="64" height="64"><polygon points="6,2 20,12 6,22"/></svg>';
+
   function renderReleases() {
     const list = $("releaseList");
     const totalItems = library.length;
@@ -598,9 +599,10 @@
         }
         card.appendChild(mediaBadge);
 
-        // Play icon (hidden by default)
+        // Play icon container (hidden by default)
         const playIcon = document.createElement("div");
         playIcon.className = "play-icon-overlay";
+        playIcon.innerHTML = PLAY_ICON_SVG;               // ← real SVG triangle
         card.appendChild(playIcon);
 
         // Bottom text row
@@ -616,16 +618,24 @@
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // Touch / click behaviour: clear all other icons, show this one, then navigate
+        // ══════════ FIXED EVENT LISTENERS ══════════
+        // 1) Desktop hover is handled by CSS :hover (no JS needed)
+        // 2) Touch / click – prevent default, flash icon, navigate after 150ms
+        const navigate = () => { location.href = card.href; };
+
         card.addEventListener('click', function(e) {
-          clearAllPlayIcons();
-          playIcon.classList.add('show');
-          // navigation continues via the <a> link
+          e.preventDefault();                           // stop instant navigation
+          clearAllPlayIcons();                         // remove any other visible icon
+          playIcon.classList.add('show');              // show THIS card's icon
+          setTimeout(navigate, 150);                   // wait, then go
         });
+
         card.addEventListener('touchstart', function(e) {
+          e.preventDefault();                           // prevent immediate navigation
           clearAllPlayIcons();
           playIcon.classList.add('show');
-        }, { passive: true });
+          setTimeout(navigate, 150);
+        }, { passive: false });                        // passive:false allows preventDefault()
 
         list.appendChild(card);
       }
