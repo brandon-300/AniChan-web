@@ -173,27 +173,23 @@
     pointer-events:none;
   }
 
-  /* ══════════ PLAY BUTTON ══════════ */
+  /* ══════════ PLAY BUTTON – ENLARGED ══════════ */
   .play-icon-overlay{
     position:absolute;
     top:50%; left:50%;
     transform:translate(-50%, -50%);
     width:0; height:0;
-    border-left: 24px solid #fff;
-    border-top: 14px solid transparent;
-    border-bottom: 14px solid transparent;
+    border-left: 48px solid #fff;
+    border-top: 30px solid transparent;
+    border-bottom: 30px solid transparent;
     opacity:0;
-    transition:opacity 0.05s ease;
     pointer-events:none;
     z-index:5;
-    /* Size about one-third of a typical 16/9 card height – roughly 50-60px */
-    border-left-width: 28px;
-    border-top-width: 18px;
-    border-bottom-width: 18px;
+    transition:opacity 0.05s ease;
   }
   .play-icon-overlay.show{
     opacity:0.45;
-    transition:none;   /* instant snap */
+    transition:none;
   }
 
   /* Bottom‑aligned text row */
@@ -551,6 +547,10 @@
     return '?';
   }
 
+  function clearAllPlayIcons() {
+    document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
+  }
+
   function renderReleases() {
     const list = $("releaseList");
     const totalItems = library.length;
@@ -592,30 +592,30 @@
         playIcon.className = "play-icon-overlay";
         card.appendChild(playIcon);
 
-        // Bottom text row (title + episode number)
+        // Bottom text row
         const bottomBar = document.createElement("div");
         bottomBar.className = "card-bottom";
-
         const titleSpan = document.createElement("span");
         titleSpan.className = "card-title-text";
         titleSpan.textContent = getDisplayTitle(a);
-
         const epSpan = document.createElement("span");
         epSpan.className = "card-ep-text";
         epSpan.textContent = getEpisodeNumber(a);
-
         bottomBar.appendChild(titleSpan);
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // ── Click to show play icon, then navigate ──
+        // ── Click to show play icon (only one at a time) ──
         card.addEventListener('click', function(e) {
-          // Show play icon immediately
+          // Remove 'show' from all other play icons
+          clearAllPlayIcons();
+          // Add 'show' to this one
           playIcon.classList.add('show');
-          // Navigation continues naturally via the <a> href
+          // Navigation continues via the <a> href
         });
-        // Also handle touchstart for mobile responsiveness
+        // Also handle touchstart for mobile
         card.addEventListener('touchstart', function(e) {
+          clearAllPlayIcons();
           playIcon.classList.add('show');
         }, { passive: true });
 
