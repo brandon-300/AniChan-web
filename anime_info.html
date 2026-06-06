@@ -355,7 +355,7 @@
         <textarea id="commentText" placeholder="Write a comment..."></textarea>
         <div class="comment-input-footer">
           <div id="commentLoginPrompt" class="login-prompt" style="display:none;">
-            <a href="user_login.html">Log in</a> to comment
+            <a id="loginLink" href="user_login.html">Log in</a> to comment
           </div>
           <button id="postCommentBtn" style="display:none;">Post</button>
         </div>
@@ -388,6 +388,12 @@
   let animeData = null;
   let user = null;
   let library = [];
+
+  // ── Set login link to return to this page ──
+  const loginLink = $('loginLink');
+  if (loginLink) {
+    loginLink.href = `user_login.html?redirect=${encodeURIComponent(window.location.href)}`;
+  }
 
   // ── Hamburger menu ──
   (function renderHamburger() {
