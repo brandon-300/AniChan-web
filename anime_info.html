@@ -266,7 +266,7 @@
   }
   .comment-date { font-size: 12px; color: var(--muted); margin-left: auto; }
   .comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); }
-  .comment-actions { display: flex; gap: 12px; align-items: center; }
+  .comment-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .vote-btn {
     background: none; border: none; color: var(--muted); cursor: pointer;
     font-size: 16px; display: flex; align-items: center; gap: 4px; transition: color 0.1s;
@@ -274,6 +274,11 @@
   .vote-btn.active { color: var(--accent); }
   .vote-btn .material-symbols-outlined { font-size: 18px; }
   .reply-toggle { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+  .delete-btn {
+    background: none; border: none; color: var(--danger); cursor: pointer;
+    font-size: 18px; padding: 2px; display: flex; align-items: center;
+    margin-left: auto;
+  }
   .reply-box { margin-top: 10px; display: none; }
   .reply-box.open { display: flex; flex-direction: column; gap: 8px; }
   .reply-box textarea {
@@ -458,7 +463,7 @@
     if (words.length === 0) { hideSearchResults(); return; }
 
     const scored = library.map(a => {
-      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
+      const fields = [a.title, a.title_en, a.title_jp].filter(f => f);
       let matchCount = 0;
       for (const word of words) {
         if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
@@ -520,7 +525,7 @@
   window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
 
   (async function preloadLibrary() {
-    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
+    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, image_url, type, year, ep_total");
     library = data || [];
   })();
 
@@ -591,9 +596,6 @@
     const metaItems = [];
     if (data.title_jp) metaItems.push({ label: 'Japanese', value: data.title_jp });
     if (data.title_en) metaItems.push({ label: 'English', value: data.title_en });
-    if (data.title_zh) metaItems.push({ label: 'Chinese', value: data.title_zh });
-    if (data.title_de) metaItems.push({ label: 'German', value: data.title_de });
-    if (data.title_fr) metaItems.push({ label: 'French', value: data.title_fr });
     metaItems.push(
       { label: 'Type',    value: data.type || '—', accent: true, typeLink: data.type ? `type.html?type=${encodeURIComponent(data.type)}` : null },
       { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
@@ -835,12 +837,10 @@
     const dislikeCount = dislikedBy.length;
     const userLiked = user && likedBy.includes(user.id);
     const userDisliked = user && dislikedBy.includes(user.id);
+    const isOwner = user && comment.user_id === user.id;
 
     const dateStr = formatCommentDate(comment.created_at);
-
-    // Build meta HTML with avatar and clickable author
     const profileLink = `profile.html?user=${comment.user_id}`;
-    const authorInitials = '?'; // Will be replaced by resolveCommentUserNames
 
     div.innerHTML = `
       <div class="comment-meta">
@@ -851,6 +851,7 @@
           <span class="comment-author" data-userid="${esc(comment.user_id)}">Loading...</span>
         </a>
         <span class="comment-date">${dateStr}</span>
+        ${isOwner ? `<button class="delete-btn" title="Delete comment"><span class="material-symbols-outlined">delete</span></button>` : ''}
       </div>
       <div class="comment-body">${esc(comment.message || '')}</div>
       <div class="comment-actions">
@@ -872,6 +873,20 @@
     `;
 
     parentEl.appendChild(div);
+
+    // Delete handler
+    const deleteBtn = div.querySelector('.delete-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Delete this comment? All replies will also be removed.')) return;
+        const { error } = await sb.from('anime_comments').delete().eq('id', comment.id);
+        if (!error) {
+          loadComments();
+        } else {
+          alert('Failed to delete comment.');
+        }
+      });
+    }
 
     // Toggle reply box
     div.querySelector('.reply-toggle').addEventListener('click', () => {
@@ -911,7 +926,7 @@
       loadComments();
     });
 
-    // Render nested replies
+    // Render nested replies (recursion)
     const children = allComments.filter(c => c.parent_id === comment.id);
     children.forEach(child => renderComment(child, allComments, div, depth + 1));
   }
@@ -936,7 +951,6 @@
         if (uid && map.has(uid)) {
           const avatarUrl = map.get(uid).avatar_url;
           if (avatarUrl) el.src = avatarUrl;
-          // else keep default
         }
       });
     }
