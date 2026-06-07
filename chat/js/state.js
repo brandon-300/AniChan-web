@@ -19,5 +19,4 @@ export const state = {
   localStream: null,
   remoteStream: null,
   activeCallId: null,
-  callStartTime: null,
 };
