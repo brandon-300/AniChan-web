@@ -274,6 +274,7 @@ header.app{
 .vote-btn.active { color: var(--accent); }
 .vote-btn .material-symbols-outlined { font-size: 18px; }
 .reply-toggle { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+.reply-toggle:disabled { color: var(--muted); cursor: default; opacity: 0.6; }
 .delete-btn {
   background: none; border: none; color: var(--danger); cursor: pointer;
   font-size: 18px; padding: 2px; display: flex; align-items: center;
@@ -298,8 +299,22 @@ header.app{
 }
 .reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
 
-/* Flat replies container — direct child of .comment-item.top-level */
-.thread-replies { margin-top: 4px; }
+/* Flat replies container — hidden by default, toggled by "X replies" button */
+.thread-replies { margin-top: 4px; display: none; }
+.thread-replies.open { display: block; }
+
+/* "▶ X replies" expand toggle */
+.replies-toggle-btn {
+  background: none; border: none; color: var(--accent);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 0 2px 0; margin-top: 2px;
+}
+.replies-toggle-btn .material-symbols-outlined { font-size: 16px; transition: transform .2s; }
+.replies-toggle-btn.open .material-symbols-outlined { transform: rotate(90deg); }
+
+/* Reply input box is appended AFTER .thread-replies so it sits at the bottom */
+.thread-reply-box { margin-top: 8px; }
 
 /* Top-level comment input area */
 .comment-input-area {
@@ -820,26 +835,71 @@ header.app{
       container.innerHTML = '<div style="color:var(--muted);padding:16px;text-align:center;">No comments yet. Be the first!</div>';
       return;
     }
+
+    // Build a set of comment IDs the current user has already replied to,
+    // so we can disable their Reply button on those comments
+    const userRepliedIds = new Set();
+    if (user) {
+      comments
+        .filter(c => c.user_id === user.id && c.parent_id != null)
+        .forEach(c => userRepliedIds.add(c.parent_id));
+    }
+
     comments
       .filter(c => !c.parent_id)
-      .forEach(comment => renderTopLevelComment(comment, comments, container));
+      .forEach(comment => renderTopLevelComment(comment, comments, container, userRepliedIds));
   }
 
   // ── renderTopLevelComment ────────────────────────────────────────────
-  // Builds the wrapper for one thread:
-  //   .comment-item.top-level
-  //     [comment inner HTML]
-  //     .thread-reply-box        ← single input for this whole thread
-  //     .thread-replies          ← flat container; all replies go here
-  function renderTopLevelComment(comment, allComments, container) {
+  // DOM order inside .comment-item.top-level:
+  //   [comment meta / body / actions]
+  //   .replies-toggle-btn          ← "▶ 3 replies" — hidden if no replies
+  //   .thread-replies              ← collapsed by default; flat sibling list
+  //   .thread-reply-box            ← reply input, BELOW the replies list
+  function renderTopLevelComment(comment, allComments, container, userRepliedIds) {
     const wrapper = document.createElement('div');
     wrapper.className = 'comment-item top-level';
     wrapper.dataset.commentId = comment.id;
-    wrapper.dataset.threadId  = comment.id; // thread root = itself
+    wrapper.dataset.threadId  = comment.id;
 
-    buildCommentInner(wrapper, comment);
+    buildCommentInner(wrapper, comment, userRepliedIds);
 
-    // Single reply box for the whole thread
+    // Collect direct + nested replies for this thread
+    const directReplies = allComments.filter(c => c.parent_id === comment.id);
+    const totalReplies  = countReplies(comment.id, allComments);
+
+    // "▶ X replies" toggle — only shown when replies exist
+    if (totalReplies > 0) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'replies-toggle-btn';
+      toggleBtn.innerHTML = `
+        <span class="material-symbols-outlined">chevron_right</span>
+        ${totalReplies} ${totalReplies === 1 ? 'reply' : 'replies'}`;
+      wrapper.appendChild(toggleBtn);
+
+      // Flat replies container — starts hidden
+      const threadReplies = document.createElement('div');
+      threadReplies.className = 'thread-replies';
+      wrapper.appendChild(threadReplies);
+
+      // Populate replies (hidden until toggled)
+      directReplies.forEach(reply => renderReply(reply, allComments, threadReplies, comment.id, userRepliedIds));
+
+      // Toggle replies visibility
+      toggleBtn.addEventListener('click', () => {
+        const open = threadReplies.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.querySelector('.material-symbols-outlined').textContent =
+          open ? 'expand_more' : 'chevron_right';
+      });
+    } else {
+      // No replies yet — still need the container for when user posts first reply
+      const threadReplies = document.createElement('div');
+      threadReplies.className = 'thread-replies';
+      wrapper.appendChild(threadReplies);
+    }
+
+    // Reply box AFTER .thread-replies so it renders at the bottom
     const replyBox = document.createElement('div');
     replyBox.className = 'thread-reply-box';
     replyBox.dataset.threadBox = comment.id;
@@ -851,20 +911,16 @@ header.app{
       </div>`;
     wrapper.appendChild(replyBox);
 
-    // Flat replies container — ALL replies for this thread land here as siblings
-    const threadReplies = document.createElement('div');
-    threadReplies.className = 'thread-replies';
-    wrapper.appendChild(threadReplies);
-
     container.appendChild(wrapper);
 
     // Wire up reply box cancel/submit
     attachThreadReplyEvents(wrapper, comment.id);
+  }
 
-    // Render all replies for this thread into threadReplies (flat)
-    allComments
-      .filter(c => c.parent_id === comment.id)
-      .forEach(reply => renderReply(reply, allComments, threadReplies, comment.id));
+  // Count all replies in a thread recursively
+  function countReplies(rootId, allComments) {
+    const direct = allComments.filter(c => c.parent_id === rootId);
+    return direct.reduce((sum, c) => sum + 1 + countReplies(c.id, allComments), 0);
   }
 
   // ── renderReply ──────────────────────────────────────────────────────
@@ -876,27 +932,25 @@ header.app{
   // @param allComments   full comment array (for finding children)
   // @param flatContainer the thread's .thread-replies div — siblings go here
   // @param threadId      the root comment id for this thread
-  function renderReply(comment, allComments, flatContainer, threadId) {
+  function renderReply(comment, allComments, flatContainer, threadId, userRepliedIds) {
     const div = document.createElement('div');
     div.className = 'comment-item reply';
     div.dataset.commentId = comment.id;
-    div.dataset.threadId  = threadId; // always the thread root
+    div.dataset.threadId  = threadId;
 
-    buildCommentInner(div, comment);
+    buildCommentInner(div, comment, userRepliedIds);
     flatContainer.appendChild(div);
 
-    // Children of this reply are also appended into the SAME flatContainer
-    // so they become siblings of div — never children
     allComments
       .filter(c => c.parent_id === comment.id)
-      .forEach(child => renderReply(child, allComments, flatContainer, threadId));
+      .forEach(child => renderReply(child, allComments, flatContainer, threadId, userRepliedIds));
   }
 
   // ── buildCommentInner ────────────────────────────────────────────────
   // Populates the inner HTML of a comment div and attaches event listeners.
   // Stores data-username on the author span so openThreadReplyBox can read
   // it reliably after resolveCommentUserNames() has filled it in.
-  function buildCommentInner(containerDiv, comment) {
+  function buildCommentInner(containerDiv, comment, userRepliedIds = new Set()) {
     const likedBy     = comment.liked_by    || [];
     const dislikedBy  = comment.disliked_by || [];
     const likeCount   = likedBy.length;
@@ -905,6 +959,8 @@ header.app{
     const userDisliked = user && dislikedBy.includes(user.id);
     const isOwner      = user && comment.user_id === user.id;
     const profileLink  = `profile.html?user=${comment.user_id}`;
+    // Has the current user already replied to this specific comment?
+    const alreadyReplied = user && userRepliedIds.has(comment.id);
 
     containerDiv.innerHTML = `
       <div class="comment-meta">
@@ -934,7 +990,10 @@ header.app{
           <span class="material-symbols-outlined">thumb_down</span>
           <span class="dislike-count">${dislikeCount}</span>
         </button>
-        <button class="reply-toggle" data-comment-id="${comment.id}">Reply</button>
+        <button class="reply-toggle" data-comment-id="${comment.id}"
+          ${alreadyReplied ? 'disabled title="You\'ve already replied to this comment"' : ''}>
+          ${alreadyReplied ? 'Replied' : 'Reply'}
+        </button>
       </div>`;
 
     // Delete — removes this comment AND all its descendants from the DB,
@@ -1021,9 +1080,8 @@ header.app{
   // @param threadId   id of the root comment of the thread
   // @param replyTo    null | { id, author } — the specific comment being replied to
   function openThreadReplyBox(threadId, replyTo) {
-    closeThreadReplyBox(); // close any previously open box first
+    closeThreadReplyBox();
 
-    // Find the top-level wrapper for this thread
     const threadWrapper = $('commentsList').querySelector(
       `.comment-item.top-level[data-comment-id="${CSS.escape(String(threadId))}"]`
     );
@@ -1035,14 +1093,28 @@ header.app{
     activeThreadId = threadId;
     activeReplyTo  = replyTo;
 
+    // Auto-expand replies when opening the reply box so user sees context
+    const threadReplies = threadWrapper.querySelector('.thread-replies');
+    const toggleBtn     = threadWrapper.querySelector('.replies-toggle-btn');
+    if (threadReplies && !threadReplies.classList.contains('open')) {
+      threadReplies.classList.add('open');
+      if (toggleBtn) {
+        toggleBtn.classList.add('open');
+        toggleBtn.querySelector('.material-symbols-outlined').textContent = 'expand_more';
+      }
+    }
+
     replyBox.classList.add('open');
     const textarea = replyBox.querySelector('textarea');
     if (textarea) {
       textarea.value = replyTo ? `@${replyTo.author} ` : '';
-      textarea.focus();
-      // Move cursor to end
-      const len = textarea.value.length;
-      textarea.setSelectionRange(len, len);
+      // Scroll the reply box into view AFTER it opens, then focus
+      requestAnimationFrame(() => {
+        replyBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        textarea.focus();
+        const len = textarea.value.length;
+        textarea.setSelectionRange(len, len);
+      });
     }
   }
 
@@ -1081,6 +1153,20 @@ header.app{
       // parent_id is the specific comment being replied to,
       // or the thread root if replying to the top-level comment
       const parentId = activeReplyTo ? activeReplyTo.id : threadId;
+
+      // One reply per user per comment — check if user already replied to this parent
+      const { data: existing } = await sb
+        .from('anime_comments')
+        .select('id')
+        .eq('anime_id', animeId)
+        .eq('user_id', user.id)
+        .eq('parent_id', parentId)
+        .maybeSingle();
+
+      if (existing) {
+        alert('You've already replied to this comment. You can only reply once per comment.');
+        return;
+      }
 
       const { error } = await sb.from('anime_comments').insert({
         anime_id:  animeId,
