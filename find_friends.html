@@ -175,9 +175,8 @@
       .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`)
       .maybeSingle();
 
-    // Updated to point to the new modular chat page
     if (existing) {
-      window.location.href = "chat/index.html?room=" + existing.id;
+      window.location.href = "chat.html?room=" + existing.id;
     } else {
       const { data: newRoom, error } = await supabase
         .from("chat_rooms")
@@ -188,7 +187,7 @@
         alert("Could not start chat.");
         return;
       }
-      window.location.href = "chat/index.html?room=" + newRoom.id;
+      window.location.href = "chat.html?room=" + newRoom.id;
     }
   }
 
