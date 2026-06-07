@@ -246,7 +246,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;                /* allow right side to drop to next line if needed */
+    flex-wrap: wrap;
     margin-bottom: 8px;
   }
   .comment-meta-left {
@@ -258,12 +258,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: auto;               /* push to the right */
+    margin-left: auto;
   }
   .comment-date {
     font-size: 12px;
     color: var(--muted);
-    white-space: nowrap;             /* never break the date */
+    white-space: nowrap;
   }
   .comment-avatar-link {
     flex-shrink: 0;
@@ -311,7 +311,6 @@
   }
   .reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
 
-  /* Nested replies wrapper – hidden by default, toggled with Reply button */
   .nested-replies { display: none; }
   .nested-replies.open { display: block; }
 
@@ -437,7 +436,6 @@
   let user = null;
   let library = [];
 
-  // ── Set login link to return to this page ──
   const loginLink = $('loginLink');
   if (loginLink) {
     loginLink.href = `user_login.html?redirect=${encodeURIComponent(window.location.href)}`;
@@ -847,7 +845,7 @@
     const topLevel = comments.filter(c => !c.parent_id);
     topLevel.forEach(c => {
       const div = document.createElement('div');
-      div.className = 'comment-item';  // top-level container
+      div.className = 'comment-item';
       renderComment(c, comments, div, 0);
       container.appendChild(div);
     });
@@ -922,7 +920,7 @@
       });
     }
 
-    // Reply toggle: opens/closes both the reply box and nested replies
+    // ── Reply toggle (FIXED: doesn't close ancestor sections) ──
     const replyToggle = div.querySelector('.reply-toggle');
     const replyBox = div.querySelector('.reply-box');
     const cancelBtn = div.querySelector('.cancel-reply');
@@ -931,11 +929,34 @@
 
     replyToggle.addEventListener('click', () => {
       const isOpen = nestedContainer.classList.contains('open');
-      // Close all other open reply sections
-      document.querySelectorAll('.nested-replies.open').forEach(b => b.classList.remove('open'));
-      document.querySelectorAll('.reply-box.open').forEach(b => b.classList.remove('open'));
 
       if (!isOpen) {
+        // Collect all ancestor .nested-replies elements
+        const ancestors = [];
+        let el = div.parentElement;
+        while (el) {
+          if (el.classList.contains('nested-replies')) {
+            ancestors.push(el);
+          }
+          el = el.parentElement;
+        }
+
+        // Close only reply sections that are NOT ancestors of this comment
+        document.querySelectorAll('.nested-replies.open').forEach(b => {
+          if (!ancestors.includes(b)) {
+            b.classList.remove('open');
+          }
+        });
+        document.querySelectorAll('.reply-box.open').forEach(b => {
+          // Check if this reply box is inside an ancestor
+          const boxAncestor = b.closest('.nested-replies');
+          if (!boxAncestor || !ancestors.includes(boxAncestor)) {
+            if (b !== replyBox) {
+              b.classList.remove('open');
+            }
+          }
+        });
+
         nestedContainer.classList.add('open');
         replyBox.classList.add('open');
         replyToggle.textContent = 'Collapse';
@@ -964,7 +985,6 @@
       });
       if (!error) {
         textarea.value = '';
-        // Keep section open so the new reply is visible after reload
         nestedContainer.classList.add('open');
         replyBox.classList.add('open');
         replyToggle.textContent = 'Collapse';
