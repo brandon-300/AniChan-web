@@ -178,8 +178,6 @@
     position:absolute;
     top:50%; left:50%;
     transform:translate(-50%, -50%);
-    /* Cards are ~95vw wide with side padding, 16/9 → height ≈ 53vw.
-       Target ~48% of card height → ~26vw, capped at 160px on desktop */
     width:  clamp(110px, 26vw, 160px);
     height: clamp(110px, 26vw, 160px);
     opacity:0;
@@ -191,10 +189,9 @@
     justify-content:center;
   }
   .play-icon-overlay.show{
-    opacity:1;                    /* full opacity of the container – the SVG itself is translucent */
+    opacity:1;
     transition:none;
   }
-  /* hover only for devices with a mouse */
   @media (hover: hover) {
     .release-card:hover .play-icon-overlay {
       opacity:1;
@@ -423,7 +420,7 @@
 
     const items = [
       { id: 'navFindFriends', icon: 'group', text: t('findFriends'), action: () => location.href = 'find_friends.html' },
-      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat.html'; } },
+      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat/index.html'; } },
       { id: 'navProfile', icon: 'person', text: t('profile'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'profile.html'; } }
     ];
     items.forEach(item => {
