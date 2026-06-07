@@ -937,14 +937,42 @@ header.app{
         <button class="reply-toggle" data-comment-id="${comment.id}">Reply</button>
       </div>`;
 
-    // Delete
+    // Delete — removes this comment AND all its descendants from the DB,
+    // then reloads. We collect descendant IDs client-side from the already-
+    // fetched comment list stored on the list container as a data attribute,
+    // but the safest approach is to just delete by parent chain on the server.
+    // Since Supabase doesn't cascade deletes automatically (unless FK is set),
+    // we fetch all comments for this anime, gather the full subtree of IDs,
+    // and delete them all in one .in() call.
     const deleteBtn = containerDiv.querySelector('.delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
         if (!confirm('Delete this comment? All replies will also be removed.')) return;
-        const { error } = await sb.from('anime_comments').delete().eq('id', comment.id);
-        if (!error) loadComments();
-        else alert('Failed to delete comment.');
+
+        // Fetch all comments for this anime so we can find the full subtree
+        const { data: allRows, error: fetchErr } = await sb
+          .from('anime_comments')
+          .select('id, parent_id')
+          .eq('anime_id', animeId);
+
+        if (fetchErr) { alert('Failed to delete comment.'); return; }
+
+        // Collect all IDs in the subtree rooted at comment.id
+        function collectSubtree(rootId, rows) {
+          const ids = [rootId];
+          const children = rows.filter(r => r.parent_id === rootId);
+          children.forEach(child => ids.push(...collectSubtree(child.id, rows)));
+          return ids;
+        }
+        const idsToDelete = collectSubtree(comment.id, allRows || []);
+
+        const { error: delErr } = await sb
+          .from('anime_comments')
+          .delete()
+          .in('id', idsToDelete);
+
+        if (delErr) { alert('Failed to delete comment.'); console.error(delErr); return; }
+        await loadComments();
       });
     }
 
