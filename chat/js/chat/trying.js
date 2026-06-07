@@ -1,6 +1,7 @@
 import { supabase } from "../supabase.js";
 import { state } from "../state.js";
 import { filterRooms } from "./rooms.js";
+
 const $ = (id) => document.getElementById(id);
 
 export function setupBroadcastChannel(roomId) {
@@ -35,9 +36,7 @@ export function handleTypingBroadcast(userId, isTyping) {
       sub.classList.remove("typing-status");
       indicator.innerHTML = "";
       const room = state.rooms.find(r => r.other_user.id === userId);
-      if (room) {
-        // Restore status via presence.js (already handles)
-      }
+      if (room) setPartnerStatus(room.other_user.is_online, room.other_user.last_seen);
     }
   }
   if (isTyping) state.typingUsers.set(userId, true);
@@ -45,9 +44,26 @@ export function handleTypingBroadcast(userId, isTyping) {
   filterRooms($("searchInput").value);
 }
 
-$("msgInput")?.addEventListener("input", () => {
-  if (!state.broadcastChannel || !state.activeRoom) return;
-  broadcastTyping(true);
-  clearTimeout(state.typingTimeout);
-  state.typingTimeout = setTimeout(() => broadcastTyping(false), 2000);
-});
+function setPartnerStatus(isOnline, lastSeen) {
+  const sub = $("partnerSub");
+  if (sub.classList.contains("typing-status")) return;
+  if (isOnline) {
+    $("partnerDot").classList.add("live");
+    sub.textContent = "online";
+  } else {
+    $("partnerDot").classList.remove("live");
+    sub.textContent = lastSeen ? `last seen ${fmtChat(lastSeen)}` : "Offline";
+  }
+}
+
+function fmtChat(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), n = new Date(), diff = n - d, mins = Math.floor(diff / 60000);
+  if (mins < 1)  return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)  return `${days}d ago`;
+  return d.toLocaleDateString();
+}
