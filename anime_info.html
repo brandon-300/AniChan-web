@@ -9,486 +9,473 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
-  :root{
-    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
-    --accent:#51dad3; --accent2:#ffb597;
-    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
-    --danger:#ff4757; --success:#2ed573; --offline:#555;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--bg);color:var(--text);
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    min-height:100vh;display:flex;flex-direction:column;
-    -webkit-font-smoothing:antialiased;
-  }
+:root{
+  --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+  --accent:#51dad3; --accent2:#ffb597;
+  --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+  --danger:#ff4757; --success:#2ed573; --offline:#555;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+/* Header */
+header.app{
+  background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;z-index:50;
+}
+.brand{font-weight:800;font-size:20px}
+.brand span{color:var(--accent)}
+.header-left{display:flex;align-items:center;gap:12px}
+.back-btn{
+  background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
+  padding:0 8px;line-height:1;
+}
+.header-actions{display:flex;align-items:center;gap:8px}
+.menu-btn{
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.menu-btn:hover{border-color:var(--accent);background:var(--card)}
+.nav-dropdown{
+  display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  padding:16px 16px 20px;
+}
+.nav-dropdown.open{display:block}
+.nav-dropdown .nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
+  transition:background .15s;cursor:pointer;
+}
+.nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
+.nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
+.nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+.nav-search-wrap{margin-top:8px;position:relative}
+.nav-search-wrap input{
+  width:100%;padding:12px 14px 12px 44px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--border);color:var(--text);
+  font-size:14px;outline:none;
+}
+.nav-search-wrap input:focus{border-color:var(--accent)}
+.nav-search-wrap .ico{
+  position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
+  pointer-events:none;
+}
+/* Floating search overlay */
+.search-results-dropdown{
+  position:fixed;
+  background:#1a1a1a;
+  border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;
+  display:none;
+  box-shadow:0 12px 24px rgba(0,0,0,.6);
+  z-index:99999;
+}
+.search-results-dropdown.show{display:block}
+.search-result-item{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  cursor:pointer;transition:background .15s;
+}
+.search-result-item:hover{background:var(--panel)}
+.search-thumb{
+  width:42px;height:42px;border-radius:50%;object-fit:cover;
+  background:var(--panel);border:1px solid var(--border);flex-shrink:0;
+}
+.search-info{flex:1;min-width:0}
+.search-info .name{font-weight:600;font-size:14px;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
+.no-results{padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;background:#1a1a1a}
+.broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
+  background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;gap:12px;align-items:flex-start}
+.broadcast.hidden{display:none}
+.container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
+/* Hero section */
+.hero{
+  position:relative;width:100%;aspect-ratio:16/9;
+  background-size:cover;background-position:center;
+  border-radius:0 0 20px 20px;overflow:hidden;
+  margin-bottom:0;
+}
+.hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 60%, rgba(0,0,0,.2) 100%);
+}
+.hero-poster{
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%, -50%);
+  width:140px; height:200px;
+  object-fit:cover; border-radius:12px;
+  border:2px solid var(--border); background:var(--panel);
+  box-shadow:0 8px 24px rgba(0,0,0,.6);
+}
+/* Title section (outside hero) */
+.title-section{
+  text-align:center;
+  padding:20px 16px 10px;
+}
+.title-section h1{
+  font-size:26px;font-weight:800;line-height:1.2;
+  color:#fff;
+}
+.title-section .jp-title{
+  font-size:14px;color:var(--muted);margin-top:6px;
+}
+/* Tabs */
+.tabs{
+  display:flex;gap:0;margin:20px 0;
+  border-bottom:1px solid var(--border);
+}
+.tab{
+  flex:1;padding:10px;text-align:center;font-weight:600;font-size:14px;
+  color:var(--muted);cursor:pointer;transition:color .15s;
+  position:relative;
+}
+.tab.active{color:var(--accent)}
+.tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;
+  background:var(--accent);border-radius:2px 2px 0 0;
+}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Synopsis */
+.synopsis-text{
+  line-height:1.7;margin-bottom:24px;font-size:14px;color:var(--text);
+}
+/* Metadata list */
+.meta-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.meta-row{display:flex;flex-wrap:wrap;gap:4px 8px}
+.meta-label{font-weight:700;font-size:14px;min-width:100px}
+.meta-value{font-size:14px;color:var(--muted)}
+.accent-value{color:var(--accent);font-weight:600;text-decoration:none !important}
+/* Genre chips */
+.genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.genre-chip{
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
+  background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.25);
+  color:var(--accent);cursor:pointer;transition:background .15s;
+  text-decoration:none;
+}
+.genre-chip:hover{background:rgba(81,218,211,.25)}
+/* Episode cards */
+.episode-grid { display: flex; flex-direction: column; gap: 0; }
+.ep-card {
+  position: relative; width: 100%; aspect-ratio: 16/9;
+  background-size: cover; background-position: center;
+  cursor: pointer; text-decoration: none; color: inherit;
+  border-radius: 0; overflow: hidden; display: block;
+}
+.ep-card::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 30%; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  pointer-events: none; z-index: 1;
+}
+.ep-duration {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(0,0,0,0.75); color: #fff;
+  font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 4px; z-index: 2;
+}
+.ep-number {
+  position: absolute; bottom: 6px; right: 10px; color: #fff;
+  font-size: 28px; font-weight: 800; line-height: 1; z-index: 2;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+/* Sort buttons */
+.sort-btn {
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
+  cursor: pointer; transition: all 0.15s;
+}
+.sort-btn.active { background: var(--accent); color: #0a2a28; border-color: var(--accent); }
+.sort-btn:hover { border-color: var(--accent); }
+/* Recommendations */
+.rec-list{display:flex;flex-direction:column;gap:12px}
+.rec-item{display:flex;gap:12px;align-items:center;cursor:pointer;
+  padding:10px;border-radius:14px;transition:background .15s;
+  border:1px solid var(--border);background:var(--card);
+}
+.rec-item:hover{background:var(--panel);border-color:var(--accent)}
+.rec-img{width:60px;height:85px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.rec-info{flex:1;min-width:0}
+.rec-title{font-weight:700;font-size:14px;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rec-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.external-links{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.ext-link{
+  padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;
+  background:var(--panel);border:1px solid var(--border);color:var(--accent);
+  text-decoration:none;transition:background .15s;
+}
+.ext-link:hover{background:var(--card)}
+.admin-edit-btn{display:flex;justify-content:center;margin-bottom:16px}
 
-  /* Header */
-  header.app{
-    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--border);padding:12px 16px;
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
-    position:sticky;top:0;z-index:50;
-  }
-  .brand{font-weight:800;font-size:20px}
-  .brand span{color:var(--accent)}
-  .header-left{display:flex;align-items:center;gap:12px}
-  .back-btn{
-    background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
-    padding:0 8px;line-height:1;
-  }
-  .header-actions{display:flex;align-items:center;gap:8px}
+/* ═══════════════════════════════════════════════════════
+   COMMENTS — YouTube-style flat threading
+   ═══════════════════════════════════════════════════════
 
-  .menu-btn{
-    background:var(--panel);border:1px solid var(--border);border-radius:12px;
-    padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
-    transition:background .15s,border-color .15s;
-  }
-  .menu-btn:hover{border-color:var(--accent);background:var(--card)}
+   DOM structure for each thread:
+   .comment-item.top-level          (margin-left: 0)
+     [meta / body / actions]
+     .thread-reply-box              (single input for whole thread)
+     .thread-replies                (flat container)
+       .comment-item.reply          (margin-left: 24px — FIXED, never changes)
+       .comment-item.reply
+       .comment-item.reply
+       ...
 
-  .nav-dropdown{
-    display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
-    padding:16px 16px 20px;
-  }
-  .nav-dropdown.open{display:block}
-  .nav-dropdown .nav-item{
-    display:flex;align-items:center;gap:10px;padding:10px 14px;
-    border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
-    transition:background .15s;cursor:pointer;
-  }
-  .nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
-  .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
-  .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+   Replies are NEVER nested inside one another.
+   All replies for a thread are siblings inside .thread-replies.
+   ═══════════════════════════════════════════════════════ */
 
-  .nav-search-wrap{margin-top:8px;position:relative}
-  .nav-search-wrap input{
-    width:100%;padding:12px 14px 12px 44px;border-radius:12px;
-    background:var(--panel);border:1px solid var(--border);color:var(--text);
-    font-size:14px;outline:none;
-  }
-  .nav-search-wrap input:focus{border-color:var(--accent)}
-  .nav-search-wrap .ico{
-    position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
-    pointer-events:none;
-  }
+.comment-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
 
-  /* Floating search overlay */
-  .search-results-dropdown{
-    position:fixed;
-    background:#1a1a1a;
-    border:1px solid var(--border);border-radius:12px;
-    overflow:hidden;
-    display:none;
-    box-shadow:0 12px 24px rgba(0,0,0,.6);
-    z-index:99999;
-  }
-  .search-results-dropdown.show{display:block}
-  .search-result-item{
-    display:flex;align-items:center;gap:12px;padding:10px 14px;
-    cursor:pointer;transition:background .15s;
-  }
-  .search-result-item:hover{background:var(--panel)}
-  .search-thumb{
-    width:42px;height:42px;border-radius:50%;object-fit:cover;
-    background:var(--panel);border:1px solid var(--border);flex-shrink:0;
-  }
-  .search-info{flex:1;min-width:0}
-  .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
-  .no-results{padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;background:#1a1a1a}
+/* Top-level: no indent */
+.comment-item.top-level { margin-left: 0; }
 
-  .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
-    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    display:flex;gap:12px;align-items:flex-start}
-  .broadcast.hidden{display:none}
+/* ALL replies — uniform fixed indent, regardless of logical depth */
+.comment-item.reply { margin-left: 24px; }
 
-  .container{max-width:700px;margin:0 auto;padding:0 16px 40px;width:100%;flex:1}
+.comment-meta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.comment-meta-left { display: flex; align-items: center; gap: 10px; }
+.comment-meta-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.comment-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.comment-avatar-link {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--border); display: block;
+}
+.comment-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.comment-author-link { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; }
+.comment-author { font-weight: 700; font-size: 14px; color: var(--text); }
+.comment-author-link:hover .comment-author { color: var(--accent); }
+.comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); word-break: break-word; }
+.comment-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.vote-btn {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 16px; display: flex; align-items: center; gap: 4px; transition: color 0.1s;
+}
+.vote-btn.active { color: var(--accent); }
+.vote-btn .material-symbols-outlined { font-size: 18px; }
+.reply-toggle { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+.delete-btn {
+  background: none; border: none; color: var(--danger); cursor: pointer;
+  font-size: 18px; padding: 2px; display: flex; align-items: center;
+}
 
-  /* Hero section */
-  .hero{
-    position:relative;width:100%;aspect-ratio:16/9;
-    background-size:cover;background-position:center;
-    border-radius:0 0 20px 20px;overflow:hidden;
-    margin-bottom:0;
-  }
-  .hero-overlay{
-    position:absolute;inset:0;
-    background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 60%, rgba(0,0,0,.2) 100%);
-  }
-  .hero-poster{
-    position:absolute;
-    top:50%; left:50%;
-    transform:translate(-50%, -50%);
-    width:140px; height:200px;
-    object-fit:cover; border-radius:12px;
-    border:2px solid var(--border); background:var(--panel);
-    box-shadow:0 8px 24px rgba(0,0,0,.6);
-  }
+/* Thread reply box — one per top-level thread, lives inside .comment-item.top-level */
+.thread-reply-box {
+  display: none;
+  margin: 10px 0 6px 0;
+}
+.thread-reply-box.open { display: flex; flex-direction: column; gap: 8px; }
+.thread-reply-box textarea {
+  width: 100%; padding: 10px; border-radius: 10px; background: var(--panel);
+  border: 1px solid var(--border); color: var(--text); font-size: 13px;
+  resize: vertical; min-height: 60px; outline: none;
+}
+.thread-reply-box textarea:focus { border-color: var(--accent); }
+.reply-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.reply-actions button {
+  padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 13px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
+}
+.reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
 
-  /* Title section (outside hero) */
-  .title-section{
-    text-align:center;
-    padding:20px 16px 10px;
-  }
-  .title-section h1{
-    font-size:26px;font-weight:800;line-height:1.2;
-    color:#fff;
-  }
-  .title-section .jp-title{
-    font-size:14px;color:var(--muted);margin-top:6px;
-  }
+/* Flat replies container — direct child of .comment-item.top-level */
+.thread-replies { margin-top: 4px; }
 
-  /* Tabs */
-  .tabs{
-    display:flex;gap:0;margin:20px 0;
-    border-bottom:1px solid var(--border);
-  }
-  .tab{
-    flex:1;padding:10px;text-align:center;font-weight:600;font-size:14px;
-    color:var(--muted);cursor:pointer;transition:color .15s;
-    position:relative;
-  }
-  .tab.active{color:var(--accent)}
-  .tab.active::after{
-    content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;
-    background:var(--accent);border-radius:2px 2px 0 0;
-  }
+/* Top-level comment input area */
+.comment-input-area {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px; margin-bottom: 20px;
+}
+.comment-input-area textarea {
+  width: 100%; padding: 12px; border-radius: 12px; background: var(--panel);
+  border: 1px solid var(--border); color: var(--text); font-size: 14px;
+  resize: vertical; min-height: 80px; outline: none;
+}
+.comment-input-area textarea:focus { border-color: var(--accent); }
+.comment-input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.comment-input-footer button {
+  padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px;
+  background: var(--accent); color: #0a2a28; border: none; cursor: pointer;
+}
+.login-prompt { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0; }
+.login-prompt a { color: var(--accent); font-weight: 600; }
 
-  .tab-content{display:none}
-  .tab-content.active{display:block}
-
-  /* Synopsis */
-  .synopsis-text{
-    line-height:1.7;margin-bottom:24px;font-size:14px;color:var(--text);
-  }
-
-  /* Metadata list */
-  .meta-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
-  .meta-row{display:flex;flex-wrap:wrap;gap:4px 8px}
-  .meta-label{font-weight:700;font-size:14px;min-width:100px}
-  .meta-value{font-size:14px;color:var(--muted)}
-  .accent-value{color:var(--accent);font-weight:600;text-decoration:none !important}
-
-  /* Genre chips */
-  .genres{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
-  .genre-chip{
-    padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
-    background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.25);
-    color:var(--accent);cursor:pointer;transition:background .15s;
-    text-decoration:none;
-  }
-  .genre-chip:hover{background:rgba(81,218,211,.25)}
-
-  /* Episode cards – Animepahe style */
-  .episode-grid { display: flex; flex-direction: column; gap: 0; }
-  .ep-card {
-    position: relative; width: 100%; aspect-ratio: 16/9;
-    background-size: cover; background-position: center;
-    cursor: pointer; text-decoration: none; color: inherit;
-    border-radius: 0; overflow: hidden; display: block;
-  }
-  .ep-card::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-    height: 30%; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-    pointer-events: none; z-index: 1;
-  }
-  .ep-duration {
-    position: absolute; bottom: 8px; left: 8px;
-    background: rgba(0,0,0,0.75); color: #fff;
-    font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 4px; z-index: 2;
-  }
-  .ep-number {
-    position: absolute; bottom: 6px; right: 10px; color: #fff;
-    font-size: 28px; font-weight: 800; line-height: 1; z-index: 2;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
-  }
-  /* Sort buttons */
-  .sort-btn {
-    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
-    font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .sort-btn.active { background: var(--accent); color: #0a2a28; border-color: var(--accent); }
-  .sort-btn:hover { border-color: var(--accent); }
-
-  /* Recommendations */
-  .rec-list{display:flex;flex-direction:column;gap:12px}
-  .rec-item{display:flex;gap:12px;align-items:center;cursor:pointer;
-    padding:10px;border-radius:14px;transition:background .15s;
-    border:1px solid var(--border);background:var(--card);
-  }
-  .rec-item:hover{background:var(--panel);border-color:var(--accent)}
-  .rec-img{width:60px;height:85px;object-fit:cover;border-radius:8px;flex-shrink:0}
-  .rec-info{flex:1;min-width:0}
-  .rec-title{font-weight:700;font-size:14px;line-height:1.3;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .rec-meta{font-size:12px;color:var(--muted);margin-top:4px}
-
-  .external-links{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
-  .ext-link{
-    padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;
-    background:var(--panel);border:1px solid var(--border);color:var(--accent);
-    text-decoration:none;transition:background .15s;
-  }
-  .ext-link:hover{background:var(--card)}
-
-  .admin-edit-btn{display:flex;justify-content:center;margin-bottom:16px}
-
-  /* ── Comments (YouTube‑style flat threading) ── */
-  .comment-item {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px; margin-bottom: 12px;
-  }
-  /* Top‑level comments have no extra indent */
-  .comment-item.top-level { margin-left: 0; }
-  /* ALL replies (any depth) get the SAME fixed indent */
-  .comment-item.reply { margin-left: 24px; }
-
-  .comment-meta {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
-  }
-  .comment-meta-left { display: flex; align-items: center; gap: 10px; }
-  .comment-meta-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-  .comment-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .comment-avatar-link {
-    flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
-    background: var(--panel); border: 1px solid var(--border); display: block;
-  }
-  .comment-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-  .comment-author-link { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; }
-  .comment-author { font-weight: 700; font-size: 14px; color: var(--text); }
-  .comment-author-link:hover .comment-author { color: var(--accent); }
-  .comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); word-break: break-word; }
-  .comment-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .vote-btn {
-    background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 16px; display: flex; align-items: center; gap: 4px; transition: color 0.1s;
-  }
-  .vote-btn.active { color: var(--accent); }
-  .vote-btn .material-symbols-outlined { font-size: 18px; }
-  .reply-toggle { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; }
-  .delete-btn {
-    background: none; border: none; color: var(--danger); cursor: pointer;
-    font-size: 18px; padding: 2px; display: flex; align-items: center;
-  }
-
-  /* Thread‑level reply box */
-  .thread-reply-box {
-    margin: 10px 0 10px 0;
-    display: none;
-  }
-  .thread-reply-box.open { display: flex; flex-direction: column; gap: 8px; }
-  .thread-reply-box textarea {
-    width: 100%; padding: 10px; border-radius: 10px; background: var(--panel);
-    border: 1px solid var(--border); color: var(--text); font-size: 13px;
-    resize: vertical; min-height: 60px;
-  }
-  .reply-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .reply-actions button {
-    padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 13px;
-    border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
-  }
-  .reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
-
-  /* Wrapper for a thread's replies (all flat) */
-  .thread-replies { margin-top: 4px; }
-
-  /* Top‑level comment input area */
-  .comment-input-area {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 16px; margin-bottom: 20px;
-  }
-  .comment-input-area textarea {
-    width: 100%; padding: 12px; border-radius: 12px; background: var(--panel);
-    border: 1px solid var(--border); color: var(--text); font-size: 14px;
-    resize: vertical; min-height: 80px;
-  }
-  .comment-input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-  .comment-input-footer button {
-    padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px;
-    background: var(--accent); color: #0a2a28; border: none; cursor: pointer;
-  }
-  .login-prompt { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0; }
-  .login-prompt a { color: var(--accent); font-weight: 600; }
-
-  @media (max-width:500px) {
-    .hero-poster{ width:100px; height:140px; }
-  }
+@media (max-width:500px) {
+  .hero-poster{ width:100px; height:140px; }
+}
 </style>
 </head>
 <body>
-  <header class="app">
-    <div class="header-left">
-      <button class="back-btn" onclick="history.back()">←</button>
-      <div class="brand">Ani<span>Chan</span></div>
-    </div>
-    <div class="header-actions" id="headerActions">
-      <!-- Hamburger button inserted by JS -->
-    </div>
-  </header>
+<header class="app">
+  <div class="header-left">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <div class="brand">Ani<span>Chan</span></div>
+  </div>
+  <div class="header-actions" id="headerActions"></div>
+</header>
 
-  <div class="nav-dropdown" id="navDropdown">
-    <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
-    <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
-    <div class="nav-search-wrap" id="navSearchWrap">
-      <span class="ico material-symbols-outlined">search</span>
-      <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
-    </div>
+<div class="nav-dropdown" id="navDropdown">
+  <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
+  <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
+  <div class="nav-search-wrap" id="navSearchWrap">
+    <span class="ico material-symbols-outlined">search</span>
+    <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
+  </div>
+</div>
+
+<div class="search-results-dropdown" id="searchResultsDropdown"></div>
+
+<div class="broadcast hidden" id="broadcast">
+  <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
+  <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
+</div>
+
+<div class="hero" id="heroBg">
+  <div class="hero-overlay"></div>
+  <img class="hero-poster" id="heroPoster" src="" alt="Poster" />
+</div>
+
+<div class="title-section">
+  <h1 id="heroTitle"></h1>
+  <div class="jp-title" id="heroJpTitle"></div>
+</div>
+
+<main class="container">
+  <div class="tabs">
+    <div class="tab active" data-tab="summary">Summary</div>
+    <div class="tab" data-tab="comments">Comments</div>
+    <div class="tab" data-tab="recommendations">Recommendations</div>
   </div>
 
-  <div class="search-results-dropdown" id="searchResultsDropdown"></div>
-
-  <div class="broadcast hidden" id="broadcast">
-    <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
-    <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
-  </div>
-
-  <div class="hero" id="heroBg">
-    <div class="hero-overlay"></div>
-    <img class="hero-poster" id="heroPoster" src="" alt="Poster" />
-  </div>
-
-  <div class="title-section">
-    <h1 id="heroTitle"></h1>
-    <div class="jp-title" id="heroJpTitle"></div>
-  </div>
-
-  <main class="container">
-    <div class="tabs">
-      <div class="tab active" data-tab="summary">Summary</div>
-      <div class="tab" data-tab="comments">Comments</div>
-      <div class="tab" data-tab="recommendations">Recommendations</div>
-    </div>
-
-    <div class="tab-content active" id="summaryTab">
-      <div class="synopsis-text" id="synopsis">Loading synopsis...</div>
-      <div class="meta-list" id="metaList"></div>
-      <div class="genres" id="genreTags"></div>
-      <div class="external-links" id="extLinks"></div>
-      <div class="admin-edit-btn" id="adminEditBtn"></div>
-
-      <div style="display:flex; align-items:center; justify-content:space-between; margin: 20px 0 10px;">
-        <h3 style="margin:0; font-size:16px;" id="episodesHeading">Episodes</h3>
-        <div style="display:flex; gap:4px;">
-          <button class="sort-btn active" id="sortAsc">asc</button>
-          <button class="sort-btn" id="sortDesc">desc</button>
-        </div>
+  <div class="tab-content active" id="summaryTab">
+    <div class="synopsis-text" id="synopsis">Loading synopsis...</div>
+    <div class="meta-list" id="metaList"></div>
+    <div class="genres" id="genreTags"></div>
+    <div class="external-links" id="extLinks"></div>
+    <div class="admin-edit-btn" id="adminEditBtn"></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin: 20px 0 10px;">
+      <h3 style="margin:0; font-size:16px;" id="episodesHeading">Episodes</h3>
+      <div style="display:flex; gap:4px;">
+        <button class="sort-btn active" id="sortAsc">asc</button>
+        <button class="sort-btn" id="sortDesc">desc</button>
       </div>
-      <div class="episode-grid" id="episodeGrid"></div>
     </div>
+    <div class="episode-grid" id="episodeGrid"></div>
+  </div>
 
-    <div class="tab-content" id="commentsTab">
-      <div class="comment-input-area" id="commentInputArea">
-        <textarea id="commentText" placeholder="Write a comment..."></textarea>
-        <div class="comment-input-footer">
-          <div id="commentLoginPrompt" class="login-prompt" style="display:none;">
-            <a id="loginLink" href="user_login.html">Log in</a> to comment
-          </div>
-          <button id="postCommentBtn" style="display:none;">Post</button>
+  <div class="tab-content" id="commentsTab">
+    <div class="comment-input-area" id="commentInputArea">
+      <textarea id="commentText" placeholder="Write a comment..."></textarea>
+      <div class="comment-input-footer">
+        <div id="commentLoginPrompt" class="login-prompt" style="display:none;">
+          <a id="loginLink" href="user_login.html">Log in</a> to comment
         </div>
+        <button id="postCommentBtn" style="display:none;">Post</button>
       </div>
-      <div id="commentsList"></div>
     </div>
+    <div id="commentsList"></div>
+  </div>
 
-    <div class="tab-content" id="recommendationsTab">
-      <h3 style="margin-bottom:16px;font-weight:700;font-size:18px">ANIME YOU MIGHT LIKE</h3>
-      <div class="rec-list" id="recList"></div>
-    </div>
-  </main>
+  <div class="tab-content" id="recommendationsTab">
+    <h3 style="margin-bottom:16px;font-weight:700;font-size:18px">ANIME YOU MIGHT LIKE</h3>
+    <div class="rec-list" id="recList"></div>
+  </div>
+</main>
 
 <script>
 (() => {
-  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_URL  = "https://yphxpgssdqboufbgazwi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
-  const ADMIN_EMAIL = "g09649009@gmail.com";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const $ = id => document.getElementById(id);
+  const ADMIN_EMAIL   = "g09649009@gmail.com";
+  const sb  = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $   = id => document.getElementById(id);
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
 
-  const params = new URLSearchParams(window.location.search);
+  const params  = new URLSearchParams(window.location.search);
   const animeId = params.get('id');
   if (!animeId) { alert('No anime specified'); history.back(); return; }
 
   let animeData = null;
-  let user = null;
-  let library = [];
+  let user      = null;
+  let library   = [];
 
-  // ── Set login link to return to this page ──
+  // Login link with redirect
   const loginLink = $('loginLink');
-  if (loginLink) {
-    loginLink.href = `user_login.html?redirect=${encodeURIComponent(window.location.href)}`;
-  }
+  if (loginLink) loginLink.href = `user_login.html?redirect=${encodeURIComponent(window.location.href)}`;
 
-  // ── Hamburger menu ──
+  // ── Hamburger menu ──────────────────────────────────────
   (function renderHamburger() {
     const container = $("headerActions");
-    const menuBtn = document.createElement("button");
+    const menuBtn   = document.createElement("button");
     menuBtn.className = "menu-btn";
     menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
-    menuBtn.addEventListener("click", () => {
-      $("navDropdown").classList.toggle("open");
-    });
+    menuBtn.addEventListener("click", () => $("navDropdown").classList.toggle("open"));
     container.appendChild(menuBtn);
   })();
 
-  $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
+  $("navHome").addEventListener("click",  () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
   $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
 
-  // ── Live search ──
-  const navSearchInput = $("navSearchInput");
+  // ── Live search ─────────────────────────────────────────
+  const navSearchInput       = $("navSearchInput");
   const searchResultsDropdown = $("searchResultsDropdown");
   const MAX_RESULTS = 15;
 
   function positionDropdown() {
     const rect = navSearchInput.getBoundingClientRect();
-    searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
-    searchResultsDropdown.style.left = rect.left + 'px';
-    searchResultsDropdown.style.width = rect.width + 'px';
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
+    searchResultsDropdown.style.top    = (rect.bottom + 4) + 'px';
+    searchResultsDropdown.style.left   = rect.left + 'px';
+    searchResultsDropdown.style.width  = rect.width + 'px';
+    searchResultsDropdown.style.maxHeight = (window.innerHeight - rect.bottom - 8) + 'px';
   }
   function hideSearchResults() {
     searchResultsDropdown.classList.remove("show");
     searchResultsDropdown.innerHTML = '';
   }
-
   function performSearch(query) {
     searchResultsDropdown.innerHTML = '';
     const q = query.trim();
-    if (!q || library.length === 0) { hideSearchResults(); return; }
-
+    if (!q || !library.length) { hideSearchResults(); return; }
     const lowerQ = q.toLowerCase();
-    const words = lowerQ.split(/\s+/).filter(Boolean);
-    if (words.length === 0) { hideSearchResults(); return; }
+    const words  = lowerQ.split(/\s+/).filter(Boolean);
+    if (!words.length) { hideSearchResults(); return; }
 
     const scored = library.map(a => {
-      const fields = [a.title, a.title_en, a.title_jp].filter(f => f);
+      const fields = [a.title, a.title_en, a.title_jp].filter(Boolean);
       let matchCount = 0;
-      for (const word of words) {
+      for (const word of words)
         if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
-      }
       if (words.length === 1 && matchCount === 0) return null;
-      if (words.length > 1 && matchCount < 2) return null;
-
+      if (words.length > 1 && matchCount < 2)    return null;
       let score = matchCount;
-      for (const f of fields) {
-        if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
-      }
-      if (score < 200) {
-        for (const f of fields) {
-          if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
-        }
-      }
+      for (const f of fields) if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
+      if (score < 200) for (const f of fields) if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
       return { anime: a, score };
     }).filter(Boolean);
 
-    if (scored.length === 0) {
+    if (!scored.length) {
       const noRes = document.createElement("div");
       noRes.className = "no-results";
       noRes.textContent = "No results found";
@@ -498,8 +485,7 @@
       return;
     }
 
-    const matches = scored.sort((a,b) => b.score - a.score).slice(0, MAX_RESULTS).map(s => s.anime);
-    matches.forEach(a => {
+    scored.sort((a,b) => b.score - a.score).slice(0, MAX_RESULTS).forEach(({ anime: a }) => {
       const item = document.createElement("div");
       item.className = "search-result-item";
       item.innerHTML = `
@@ -522,15 +508,15 @@
 
   navSearchInput.addEventListener("input", () => performSearch(navSearchInput.value));
   navSearchInput.addEventListener("focus", () => { if (navSearchInput.value.trim()) performSearch(navSearchInput.value); });
-  document.addEventListener("click", (e) => {
+  document.addEventListener("click", e => {
     if (!e.target.closest("#navSearchWrap") && !e.target.closest("#searchResultsDropdown")) hideSearchResults();
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideSearchResults(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") hideSearchResults(); });
   window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
   window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
 
   (async function preloadLibrary() {
-    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, image_url, type, year, ep_total");
+    const { data } = await sb.from("anime").select("id,title,title_en,title_jp,image_url,type,year,ep_total");
     library = data || [];
   })();
 
@@ -538,18 +524,18 @@
     const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
     const msg = (data && data.value || "").trim();
     if (msg) { $("broadcastMsg").textContent = msg; $("broadcast").classList.remove("hidden"); }
-    else { $("broadcast").classList.add("hidden"); }
+    else      { $("broadcast").classList.add("hidden"); }
   }
 
-  // ── Tab switching ──
+  // ── Tab switching ────────────────────────────────────────
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const target = tab.dataset.tab;
-      if (target === 'summary') $('summaryTab').classList.add('active');
-      else if (target === 'comments') $('commentsTab').classList.add('active');
+      if (target === 'summary')         $('summaryTab').classList.add('active');
+      else if (target === 'comments')   $('commentsTab').classList.add('active');
       else if (target === 'recommendations') $('recommendationsTab').classList.add('active');
     });
   });
@@ -558,18 +544,13 @@
     if (!dateStr) return '';
     const d = new Date(dateStr);
     const m = d.getMonth();
-    const y = d.getFullYear();
-    let season = '';
-    if (m >= 0 && m <= 2) season = 'Winter';
-    else if (m >= 3 && m <= 5) season = 'Spring';
-    else if (m >= 6 && m <= 8) season = 'Summer';
-    else season = 'Fall';
-    return `${season} ${y}`;
+    const seasons = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Fall','Fall','Fall','Winter'];
+    return `${seasons[m]} ${d.getFullYear()}`;
   }
 
   async function fetchSynopsisFromJikan(title) {
     try {
-      const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`);
+      const res  = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`);
       const data = await res.json();
       const match = data.data && data.data[0];
       if (match && match.synopsis) {
@@ -580,15 +561,15 @@
     return null;
   }
 
-  // ── Load anime and episodes ──
+  // ── Load anime ───────────────────────────────────────────
   async function loadAnime() {
     const { data, error } = await sb.from('anime').select('*').eq('id', animeId).single();
     if (error || !data) { alert('Anime not found'); history.back(); return; }
     animeData = data;
 
     $('heroBg').style.backgroundImage = `url('${data.image_url || DEFAULT_AVATAR}')`;
-    $('heroPoster').src = data.image_url || DEFAULT_AVATAR;
-    $('heroTitle').textContent = data.title || 'Untitled';
+    $('heroPoster').src  = data.image_url || DEFAULT_AVATAR;
+    $('heroTitle').textContent  = data.title || 'Untitled';
     $('heroJpTitle').textContent = data.title_jp || '';
 
     let synopsis = data.synopsis || data.notes || null;
@@ -598,23 +579,24 @@
     }
     $('synopsis').textContent = synopsis || 'No synopsis available.';
 
+    // Meta list
     const metaItems = [];
     if (data.title_jp) metaItems.push({ label: 'Japanese', value: data.title_jp });
-    if (data.title_en) metaItems.push({ label: 'English', value: data.title_en });
+    if (data.title_en) metaItems.push({ label: 'English',  value: data.title_en });
     metaItems.push(
-      { label: 'Type',    value: data.type || '—', accent: true, typeLink: data.type ? `type.html?type=${encodeURIComponent(data.type)}` : null },
-      { label: 'Episode', value: data.ep_total != null ? data.ep_total : '?' },
-      { label: 'Status',  value: data.status || '—', accent: true, statusLink: data.status ? `status.html?status=${encodeURIComponent(data.status)}` : null },
-      { label: 'Aired',   value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
-      { label: 'Season',  value: seasonFromDate(data.aired_from) || '—', accent: true, link: true },
-      { label: 'Studios', value: data.studio || '—' },
+      { label: 'Type',     value: data.type || '—', accent: true, typeLink: data.type ? `type.html?type=${encodeURIComponent(data.type)}` : null },
+      { label: 'Episode',  value: data.ep_total != null ? data.ep_total : '?' },
+      { label: 'Status',   value: data.status || '—', accent: true, statusLink: data.status ? `status.html?status=${encodeURIComponent(data.status)}` : null },
+      { label: 'Aired',    value: data.aired_from ? `${new Date(data.aired_from).toLocaleDateString()} to ${data.aired_to ? new Date(data.aired_to).toLocaleDateString() : '?'}` : '—' },
+      { label: 'Season',   value: seasonFromDate(data.aired_from) || '—', accent: true, link: true },
+      { label: 'Studios',  value: data.studio || '—' },
       { label: 'Duration', value: data.duration || '—' }
     );
 
     const metaContainer = $('metaList');
     metaContainer.innerHTML = '';
     metaItems.forEach(m => {
-      if (!m.value || m.value === '—' && m.label !== 'Duration') return;
+      if (!m.value || (m.value === '—' && m.label !== 'Duration')) return;
       const row = document.createElement('div');
       row.className = 'meta-row';
       if (m.link) {
@@ -632,6 +614,7 @@
       metaContainer.appendChild(row);
     });
 
+    // Genres
     const genreContainer = $('genreTags');
     genreContainer.innerHTML = '';
     if (data.genres && Array.isArray(data.genres)) {
@@ -644,7 +627,8 @@
       });
     }
 
-    const query = encodeURIComponent(data.title);
+    // External links
+    const query    = encodeURIComponent(data.title);
     const extLinks = [
       { name: 'AniList', url: `https://anilist.co/search/anime?search=${query}` },
       { name: 'MAL',     url: `https://myanimelist.net/anime.php?q=${query}` },
@@ -653,12 +637,13 @@
     ];
     const extContainer = $('extLinks');
     extContainer.innerHTML = '';
-    extLinks.forEach(link => {
+    extLinks.forEach(lnk => {
       const a = document.createElement('a');
-      a.className = 'ext-link'; a.href = link.url; a.target = '_blank'; a.textContent = link.name;
+      a.className = 'ext-link'; a.href = lnk.url; a.target = '_blank'; a.textContent = lnk.name;
       extContainer.appendChild(a);
     });
 
+    // Admin edit button
     const { data: { session } } = await sb.auth.getSession();
     if (session && session.user.email === ADMIN_EMAIL) {
       const editBtn = document.createElement('a');
@@ -669,17 +654,17 @@
       $('adminEditBtn').appendChild(editBtn);
     }
 
-    // Episodes rendering
+    // Episodes
     let episodes = [];
     for (let ep = 1; ep <= (animeData.ep_total || 0); ep++) episodes.push(ep);
     let sortOrder = 'asc';
 
     function renderEpisodes() {
-      const grid = $('episodeGrid');
+      const grid   = $('episodeGrid');
       grid.innerHTML = '';
       const sorted = [...episodes];
       if (sortOrder === 'desc') sorted.reverse();
-      if (sorted.length === 0) {
+      if (!sorted.length) {
         grid.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">No episode data</div>';
         $('episodesHeading').textContent = 'Episodes';
         return;
@@ -703,25 +688,15 @@
       $('episodesHeading').textContent = `Episodes (${episodes.length})`;
     }
 
-    $('sortAsc').addEventListener('click', () => {
-      sortOrder = 'asc';
-      $('sortAsc').classList.add('active');
-      $('sortDesc').classList.remove('active');
-      renderEpisodes();
-    });
-    $('sortDesc').addEventListener('click', () => {
-      sortOrder = 'desc';
-      $('sortDesc').classList.add('active');
-      $('sortAsc').classList.remove('active');
-      renderEpisodes();
-    });
+    $('sortAsc').addEventListener('click',  () => { sortOrder = 'asc';  $('sortAsc').classList.add('active');   $('sortDesc').classList.remove('active'); renderEpisodes(); });
+    $('sortDesc').addEventListener('click', () => { sortOrder = 'desc'; $('sortDesc').classList.add('active');  $('sortAsc').classList.remove('active');  renderEpisodes(); });
     renderEpisodes();
 
     if (!animeData.duration) {
       try {
-        const jikanRes = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(animeData.title)}&limit=1`);
+        const jikanRes  = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(animeData.title)}&limit=1`);
         const jikanData = await jikanRes.json();
-        const match = (jikanData.data && jikanData.data[0]);
+        const match     = jikanData.data && jikanData.data[0];
         if (match && match.duration) {
           animeData.duration = match.duration;
           sb.from('anime').update({ duration: match.duration }).eq('id', animeId).then();
@@ -737,14 +712,14 @@
   async function loadRecommendations() {
     if (!animeData) return;
     try {
-      const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(animeData.title)}&limit=1`);
-      const data = await res.json();
+      const res   = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(animeData.title)}&limit=1`);
+      const data  = await res.json();
       const match = data.data && data.data[0];
       if (!match || !match.mal_id) return;
-      const recRes = await fetch(`https://api.jikan.moe/v4/anime/${match.mal_id}/recommendations`);
+      const recRes  = await fetch(`https://api.jikan.moe/v4/anime/${match.mal_id}/recommendations`);
       if (!recRes.ok) return;
       const recData = await recRes.json();
-      const list = recData.data || [];
+      const list    = recData.data || [];
       const container = $('recList');
       container.innerHTML = '';
       if (!list.length) {
@@ -753,7 +728,7 @@
       }
       list.slice(0, 10).forEach(rec => {
         const entry = rec.entry || {};
-        const div = document.createElement('div');
+        const div   = document.createElement('div');
         div.className = 'rec-item';
         div.innerHTML = `
           <img class="rec-img" src="${entry.images?.jpg?.image_url || ''}" onerror="this.src='${DEFAULT_AVATAR}'" />
@@ -762,7 +737,7 @@
             <div class="rec-meta">${entry.type || '?'}${entry.episodes ? ' - ' + entry.episodes + ' eps' : ''}</div>
           </div>`;
         div.addEventListener('click', () => {
-          sb.from('anime').select('id').eq('title', entry.title).maybeSingle().then(({data: dbAnime}) => {
+          sb.from('anime').select('id').eq('title', entry.title).maybeSingle().then(({ data: dbAnime }) => {
             if (dbAnime) location.href = `anime_info.html?id=${dbAnime.id}`;
             else alert('Anime not in your collection yet.');
           });
@@ -772,38 +747,50 @@
     } catch(e) { console.warn('Recommendations fetch failed', e); }
   }
 
-  // ═══════════════════════════════════════════
-  //  NEW FLAT THREADING COMMENT SYSTEM
-  // ═══════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
+  //  FLAT THREADING COMMENT SYSTEM
+  //
+  //  Key invariants:
+  //  1. renderAllComments   → creates one .comment-item.top-level per root comment
+  //  2. renderTopLevelComment → appends a single .thread-reply-box and a single
+  //                             .thread-replies div inside the top-level wrapper
+  //  3. renderReply         → appends reply divs as SIBLINGS inside the
+  //                           .thread-replies container passed to it — never
+  //                           nested inside each other
+  //  4. All replies share the same fixed margin-left: 24px via CSS
+  //  5. Reply handler reads the author name from data-username (set by
+  //     resolveCommentUserNames) so async timing is never an issue
+  // ═══════════════════════════════════════════════════════════════════════
 
-  let activeThreadId = null;        // which thread's reply box is open
-  let activeReplyTo = null;        // { id, author } of the specific comment being replied to
+  // Tracks which thread's reply box is currently open
+  let activeThreadId = null;
+  // Tracks which specific comment is being replied to
+  let activeReplyTo  = null; // { id, userId } — userId used to mention @username
 
   function esc(t) {
-    return String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+    return String(t).replace(/[&<>"']/g, m =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
   }
 
   function formatCommentDate(iso) {
-    const d = new Date(iso);
-    const day = d.getDate();
+    const d      = new Date(iso);
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 
   async function updateCommentUIForAuth() {
     const { data: { session } } = await sb.auth.getSession();
     user = session?.user || null;
-    const textarea = $('commentText');
-    const postBtn = $('postCommentBtn');
+    const textarea    = $('commentText');
+    const postBtn     = $('postCommentBtn');
     const loginPrompt = $('commentLoginPrompt');
-
     if (user) {
-      textarea.disabled = false;
-      postBtn.style.display = 'inline-block';
+      textarea.disabled         = false;
+      postBtn.style.display     = 'inline-block';
       loginPrompt.style.display = 'none';
     } else {
-      textarea.disabled = true;
-      postBtn.style.display = 'none';
+      textarea.disabled         = true;
+      postBtn.style.display     = 'none';
       loginPrompt.style.display = 'block';
     }
   }
@@ -820,36 +807,39 @@
       $('commentsList').innerHTML = '<div style="color:var(--muted);padding:16px;">Failed to load comments.</div>';
       return;
     }
-
     renderAllComments(comments || []);
     await resolveCommentUserNames();
   }
 
-  // Build the whole comment tree using flat threading
+  // ── renderAllComments ────────────────────────────────────────────────
+  // Entry point. Groups comments into threads and renders each one.
   function renderAllComments(comments) {
     const container = $('commentsList');
     container.innerHTML = '';
-
     if (!comments.length) {
       container.innerHTML = '<div style="color:var(--muted);padding:16px;text-align:center;">No comments yet. Be the first!</div>';
       return;
     }
-
-    // Top-level comments have no parent_id
-    const topLevel = comments.filter(c => !c.parent_id);
-    topLevel.forEach(comment => {
-      renderTopLevelComment(comment, comments, container);
-    });
+    comments
+      .filter(c => !c.parent_id)
+      .forEach(comment => renderTopLevelComment(comment, comments, container));
   }
 
+  // ── renderTopLevelComment ────────────────────────────────────────────
+  // Builds the wrapper for one thread:
+  //   .comment-item.top-level
+  //     [comment inner HTML]
+  //     .thread-reply-box        ← single input for this whole thread
+  //     .thread-replies          ← flat container; all replies go here
   function renderTopLevelComment(comment, allComments, container) {
-    const div = document.createElement('div');
-    div.className = 'comment-item top-level';
-    div.dataset.threadId = comment.id;            // used to find the thread's reply box
+    const wrapper = document.createElement('div');
+    wrapper.className = 'comment-item top-level';
+    wrapper.dataset.commentId = comment.id;
+    wrapper.dataset.threadId  = comment.id; // thread root = itself
 
-    buildCommentInner(div, comment, false);
+    buildCommentInner(wrapper, comment);
 
-    // Thread reply box (single input for this whole thread)
+    // Single reply box for the whole thread
     const replyBox = document.createElement('div');
     replyBox.className = 'thread-reply-box';
     replyBox.dataset.threadBox = comment.id;
@@ -858,89 +848,96 @@
       <div class="reply-actions">
         <button class="cancel-thread-reply">Cancel</button>
         <button class="primary submit-thread-reply">Reply</button>
-      </div>
-    `;
-    div.appendChild(replyBox);
+      </div>`;
+    wrapper.appendChild(replyBox);
 
-    // Container for all replies to this top-level comment (flat)
+    // Flat replies container — ALL replies for this thread land here as siblings
     const threadReplies = document.createElement('div');
     threadReplies.className = 'thread-replies';
-    div.appendChild(threadReplies);
+    wrapper.appendChild(threadReplies);
 
-    container.appendChild(div);
+    container.appendChild(wrapper);
 
-    // Attach reply box events
-    attachThreadReplyEvents(div, comment.id);
+    // Wire up reply box cancel/submit
+    attachThreadReplyEvents(wrapper, comment.id);
 
-    // Render direct replies (and their nested replies) into this thread
-    const directReplies = allComments.filter(c => c.parent_id === comment.id);
-    directReplies.forEach(reply => {
-      renderReply(reply, allComments, threadReplies, comment.id);
-    });
+    // Render all replies for this thread into threadReplies (flat)
+    allComments
+      .filter(c => c.parent_id === comment.id)
+      .forEach(reply => renderReply(reply, allComments, threadReplies, comment.id));
   }
 
-  function renderReply(comment, allComments, parentContainer, threadId) {
+  // ── renderReply ──────────────────────────────────────────────────────
+  // FIXED: renders a reply div into flatContainer (the thread's .thread-replies),
+  // then renders children of this reply also into flatContainer — NOT inside the
+  // reply div itself. This guarantees zero DOM nesting between reply siblings.
+  //
+  // @param comment       the reply comment object
+  // @param allComments   full comment array (for finding children)
+  // @param flatContainer the thread's .thread-replies div — siblings go here
+  // @param threadId      the root comment id for this thread
+  function renderReply(comment, allComments, flatContainer, threadId) {
     const div = document.createElement('div');
     div.className = 'comment-item reply';
-    div.dataset.threadId = threadId;
+    div.dataset.commentId = comment.id;
+    div.dataset.threadId  = threadId; // always the thread root
 
-    buildCommentInner(div, comment, true);
+    buildCommentInner(div, comment);
+    flatContainer.appendChild(div);
 
-    // Container for deeper replies (still flat visually)
-    const nestedContainer = document.createElement('div');
-    nestedContainer.className = 'thread-replies';
-    div.appendChild(nestedContainer);
-
-    parentContainer.appendChild(div);
-
-    // Render children recursively
-    const children = allComments.filter(c => c.parent_id === comment.id);
-    children.forEach(child => {
-      renderReply(child, allComments, nestedContainer, threadId);
-    });
+    // Children of this reply are also appended into the SAME flatContainer
+    // so they become siblings of div — never children
+    allComments
+      .filter(c => c.parent_id === comment.id)
+      .forEach(child => renderReply(child, allComments, flatContainer, threadId));
   }
 
-  // Shared helper to populate a comment's meta, body, actions
-  function buildCommentInner(containerDiv, comment, isReply) {
-    const likedBy = comment.liked_by || [];
-    const dislikedBy = comment.disliked_by || [];
-    const likeCount = likedBy.length;
+  // ── buildCommentInner ────────────────────────────────────────────────
+  // Populates the inner HTML of a comment div and attaches event listeners.
+  // Stores data-username on the author span so openThreadReplyBox can read
+  // it reliably after resolveCommentUserNames() has filled it in.
+  function buildCommentInner(containerDiv, comment) {
+    const likedBy     = comment.liked_by    || [];
+    const dislikedBy  = comment.disliked_by || [];
+    const likeCount   = likedBy.length;
     const dislikeCount = dislikedBy.length;
-    const userLiked = user && likedBy.includes(user.id);
+    const userLiked    = user && likedBy.includes(user.id);
     const userDisliked = user && dislikedBy.includes(user.id);
-    const isOwner = user && comment.user_id === user.id;
-
-    const dateStr = formatCommentDate(comment.created_at);
-    const profileLink = `profile.html?user=${comment.user_id}`;
+    const isOwner      = user && comment.user_id === user.id;
+    const profileLink  = `profile.html?user=${comment.user_id}`;
 
     containerDiv.innerHTML = `
       <div class="comment-meta">
         <div class="comment-meta-left">
           <a href="${profileLink}" class="comment-avatar-link">
-            <img class="comment-avatar-img" src="${DEFAULT_AVATAR}" data-userid="${esc(comment.user_id)}" alt="" />
+            <img class="comment-avatar-img" src="${DEFAULT_AVATAR}"
+                 data-userid="${esc(comment.user_id)}" alt="" />
           </a>
           <a href="${profileLink}" class="comment-author-link">
-            <span class="comment-author" data-userid="${esc(comment.user_id)}">Loading...</span>
+            <span class="comment-author"
+                  data-userid="${esc(comment.user_id)}"
+                  data-username="">Loading...</span>
           </a>
         </div>
         <div class="comment-meta-right">
-          <span class="comment-date">${dateStr}</span>
+          <span class="comment-date">${formatCommentDate(comment.created_at)}</span>
           ${isOwner ? `<button class="delete-btn" title="Delete comment"><span class="material-symbols-outlined">delete</span></button>` : ''}
         </div>
       </div>
       <div class="comment-body">${esc(comment.message || '')}</div>
       <div class="comment-actions">
         <button class="vote-btn like-btn ${userLiked ? 'active' : ''}" data-comment-id="${comment.id}">
-          <span class="material-symbols-outlined">thumb_up</span> <span class="like-count">${likeCount}</span>
+          <span class="material-symbols-outlined">thumb_up</span>
+          <span class="like-count">${likeCount}</span>
         </button>
         <button class="vote-btn dislike-btn ${userDisliked ? 'active' : ''}" data-comment-id="${comment.id}">
-          <span class="material-symbols-outlined">thumb_down</span> <span class="dislike-count">${dislikeCount}</span>
+          <span class="material-symbols-outlined">thumb_down</span>
+          <span class="dislike-count">${dislikeCount}</span>
         </button>
         <button class="reply-toggle" data-comment-id="${comment.id}">Reply</button>
-      </div>
-    `;
+      </div>`;
 
-    // Attach delete
+    // Delete
     const deleteBtn = containerDiv.querySelector('.delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
@@ -951,162 +948,188 @@
       });
     }
 
-    // Attach vote handlers
-    const likeBtn = containerDiv.querySelector('.like-btn');
-    const dislikeBtn = containerDiv.querySelector('.dislike-btn');
-    likeBtn.addEventListener('click', async () => {
+    // Votes
+    containerDiv.querySelector('.like-btn').addEventListener('click', async () => {
       if (!user) { alert('Log in to vote'); return; }
       await sb.rpc('toggle_comment_like', { comment_id: comment.id });
       loadComments();
     });
-    dislikeBtn.addEventListener('click', async () => {
+    containerDiv.querySelector('.dislike-btn').addEventListener('click', async () => {
       if (!user) { alert('Log in to vote'); return; }
       await sb.rpc('toggle_comment_dislike', { comment_id: comment.id });
       loadComments();
     });
 
-    // Reply toggle behavior
-    const replyToggle = containerDiv.querySelector('.reply-toggle');
-    replyToggle.addEventListener('click', () => {
-      const threadId = containerDiv.dataset.threadId;
-      if (!threadId) return; // shouldn't happen
+    // ── Reply toggle ─────────────────────────────────────────────────
+    // Reads threadId from containerDiv.dataset.threadId (always set before
+    // buildCommentInner is called). Reads username from data-username attribute
+    // which resolveCommentUserNames() fills in after the async profile fetch.
+    containerDiv.querySelector('.reply-toggle').addEventListener('click', () => {
+      const threadId   = containerDiv.dataset.threadId;
+      const isReply    = containerDiv.classList.contains('reply');
+      const authorSpan = containerDiv.querySelector('.comment-author');
+      // Read the resolved username; fall back to display text if not yet set
+      const authorName = (authorSpan && (authorSpan.dataset.username || authorSpan.textContent.trim())) || 'User';
 
-      // If the thread's reply box is already open AND we are targeting the same thread,
-      // and we are not setting a specific reply-to (just plain "Reply" on top-level comment),
-      // just close it.
-      if (activeThreadId === threadId && !activeReplyTo && isReply === false) {
-        closeThreadReplyBox();
-        return;
-      }
-
-      // If replying to a specific reply, we always open (or switch) to that thread
       if (isReply) {
-        // Get author name of this reply
-        const authorEl = containerDiv.querySelector('.comment-author');
-        const authorName = authorEl ? authorEl.textContent.trim() : 'User';
+        // Replying to a specific reply → open thread box with @mention prefill
         openThreadReplyBox(threadId, { id: comment.id, author: authorName });
-        return;
+      } else {
+        // Replying to the top-level comment → toggle the box open/closed
+        if (activeThreadId === threadId && !activeReplyTo) {
+          closeThreadReplyBox();
+        } else {
+          openThreadReplyBox(threadId, null);
+        }
       }
-
-      // Plain "Reply" on top-level comment (isReply = false) -> open box with no prefill
-      openThreadReplyBox(threadId, null);
     });
   }
 
-  // Thread reply box logic
+  // ── openThreadReplyBox ───────────────────────────────────────────────
+  // Finds the .thread-reply-box for a thread by looking inside the
+  // .comment-item.top-level whose data-comment-id matches threadId.
+  // This is robust even after DOM re-renders.
+  //
+  // @param threadId   id of the root comment of the thread
+  // @param replyTo    null | { id, author } — the specific comment being replied to
   function openThreadReplyBox(threadId, replyTo) {
-    // Close previously open box
-    closeThreadReplyBox();
+    closeThreadReplyBox(); // close any previously open box first
 
-    // Find the top-level comment div
-    const topDiv = document.querySelector(`.comment-item.top-level[data-thread-id="${threadId}"]`);
-    if (!topDiv) return;
+    // Find the top-level wrapper for this thread
+    const threadWrapper = $('commentsList').querySelector(
+      `.comment-item.top-level[data-comment-id="${CSS.escape(String(threadId))}"]`
+    );
+    if (!threadWrapper) return;
 
-    const replyBox = topDiv.querySelector('.thread-reply-box');
+    const replyBox = threadWrapper.querySelector('.thread-reply-box');
     if (!replyBox) return;
 
-    const textarea = replyBox.querySelector('textarea');
-    if (replyTo && replyTo.author) {
-      textarea.value = `@${replyTo.author} `;
-    } else {
-      textarea.value = '';
-    }
+    activeThreadId = threadId;
+    activeReplyTo  = replyTo;
 
     replyBox.classList.add('open');
-    activeThreadId = threadId;
-    activeReplyTo = replyTo;
+    const textarea = replyBox.querySelector('textarea');
+    if (textarea) {
+      textarea.value = replyTo ? `@${replyTo.author} ` : '';
+      textarea.focus();
+      // Move cursor to end
+      const len = textarea.value.length;
+      textarea.setSelectionRange(len, len);
+    }
   }
 
+  // ── closeThreadReplyBox ──────────────────────────────────────────────
   function closeThreadReplyBox() {
     if (!activeThreadId) return;
-    const topDiv = document.querySelector(`.comment-item.top-level[data-thread-id="${activeThreadId}"]`);
-    if (topDiv) {
-      const replyBox = topDiv.querySelector('.thread-reply-box');
+    const threadWrapper = $('commentsList').querySelector(
+      `.comment-item.top-level[data-comment-id="${CSS.escape(String(activeThreadId))}"]`
+    );
+    if (threadWrapper) {
+      const replyBox = threadWrapper.querySelector('.thread-reply-box');
       if (replyBox) {
         replyBox.classList.remove('open');
-        replyBox.querySelector('textarea').value = '';
+        const textarea = replyBox.querySelector('textarea');
+        if (textarea) textarea.value = '';
       }
     }
     activeThreadId = null;
-    activeReplyTo = null;
+    activeReplyTo  = null;
   }
 
-  function attachThreadReplyEvents(commentDiv, threadId) {
-    const replyBox = commentDiv.querySelector('.thread-reply-box');
-    const cancelBtn = replyBox.querySelector('.cancel-thread-reply');
-    const submitBtn = replyBox.querySelector('.submit-thread-reply');
-    const textarea = replyBox.querySelector('textarea');
+  // ── attachThreadReplyEvents ──────────────────────────────────────────
+  // Wires up the Cancel and Reply submit buttons inside a thread's reply box.
+  function attachThreadReplyEvents(threadWrapper, threadId) {
+    const replyBox  = threadWrapper.querySelector('.thread-reply-box');
+    if (!replyBox) return;
 
-    cancelBtn.addEventListener('click', () => closeThreadReplyBox());
+    replyBox.querySelector('.cancel-thread-reply').addEventListener('click', closeThreadReplyBox);
 
-    submitBtn.addEventListener('click', async () => {
-      const msg = textarea.value.trim();
-      if (!msg || !user) return;
+    replyBox.querySelector('.submit-thread-reply').addEventListener('click', async () => {
+      if (!user) { alert('Log in to reply.'); return; }
+      const textarea = replyBox.querySelector('textarea');
+      const text     = (textarea?.value || '').trim();
+      if (!text) return;
 
-      // Determine parent_id: if activeReplyTo is set, we reply to that comment,
-      // otherwise reply directly to the top-level comment (thread root)
+      // parent_id is the specific comment being replied to,
+      // or the thread root if replying to the top-level comment
       const parentId = activeReplyTo ? activeReplyTo.id : threadId;
 
       const { error } = await sb.from('anime_comments').insert({
-        anime_id: animeId,
-        user_id: user.id,
+        anime_id:  animeId,
+        user_id:   user.id,
+        message:   text,
         parent_id: parentId,
-        message: msg
+        liked_by:    [],
+        disliked_by: []
       });
 
-      if (!error) {
-        closeThreadReplyBox();
-        loadComments();
-      } else {
-        alert('Failed to post reply');
-      }
+      if (error) { alert('Failed to post reply.'); console.error(error); return; }
+      closeThreadReplyBox();
+      await loadComments();
     });
   }
 
+  // ── resolveCommentUserNames ──────────────────────────────────────────
+  // Fetches display names and avatars for all comment authors in the
+  // current rendered list. Sets data-username on .comment-author spans
+  // so the reply handler can read the name even after the async call.
   async function resolveCommentUserNames() {
-    const userElements = document.querySelectorAll('.comment-author');
-    const avatarElements = document.querySelectorAll('.comment-avatar-img');
-    const userIds = new Set();
-    userElements.forEach(el => { if (el.dataset.userid) userIds.add(el.dataset.userid); });
-    if (userIds.size === 0) return;
-    const { data: profiles } = await sb.from('profiles').select('id, username, avatar_url').in('id', [...userIds]);
-    if (profiles) {
-      const map = new Map(profiles.map(p => [p.id, { username: p.username, avatar_url: p.avatar_url }]));
-      userElements.forEach(el => {
-        const uid = el.dataset.userid;
-        if (uid && map.has(uid)) {
-          el.textContent = map.get(uid).username;
-        }
-      });
-      avatarElements.forEach(el => {
-        const uid = el.dataset.userid;
-        if (uid && map.has(uid)) {
-          const avatarUrl = map.get(uid).avatar_url;
-          if (avatarUrl) el.src = avatarUrl;
-        }
-      });
-    }
+    const authorEls = document.querySelectorAll('.comment-author[data-userid]');
+    const avatarEls = document.querySelectorAll('.comment-avatar-img[data-userid]');
+
+    // Collect unique user ids
+    const userIds = [...new Set(
+      [...authorEls].map(el => el.dataset.userid).filter(Boolean)
+    )];
+    if (!userIds.length) return;
+
+    const { data: profiles } = await sb
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds);
+
+    if (!profiles) return;
+
+    const profileMap = {};
+    profiles.forEach(p => { profileMap[p.id] = p; });
+
+    authorEls.forEach(el => {
+      const profile  = profileMap[el.dataset.userid];
+      const username = profile?.username || 'User';
+      el.textContent        = username;
+      el.dataset.username   = username; // ← stored here for reply handler
+    });
+
+    avatarEls.forEach(el => {
+      const profile = profileMap[el.dataset.userid];
+      if (profile?.avatar_url) el.src = profile.avatar_url;
+    });
   }
 
-  // Post top-level comment
+  // ── Post top-level comment ───────────────────────────────────────────
   $('postCommentBtn').addEventListener('click', async () => {
-    const text = $('commentText').value.trim();
-    if (!text || !user) return;
+    if (!user) { alert('Log in to comment.'); return; }
+    const textarea = $('commentText');
+    const text     = (textarea?.value || '').trim();
+    if (!text) return;
+
     const { error } = await sb.from('anime_comments').insert({
-      anime_id: animeId,
-      user_id: user.id,
-      message: text
+      anime_id:    animeId,
+      user_id:     user.id,
+      message:     text,
+      parent_id:   null,
+      liked_by:    [],
+      disliked_by: []
     });
-    if (!error) { $('commentText').value = ''; loadComments(); }
-    else alert('Failed to post comment');
+
+    if (error) { alert('Failed to post comment.'); console.error(error); return; }
+    if (textarea) textarea.value = '';
+    await loadComments();
   });
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    const { data: { session } } = await sb.auth.getSession();
-    user = session?.user || null;
-    loadBroadcast();
-    loadAnime();
-  });
+  // ── Boot ─────────────────────────────────────────────────────────────
+  loadBroadcast();
+  loadAnime();
 })();
 </script>
 </body>
