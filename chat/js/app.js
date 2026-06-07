@@ -12,10 +12,7 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", async () => {
   // 1. Auth check
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = "../user_login.html";   // go up to root
-    return;
-  }
+  if (!session) { window.location.href = "../user_login.html"; return; }
   state.currentUser = session.user;
 
   // 2. Initialise presence & load rooms
@@ -23,88 +20,86 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadRooms();
   subscribeToProfiles();
 
-  // 3. Deep-link from another page (?room=...)
+  // 3. Deep-link via ?room=
   const rp = new URLSearchParams(window.location.search).get("room");
   if (rp) {
-    const { data: room } = await supabase
-      .from("chat_rooms")
-      .select("user_one_id,user_two_id")
-      .eq("id", rp)
-      .single();
+    const { data: room } = await supabase.from("chat_rooms").select("user_one_id,user_two_id").eq("id", rp).single();
     if (room) {
-      openRoom(
-        rp,
-        room.user_one_id === state.currentUser.id
-          ? room.user_two_id
-          : room.user_one_id
-      );
+      openRoom(rp, room.user_one_id === state.currentUser.id ? room.user_two_id : room.user_one_id);
     } else {
       alert("Chat room not found.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }
 
-  // 4. UI event bindings
-  // Search in thread list
-  $("searchInput").addEventListener("input", () =>
-    filterRooms($("searchInput").value)
-  );
+  // 4. UI bindings
+  $("searchInput").addEventListener("input", () => filterRooms($("searchInput").value));
 
-  // Click on a thread item (delegation)
   $("roomList").addEventListener("click", (e) => {
     const item = e.target.closest(".thread-item");
     if (!item || !item.dataset.roomId) return;
     openRoom(item.dataset.roomId, item.dataset.otherId);
   });
 
-  // Back arrow (close conversation, return to room list)
   $("backArrow").addEventListener("click", closeRoom);
-
-  // New chat FAB – open friends overlay
   $("newChatBtn").addEventListener("click", () => showFriendsOverlay());
-
-  // Send message
   $("sendBtn").addEventListener("click", sendMsg);
-  $("msgInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendMsg();
-  });
+  $("msgInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMsg(); });
 
-  // Cancel reply
   $("cancelReply").addEventListener("click", () => {
     state.replyTo = null;
     $("replyStrip").classList.remove("open");
   });
 
-  // Home button → root index
-  $("homeBtn").addEventListener("click", () => {
-    window.location.href = "../index.html";
+  $("homeBtn").addEventListener("click", () => { window.location.href = "../index.html"; });
+
+  // Typing listener
+  $("msgInput").addEventListener("input", () => {
+    if (!state.broadcastChannel || !state.activeRoom) return;
+    broadcastTyping(true);
+    clearTimeout(state.typingTimeout);
+    state.typingTimeout = setTimeout(() => broadcastTyping(false), 2000);
   });
 
-  // ---- Voice/Video Call buttons ----
+  // Context menu bindings
+  document.addEventListener("click", (e) => { if (!$("ctxMenu").contains(e.target)) $("ctxMenu").style.display = "none"; });
+  $("ctxEdit").addEventListener("click", () => {
+    $("ctxMenu").style.display = "none";
+    if (state.ctxMsgId && state.ctxMsgId.startsWith("tmp-")) {
+      alert("Message is still sending — please wait a moment and try again.");
+      return;
+    }
+    const c = prompt("Edit message:");
+    if (!c || !c.trim()) return;
+    supabase.from("messages").update({ message: c.trim(), edited_at: new Date().toISOString(), is_edited: true }).eq("id", state.ctxMsgId)
+      .then(({ error }) => { if (error) alert("Edit failed"); else loadMsgs(state.activeRoom); });
+  });
+  $("ctxDelMe").addEventListener("click", () => {
+    $("ctxMenu").style.display = "none";
+    import("./chat/messages.js").then(m => m.addDel(state.ctxMsgId));
+    loadMsgs(state.activeRoom);
+  });
+  $("ctxDelAll").addEventListener("click", () => {
+    $("ctxMenu").style.display = "none";
+    if (!confirm("Delete for everyone?")) return;
+    supabase.from("messages").update({ is_deleted: true }).eq("id", state.ctxMsgId)
+      .then(({ error }) => { if (error) alert("Delete failed"); else loadMsgs(state.activeRoom); });
+  });
+  $("ctxCancel").addEventListener("click", () => { $("ctxMenu").style.display = "none"; });
+
+  // Call buttons
   $("voiceCallBtn")?.addEventListener("click", startVoiceCall);
   $("videoCallBtn")?.addEventListener("click", startVideoCall);
-  $("muteBtn")?.addEventListener("click", () =>
-    import("./calls/calls.js").then((m) => m.toggleMute())
-  );
-  $("cameraBtn")?.addEventListener("click", () =>
-    import("./calls/calls.js").then((m) => m.toggleCamera())
-  );
+  $("muteBtn")?.addEventListener("click", () => import("./calls/calls.js").then(m => m.toggleMute()));
+  $("cameraBtn")?.addEventListener("click", () => import("./calls/calls.js").then(m => m.toggleCamera()));
 
-  // Listen for incoming calls
   listenForIncomingCalls();
 
-  // 5. Heartbeat: refresh room list every 30s
-  setInterval(() => {
-    loadRooms();
-  }, 30000);
+  // 5. Heartbeat
+  setInterval(() => { loadRooms(); }, 30000);
 
-  // 6. Realtime: chat_rooms table changes → refresh room list
-  supabase
-    .channel("public:chat_rooms")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "chat_rooms" },
-      () => loadRooms()
-    )
+  // 6. Realtime
+  supabase.channel("public:chat_rooms")
+    .on("postgres_changes", { event: "*", schema: "public", table: "chat_rooms" }, () => loadRooms())
     .subscribe();
 });
