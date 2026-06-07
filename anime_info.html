@@ -436,6 +436,7 @@
   let user = null;
   let library = [];
 
+  // ── Set login link to return to this page ──
   const loginLink = $('loginLink');
   if (loginLink) {
     loginLink.href = `user_login.html?redirect=${encodeURIComponent(window.location.href)}`;
@@ -835,6 +836,22 @@
     await resolveCommentUserNames();
   }
 
+  // Global variable to track the currently open reply box
+  let activeReplyBox = null;
+
+  function closeActiveReplyBox() {
+    if (activeReplyBox) {
+      activeReplyBox.classList.remove('open');
+      // Also close the associated nested-replies if any
+      const nested = activeReplyBox.parentElement.querySelector('.nested-replies');
+      if (nested) nested.classList.remove('open');
+      // Update the toggle button text back to "Reply"
+      const toggle = activeReplyBox.parentElement.querySelector('.reply-toggle');
+      if (toggle) toggle.textContent = 'Reply';
+      activeReplyBox = null;
+    }
+  }
+
   function renderComments(comments) {
     const container = $('commentsList');
     container.innerHTML = '';
@@ -854,7 +871,9 @@
   function renderComment(comment, allComments, parentEl, depth) {
     const div = document.createElement('div');
     div.className = 'comment-item';
-    div.style.marginLeft = depth * 20 + 'px';
+    // Cap left margin at 3 levels to prevent excessive squishing
+    const maxIndent = Math.min(depth, 3) * 20;
+    div.style.marginLeft = maxIndent + 'px';
 
     const likedBy = comment.liked_by || [];
     const dislikedBy = comment.disliked_by || [];
@@ -920,7 +939,7 @@
       });
     }
 
-    // ── Reply toggle (FIXED: doesn't close ancestor sections) ──
+    // ── Reply toggle with global single active state ──
     const replyToggle = div.querySelector('.reply-toggle');
     const replyBox = div.querySelector('.reply-box');
     const cancelBtn = div.querySelector('.cancel-reply');
@@ -928,50 +947,26 @@
     const textarea = div.querySelector('.reply-box textarea');
 
     replyToggle.addEventListener('click', () => {
-      const isOpen = nestedContainer.classList.contains('open');
-
-      if (!isOpen) {
-        // Collect all ancestor .nested-replies elements
-        const ancestors = [];
-        let el = div.parentElement;
-        while (el) {
-          if (el.classList.contains('nested-replies')) {
-            ancestors.push(el);
-          }
-          el = el.parentElement;
-        }
-
-        // Close only reply sections that are NOT ancestors of this comment
-        document.querySelectorAll('.nested-replies.open').forEach(b => {
-          if (!ancestors.includes(b)) {
-            b.classList.remove('open');
-          }
-        });
-        document.querySelectorAll('.reply-box.open').forEach(b => {
-          // Check if this reply box is inside an ancestor
-          const boxAncestor = b.closest('.nested-replies');
-          if (!boxAncestor || !ancestors.includes(boxAncestor)) {
-            if (b !== replyBox) {
-              b.classList.remove('open');
-            }
-          }
-        });
-
-        nestedContainer.classList.add('open');
-        replyBox.classList.add('open');
-        replyToggle.textContent = 'Collapse';
-        setTimeout(() => textarea?.focus(), 50);
-      } else {
-        nestedContainer.classList.remove('open');
-        replyBox.classList.remove('open');
-        replyToggle.textContent = 'Reply';
+      // If this box is already the active one, close it (toggle)
+      if (activeReplyBox === replyBox) {
+        closeActiveReplyBox();
+        return;
       }
+
+      // Close any other open reply box
+      closeActiveReplyBox();
+
+      // Open this reply box and mark as active
+      replyBox.classList.add('open');
+      activeReplyBox = replyBox;
+      replyToggle.textContent = 'Collapse';
+      // Also open the nested replies container
+      nestedContainer.classList.add('open');
+      setTimeout(() => textarea?.focus(), 50);
     });
 
     cancelBtn.addEventListener('click', () => {
-      replyBox.classList.remove('open');
-      nestedContainer.classList.remove('open');
-      replyToggle.textContent = 'Reply';
+      closeActiveReplyBox();
     });
 
     submitBtn.addEventListener('click', async () => {
@@ -985,16 +980,17 @@
       });
       if (!error) {
         textarea.value = '';
-        nestedContainer.classList.add('open');
-        replyBox.classList.add('open');
-        replyToggle.textContent = 'Collapse';
+        // Keep the box open after reload to see the new reply
+        // but we reload the whole tree, so the state will be reset.
+        // We can just reload without maintaining the open state,
+        // or we can set a flag. Simpler: reload.
         loadComments();
       } else {
         alert('Reply failed');
       }
     });
 
-    // Vote handlers
+    // Vote handlers (unchanged)
     const likeBtn = div.querySelector('.like-btn');
     const dislikeBtn = div.querySelector('.dislike-btn');
     likeBtn.addEventListener('click', async () => {
