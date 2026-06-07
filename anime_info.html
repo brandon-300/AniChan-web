@@ -335,6 +335,18 @@ header.app{
 .login-prompt { text-align: center; color: var(--muted); font-size: 14px; margin: 8px 0; }
 .login-prompt a { color: var(--accent); font-weight: 600; }
 
+/* ── Button loading spinner ── */
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.btn-spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%; animation: btn-spin .6s linear infinite;
+  vertical-align: middle; flex-shrink: 0; margin-left: 4px;
+}
+.comment-input-footer button .btn-spinner,
+.reply-actions button.primary .btn-spinner { width: 15px; height: 15px; border-width: 2.5px; }
+button[data-loading] { opacity: 0.65; pointer-events: none; cursor: default; }
+
 @media (max-width:500px) {
   .hero-poster{ width:100px; height:140px; }
 }
@@ -427,6 +439,27 @@ header.app{
   const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
   );
+
+  // ── Button loading helpers ───────────────────────────────
+  // btnLoad(btn) — saves label, shows spinner, disables
+  // btnDone(btn) — restores original label, re-enables
+  function btnLoad(btn, loadingText) {
+    if (!btn || btn.dataset.loading) return;
+    btn.dataset.loading    = '1';
+    btn.dataset.origHtml   = btn.innerHTML;
+    const spinner = '<span class="btn-spinner"></span>';
+    if (loadingText !== undefined) {
+      btn.innerHTML = loadingText + spinner;
+    } else {
+      btn.innerHTML = btn.innerHTML + spinner;
+    }
+  }
+  function btnDone(btn) {
+    if (!btn) return;
+    if (btn.dataset.origHtml !== undefined) btn.innerHTML = btn.dataset.origHtml;
+    delete btn.dataset.loading;
+    delete btn.dataset.origHtml;
+  }
 
   const params  = new URLSearchParams(window.location.search);
   const animeId = params.get('id');
@@ -1007,16 +1040,15 @@ header.app{
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
         if (!confirm('Delete this comment? All replies will also be removed.')) return;
+        btnLoad(deleteBtn);
 
-        // Fetch all comments for this anime so we can find the full subtree
         const { data: allRows, error: fetchErr } = await sb
           .from('anime_comments')
           .select('id, parent_id')
           .eq('anime_id', animeId);
 
-        if (fetchErr) { alert('Failed to delete comment.'); return; }
+        if (fetchErr) { btnDone(deleteBtn); alert('Failed to delete comment.'); return; }
 
-        // Collect all IDs in the subtree rooted at comment.id
         function collectSubtree(rootId, rows) {
           const ids = [rootId];
           const children = rows.filter(r => r.parent_id === rootId);
@@ -1030,21 +1062,23 @@ header.app{
           .delete()
           .in('id', idsToDelete);
 
-        if (delErr) { alert('Failed to delete comment.'); console.error(delErr); return; }
+        if (delErr) { btnDone(deleteBtn); alert('Failed to delete comment.'); console.error(delErr); return; }
         await loadComments();
       });
     }
 
     // Votes
-    containerDiv.querySelector('.like-btn').addEventListener('click', async () => {
+    containerDiv.querySelector('.like-btn').addEventListener('click', async function() {
       if (!user) { alert('Log in to vote'); return; }
+      btnLoad(this);
       await sb.rpc('toggle_comment_like', { comment_id: comment.id });
-      loadComments();
+      await loadComments();
     });
-    containerDiv.querySelector('.dislike-btn').addEventListener('click', async () => {
+    containerDiv.querySelector('.dislike-btn').addEventListener('click', async function() {
       if (!user) { alert('Log in to vote'); return; }
+      btnLoad(this);
       await sb.rpc('toggle_comment_dislike', { comment_id: comment.id });
-      loadComments();
+      await loadComments();
     });
 
     // ── Reply toggle ─────────────────────────────────────────────────
@@ -1144,17 +1178,16 @@ header.app{
 
     replyBox.querySelector('.cancel-thread-reply').addEventListener('click', closeThreadReplyBox);
 
-    replyBox.querySelector('.submit-thread-reply').addEventListener('click', async () => {
+    replyBox.querySelector('.submit-thread-reply').addEventListener('click', async function() {
       if (!user) { alert('Log in to reply.'); return; }
       const textarea = replyBox.querySelector('textarea');
       const text     = (textarea?.value || '').trim();
       if (!text) return;
 
-      // parent_id is the specific comment being replied to,
-      // or the thread root if replying to the top-level comment
       const parentId = activeReplyTo ? activeReplyTo.id : threadId;
 
-      // One reply per user per comment — check if user already replied to this parent
+      btnLoad(this, 'Posting');
+
       const { data: existing } = await sb
         .from('anime_comments')
         .select('id')
@@ -1164,6 +1197,7 @@ header.app{
         .maybeSingle();
 
       if (existing) {
+        btnDone(this);
         alert("You've already replied to this comment. You can only reply once per comment.");
         return;
       }
@@ -1177,7 +1211,7 @@ header.app{
         disliked_by: []
       });
 
-      if (error) { alert('Failed to post reply.'); console.error(error); return; }
+      if (error) { btnDone(this); alert('Failed to post reply.'); console.error(error); return; }
       closeThreadReplyBox();
       await loadComments();
     });
@@ -1221,11 +1255,13 @@ header.app{
   }
 
   // ── Post top-level comment ───────────────────────────────────────────
-  $('postCommentBtn').addEventListener('click', async () => {
+  $('postCommentBtn').addEventListener('click', async function() {
     if (!user) { alert('Log in to comment.'); return; }
     const textarea = $('commentText');
     const text     = (textarea?.value || '').trim();
     if (!text) return;
+
+    btnLoad(this, 'Posting');
 
     const { error } = await sb.from('anime_comments').insert({
       anime_id:    animeId,
@@ -1236,9 +1272,12 @@ header.app{
       disliked_by: []
     });
 
-    if (error) { alert('Failed to post comment.'); console.error(error); return; }
+    if (error) { btnDone(this); alert('Failed to post comment.'); console.error(error); return; }
     if (textarea) textarea.value = '';
     await loadComments();
+    // loadComments re-renders the whole comment area so button is remounted;
+    // call btnDone defensively in case it wasn't replaced
+    btnDone(this);
   });
 
   // ── Boot ─────────────────────────────────────────────────────────────
