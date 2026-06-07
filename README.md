@@ -1,56 +1,55 @@
 # AniChan Web
 
-AniChan Web is a clean, static anime tracking and social web app built with HTML, JavaScript, and Supabase.
+AniChan Web is a lightweight anime community web app built with **HTML, CSS, and JavaScript**, backed by **Supabase** for authentication, data storage, and realtime features.
 
-It combines anime discovery, library management, user profiles, and real-time chat into one interface.
+It is designed to let users browse anime content, manage profiles, connect with friends, and chat in real time from a clean browser-based interface.
 
-## Live Demo
+## ✨ Features
 
-- https://ani-chan-web.vercel.app/
+- Anime browsing and catalog pages
+- Anime details, episodes, genres, status, type, and season views
+- User authentication
+- User profiles
+- Friends system
+- Realtime chat
+- Admin/login-related pages
+- Static, fast-loading frontend structure
+- Supabase-powered backend services
 
-## Features
+## 🛠️ Tech Stack
 
-- Anime library browsing and search
-- Anime detail pages with episode information
-- Browse by genre, status, type, and season
-- User authentication flows
-- Profile page and friend discovery
-- Real-time chat
-- Admin pages for management
-- Multilingual support via `i18n.js`
-- Responsive interface designed for desktop and mobile
+- **Frontend:** HTML, CSS, JavaScript
+- **Backend services:** Supabase
+- **Database:** Supabase/PostgreSQL
+- **Realtime:** Supabase Realtime
+- **Authentication:** Supabase Auth
+- **Hosting:** Works well on static hosting platforms such as Vercel, Netlify, or GitHub Pages
 
-## Project Structure
+## 📁 Project Structure
 
-The repository is organized as a multi-page static site, including:
+This repository is organized as a multi-page frontend application. Common pages include:
 
-- `index.html` — home page / anime library
-- `anime.html` — anime listing and browsing
-- `anime_info.html` — anime details
-- `episode_info.html` — episode details
-- `genre.html` — genre browsing
-- `status.html` — status browsing
-- `type.html` — type browsing
-- `season.html` — seasonal browsing
-- `profile.html` — user profile
-- `chat.html` — messaging interface
-- `find_friends.html` — discover users
-- `user_login.html` — user login
-- `admin_login.html` — admin login
-- `admin.html` — admin dashboard
-- `forgot_password.html` — password recovery
-- `reset_password.html` — password reset
-- `i18n.js` — translation and localization logic
+- `index.html`
+- `anime.html`
+- `anime-details.html`
+- `episode.html`
+- `genres.html`
+- `status.html`
+- `type.html`
+- `season.html`
+- `login.html`
+- `profile.html`
+- `friends.html`
+- `chat.html`
+- `admin.html`
 
-## Tech Stack
+You may also have supporting:
 
-- HTML
-- JavaScript
-- Supabase
-- Google Fonts / Inter
-- Material Symbols
+- JavaScript files
+- CSS files
+- assets such as images, icons, and logos
 
-## Getting Started
+## 🚀 Getting Started
 
 ### 1. Clone the repository
 
@@ -59,11 +58,11 @@ git clone https://github.com/brandon-300/AniChan-web.git
 cd AniChan-web
 ```
 
-### 2. Run the project locally
+### 2. Open the project
 
-Because this is a static site, you can open `index.html` directly in your browser.
+Because this is a frontend web app, you can open `index.html` directly in your browser or serve it with a local web server.
 
-For a better local development experience, use a simple static server:
+For example, with Python:
 
 ```bash
 python -m http.server 8000
@@ -71,37 +70,83 @@ python -m http.server 8000
 
 Then open:
 
-```bash
+```text
 http://localhost:8000
 ```
 
-## Supabase Setup
+### 3. Configure Supabase
 
-AniChan uses Supabase for backend services such as data storage, authentication, realtime updates, and chat presence.
+If your build uses Supabase, make sure your project is connected to:
 
-If you are customizing the project, review the Supabase configuration in the JavaScript files and replace it with your own project settings as needed.
+- Supabase project URL
+- Supabase anon/public key
+- Any required database tables, policies, and realtime settings
 
-## Deployment
+Add those values in the place used by your JavaScript configuration.
 
-This project can be deployed to any static hosting platform, including:
+## ⚙️ Usage
+
+1. Open the home page.
+2. Sign in or create an account.
+3. Browse anime content.
+4. View details, episodes, genres, and seasons.
+5. Use profile, friends, and chat features after authentication.
+
+## 🔧 Customization
+
+You can customize AniChan Web by editing:
+
+- Page content
+- Styling in CSS
+- Navigation structure
+- Supabase queries
+- Authentication flow
+- Realtime chat behavior
+- Profile and friends features
+
+## 📦 Deployment
+
+AniChan Web can be deployed as a static site.
+
+Recommended platforms:
 
 - Vercel
 - Netlify
 - GitHub Pages
 
-## Contributing
+Before deployment, confirm that:
 
-Contributions are welcome. A simple workflow:
+- All links work correctly
+- Supabase keys are configured
+- CORS / auth settings are correct
+- Realtime permissions are set properly
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+Suggested workflow:
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Open a pull request
+4. Test the site locally
+5. Open a pull request
 
-## License
+## 📄 License
 
-Add a license file if you want to define how others may use or modify this project.
+This project is licensed under the **MIT License**.
 
-## Acknowledgements
+That means anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and even sell copies of this project, as long as the license notice is kept with the software.
 
-Built for anime fans who want a personal tracker, library, and social space in one app.
+If you want the exact legal text, add a `LICENSE` file containing the full MIT License.
+
+## 🙏 Acknowledgements
+
+- Supabase for backend services
+- Anime data sources used by the project
+- Everyone who contributes to AniChan Web
+
+## 📬 Contact
+
+For questions, feature ideas, or contributions, use the repository issues page on GitHub.
