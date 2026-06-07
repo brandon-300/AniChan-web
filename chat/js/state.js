@@ -1,0 +1,23 @@
+export const state = {
+  currentUser: null,
+  activeRoom: null,
+  partnerId: null,
+  rooms: [],
+  filteredRooms: [],
+  messageSub: null,
+  presenceSub: null,
+  profilesSub: null,
+  broadcastChannel: null,
+  typingTimeout: null,
+  replyTo: null,
+  ctxMsgId: null,
+  sending: false,
+  sentIds: new Set(),
+  typingUsers: new Map(),
+  // Call state
+  peerConnection: null,
+  localStream: null,
+  remoteStream: null,
+  activeCallId: null,
+  callStartTime: null,
+};
