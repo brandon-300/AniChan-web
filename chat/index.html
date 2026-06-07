@@ -4,10 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>AniChan · Chat</title>
-
-<!-- Supabase library (must be loaded before any JS module that uses it) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <link rel="stylesheet" href="css/chat.css" />
 <link rel="stylesheet" href="css/call.css" />
 <link rel="stylesheet" href="css/modal.css" />
@@ -53,6 +50,7 @@
         <div class="partner-name" id="partnerName"></div>
         <div class="partner-sub" id="partnerSub"></div>
       </div>
+      <!-- NEW: Call buttons -->
       <div class="call-actions">
         <button id="voiceCallBtn" title="Voice Call">
           <span class="material-symbols-outlined">call</span>
@@ -120,15 +118,9 @@
   </div>
   <div class="call-timer" id="callTimer">00:00</div>
   <div class="call-controls">
-    <button id="muteBtn" title="Mute">
-      <span class="material-symbols-outlined">mic</span>
-    </button>
-    <button id="cameraBtn" title="Camera">
-      <span class="material-symbols-outlined">videocam</span>
-    </button>
-    <button id="endCallBtn" title="End call">
-      <span class="material-symbols-outlined">call_end</span>
-    </button>
+    <button id="muteBtn" title="Mute"><span class="material-symbols-outlined">mic</span></button>
+    <button id="cameraBtn" title="Camera"><span class="material-symbols-outlined">videocam</span></button>
+    <button id="endCallBtn" title="End call"><span class="material-symbols-outlined">call_end</span></button>
   </div>
 </div>
 
