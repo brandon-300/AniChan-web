@@ -1,4 +1,17 @@
-/* Call overlay - full screen */
+.call-actions {
+  display: flex; gap: 8px;
+  margin-left: auto;
+}
+.call-actions button {
+  background: none; border: none;
+  color: var(--accent); font-size: 22px;
+  cursor: pointer; padding: 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.call-actions button:hover { background: rgba(81,218,211,0.12); }
+
 .call-overlay {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(0,0,0,0.95);
@@ -40,22 +53,12 @@
 #endCallBtn { background: var(--danger); color: #fff; }
 #endCallBtn:hover { background: #e03a4e; }
 
-/* Call buttons in chat header */
-.call-actions {
-  display: flex; gap: 8px;
-  margin-left: auto;
+.call-timer {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  font-size: 18px; color: #fff; background: rgba(0,0,0,0.5);
+  padding: 4px 16px; border-radius: 20px;
 }
-.call-actions button {
-  background: none; border: none;
-  color: var(--accent); font-size: 22px;
-  cursor: pointer; padding: 4px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  transition: background 0.15s;
-}
-.call-actions button:hover { background: rgba(81,218,211,0.12); }
 
-/* Incoming call popup */
 .incoming-call-popup {
   position: fixed; inset: 0; z-index: 300;
   background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
@@ -80,9 +83,3 @@
 .incoming-call-content button:hover { background: var(--card); }
 #acceptCallBtn { background: var(--success); color: #fff; border-color: transparent; }
 #declineCallBtn { background: var(--danger); color: #fff; border-color: transparent; }
-
-.call-timer {
-  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-  font-size: 18px; color: #fff; background: rgba(0,0,0,0.5);
-  padding: 4px 16px; border-radius: 20px;
-}
