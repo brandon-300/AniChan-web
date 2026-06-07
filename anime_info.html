@@ -237,53 +237,30 @@
 
   .admin-edit-btn{display:flex;justify-content:center;margin-bottom:16px}
 
-  /* ── Comments ── */
+  /* ── Comments (YouTube‑style flat threading) ── */
   .comment-item {
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
     padding: 14px; margin-bottom: 12px;
   }
+  /* Top‑level comments have no extra indent */
+  .comment-item.top-level { margin-left: 0; }
+  /* ALL replies (any depth) get the SAME fixed indent */
+  .comment-item.reply { margin-left: 24px; }
+
   .comment-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
   }
-  .comment-meta-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .comment-meta-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-  }
-  .comment-date {
-    font-size: 12px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
+  .comment-meta-left { display: flex; align-items: center; gap: 10px; }
+  .comment-meta-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .comment-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
   .comment-avatar-link {
-    flex-shrink: 0;
-    width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
-    background: var(--panel); border: 1px solid var(--border);
-    display: block;
+    flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--border); display: block;
   }
-  .comment-avatar-img {
-    width: 100%; height: 100%; object-fit: cover;
-  }
-  .comment-author-link {
-    display: flex; align-items: center; gap: 8px;
-    text-decoration: none; color: inherit;
-  }
-  .comment-author {
-    font-weight: 700; font-size: 14px; color: var(--text);
-  }
-  .comment-author-link:hover .comment-author {
-    color: var(--accent);
-  }
+  .comment-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+  .comment-author-link { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; }
+  .comment-author { font-weight: 700; font-size: 14px; color: var(--text); }
+  .comment-author-link:hover .comment-author { color: var(--accent); }
   .comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); word-break: break-word; }
   .comment-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .vote-btn {
@@ -297,9 +274,14 @@
     background: none; border: none; color: var(--danger); cursor: pointer;
     font-size: 18px; padding: 2px; display: flex; align-items: center;
   }
-  .reply-box { margin-top: 10px; display: none; }
-  .reply-box.open { display: flex; flex-direction: column; gap: 8px; }
-  .reply-box textarea {
+
+  /* Thread‑level reply box */
+  .thread-reply-box {
+    margin: 10px 0 10px 0;
+    display: none;
+  }
+  .thread-reply-box.open { display: flex; flex-direction: column; gap: 8px; }
+  .thread-reply-box textarea {
     width: 100%; padding: 10px; border-radius: 10px; background: var(--panel);
     border: 1px solid var(--border); color: var(--text); font-size: 13px;
     resize: vertical; min-height: 60px;
@@ -311,9 +293,10 @@
   }
   .reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
 
-  .nested-replies { display: none; }
-  .nested-replies.open { display: block; }
+  /* Wrapper for a thread's replies (all flat) */
+  .thread-replies { margin-top: 4px; }
 
+  /* Top‑level comment input area */
   .comment-input-area {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px;
     padding: 16px; margin-bottom: 20px;
@@ -789,7 +772,13 @@
     } catch(e) { console.warn('Recommendations fetch failed', e); }
   }
 
-  // ── Comments ──
+  // ═══════════════════════════════════════════
+  //  NEW FLAT THREADING COMMENT SYSTEM
+  // ═══════════════════════════════════════════
+
+  let activeThreadId = null;        // which thread's reply box is open
+  let activeReplyTo = null;        // { id, author } of the specific comment being replied to
+
   function esc(t) {
     return String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
   }
@@ -832,49 +821,87 @@
       return;
     }
 
-    renderComments(comments || []);
+    renderAllComments(comments || []);
     await resolveCommentUserNames();
   }
 
-  // Global variable to track the currently open reply box
-  let activeReplyBox = null;
-
-  function closeActiveReplyBox() {
-    if (activeReplyBox) {
-      activeReplyBox.classList.remove('open');
-      // Also close the associated nested-replies if any
-      const nested = activeReplyBox.parentElement.querySelector('.nested-replies');
-      if (nested) nested.classList.remove('open');
-      // Update the toggle button text back to "Reply"
-      const toggle = activeReplyBox.parentElement.querySelector('.reply-toggle');
-      if (toggle) toggle.textContent = 'Reply';
-      activeReplyBox = null;
-    }
-  }
-
-  function renderComments(comments) {
+  // Build the whole comment tree using flat threading
+  function renderAllComments(comments) {
     const container = $('commentsList');
     container.innerHTML = '';
+
     if (!comments.length) {
       container.innerHTML = '<div style="color:var(--muted);padding:16px;text-align:center;">No comments yet. Be the first!</div>';
       return;
     }
+
+    // Top-level comments have no parent_id
     const topLevel = comments.filter(c => !c.parent_id);
-    topLevel.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'comment-item';
-      renderComment(c, comments, div, 0);
-      container.appendChild(div);
+    topLevel.forEach(comment => {
+      renderTopLevelComment(comment, comments, container);
     });
   }
 
-  function renderComment(comment, allComments, parentEl, depth) {
+  function renderTopLevelComment(comment, allComments, container) {
     const div = document.createElement('div');
-    div.className = 'comment-item';
-    // Cap left margin at 3 levels to prevent excessive squishing
-    const maxIndent = Math.min(depth, 3) * 20;
-    div.style.marginLeft = maxIndent + 'px';
+    div.className = 'comment-item top-level';
+    div.dataset.threadId = comment.id;            // used to find the thread's reply box
 
+    buildCommentInner(div, comment, false);
+
+    // Thread reply box (single input for this whole thread)
+    const replyBox = document.createElement('div');
+    replyBox.className = 'thread-reply-box';
+    replyBox.dataset.threadBox = comment.id;
+    replyBox.innerHTML = `
+      <textarea placeholder="Write a reply..."></textarea>
+      <div class="reply-actions">
+        <button class="cancel-thread-reply">Cancel</button>
+        <button class="primary submit-thread-reply">Reply</button>
+      </div>
+    `;
+    div.appendChild(replyBox);
+
+    // Container for all replies to this top-level comment (flat)
+    const threadReplies = document.createElement('div');
+    threadReplies.className = 'thread-replies';
+    div.appendChild(threadReplies);
+
+    container.appendChild(div);
+
+    // Attach reply box events
+    attachThreadReplyEvents(div, comment.id);
+
+    // Render direct replies (and their nested replies) into this thread
+    const directReplies = allComments.filter(c => c.parent_id === comment.id);
+    directReplies.forEach(reply => {
+      renderReply(reply, allComments, threadReplies, comment.id);
+    });
+  }
+
+  function renderReply(comment, allComments, parentContainer, threadId) {
+    const div = document.createElement('div');
+    div.className = 'comment-item reply';
+    div.dataset.threadId = threadId;
+
+    buildCommentInner(div, comment, true);
+
+    // Container for deeper replies (still flat visually)
+    const nestedContainer = document.createElement('div');
+    nestedContainer.className = 'thread-replies';
+    div.appendChild(nestedContainer);
+
+    parentContainer.appendChild(div);
+
+    // Render children recursively
+    const children = allComments.filter(c => c.parent_id === comment.id);
+    children.forEach(child => {
+      renderReply(child, allComments, nestedContainer, threadId);
+    });
+  }
+
+  // Shared helper to populate a comment's meta, body, actions
+  function buildCommentInner(containerDiv, comment, isReply) {
     const likedBy = comment.liked_by || [];
     const dislikedBy = comment.disliked_by || [];
     const likeCount = likedBy.length;
@@ -886,7 +913,7 @@
     const dateStr = formatCommentDate(comment.created_at);
     const profileLink = `profile.html?user=${comment.user_id}`;
 
-    div.innerHTML = `
+    containerDiv.innerHTML = `
       <div class="comment-meta">
         <div class="comment-meta-left">
           <a href="${profileLink}" class="comment-avatar-link">
@@ -903,96 +930,30 @@
       </div>
       <div class="comment-body">${esc(comment.message || '')}</div>
       <div class="comment-actions">
-        <button class="vote-btn like-btn ${userLiked ? 'active' : ''}" data-comment-id="${comment.id}" data-type="like">
+        <button class="vote-btn like-btn ${userLiked ? 'active' : ''}" data-comment-id="${comment.id}">
           <span class="material-symbols-outlined">thumb_up</span> <span class="like-count">${likeCount}</span>
         </button>
-        <button class="vote-btn dislike-btn ${userDisliked ? 'active' : ''}" data-comment-id="${comment.id}" data-type="dislike">
+        <button class="vote-btn dislike-btn ${userDisliked ? 'active' : ''}" data-comment-id="${comment.id}">
           <span class="material-symbols-outlined">thumb_down</span> <span class="dislike-count">${dislikeCount}</span>
         </button>
         <button class="reply-toggle" data-comment-id="${comment.id}">Reply</button>
       </div>
-      <div class="reply-box" data-reply-box="${comment.id}">
-        <textarea placeholder="Write a reply..."></textarea>
-        <div class="reply-actions">
-          <button class="cancel-reply" data-comment-id="${comment.id}">Cancel</button>
-          <button class="primary submit-reply" data-comment-id="${comment.id}">Reply</button>
-        </div>
-      </div>
-      <div class="nested-replies" data-nested="${comment.id}"></div>
     `;
 
-    parentEl.appendChild(div);
-
-    // Render children inside the .nested-replies container
-    const nestedContainer = div.querySelector('.nested-replies');
-    const children = allComments.filter(c => c.parent_id === comment.id);
-    children.forEach(child => renderComment(child, allComments, nestedContainer, depth + 1));
-
-    // Delete handler
-    const deleteBtn = div.querySelector('.delete-btn');
+    // Attach delete
+    const deleteBtn = containerDiv.querySelector('.delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
         if (!confirm('Delete this comment? All replies will also be removed.')) return;
         const { error } = await sb.from('anime_comments').delete().eq('id', comment.id);
-        if (!error) { loadComments(); }
-        else { alert('Failed to delete comment.'); }
+        if (!error) loadComments();
+        else alert('Failed to delete comment.');
       });
     }
 
-    // ── Reply toggle with global single active state ──
-    const replyToggle = div.querySelector('.reply-toggle');
-    const replyBox = div.querySelector('.reply-box');
-    const cancelBtn = div.querySelector('.cancel-reply');
-    const submitBtn = div.querySelector('.submit-reply');
-    const textarea = div.querySelector('.reply-box textarea');
-
-    replyToggle.addEventListener('click', () => {
-      // If this box is already the active one, close it (toggle)
-      if (activeReplyBox === replyBox) {
-        closeActiveReplyBox();
-        return;
-      }
-
-      // Close any other open reply box
-      closeActiveReplyBox();
-
-      // Open this reply box and mark as active
-      replyBox.classList.add('open');
-      activeReplyBox = replyBox;
-      replyToggle.textContent = 'Collapse';
-      // Also open the nested replies container
-      nestedContainer.classList.add('open');
-      setTimeout(() => textarea?.focus(), 50);
-    });
-
-    cancelBtn.addEventListener('click', () => {
-      closeActiveReplyBox();
-    });
-
-    submitBtn.addEventListener('click', async () => {
-      const msg = textarea.value.trim();
-      if (!msg || !user) return;
-      const { error } = await sb.from('anime_comments').insert({
-        anime_id: animeId,
-        user_id: user.id,
-        parent_id: comment.id,
-        message: msg
-      });
-      if (!error) {
-        textarea.value = '';
-        // Keep the box open after reload to see the new reply
-        // but we reload the whole tree, so the state will be reset.
-        // We can just reload without maintaining the open state,
-        // or we can set a flag. Simpler: reload.
-        loadComments();
-      } else {
-        alert('Reply failed');
-      }
-    });
-
-    // Vote handlers (unchanged)
-    const likeBtn = div.querySelector('.like-btn');
-    const dislikeBtn = div.querySelector('.dislike-btn');
+    // Attach vote handlers
+    const likeBtn = containerDiv.querySelector('.like-btn');
+    const dislikeBtn = containerDiv.querySelector('.dislike-btn');
     likeBtn.addEventListener('click', async () => {
       if (!user) { alert('Log in to vote'); return; }
       await sb.rpc('toggle_comment_like', { comment_id: comment.id });
@@ -1002,6 +963,103 @@
       if (!user) { alert('Log in to vote'); return; }
       await sb.rpc('toggle_comment_dislike', { comment_id: comment.id });
       loadComments();
+    });
+
+    // Reply toggle behavior
+    const replyToggle = containerDiv.querySelector('.reply-toggle');
+    replyToggle.addEventListener('click', () => {
+      const threadId = containerDiv.dataset.threadId;
+      if (!threadId) return; // shouldn't happen
+
+      // If the thread's reply box is already open AND we are targeting the same thread,
+      // and we are not setting a specific reply-to (just plain "Reply" on top-level comment),
+      // just close it.
+      if (activeThreadId === threadId && !activeReplyTo && isReply === false) {
+        closeThreadReplyBox();
+        return;
+      }
+
+      // If replying to a specific reply, we always open (or switch) to that thread
+      if (isReply) {
+        // Get author name of this reply
+        const authorEl = containerDiv.querySelector('.comment-author');
+        const authorName = authorEl ? authorEl.textContent.trim() : 'User';
+        openThreadReplyBox(threadId, { id: comment.id, author: authorName });
+        return;
+      }
+
+      // Plain "Reply" on top-level comment (isReply = false) -> open box with no prefill
+      openThreadReplyBox(threadId, null);
+    });
+  }
+
+  // Thread reply box logic
+  function openThreadReplyBox(threadId, replyTo) {
+    // Close previously open box
+    closeThreadReplyBox();
+
+    // Find the top-level comment div
+    const topDiv = document.querySelector(`.comment-item.top-level[data-thread-id="${threadId}"]`);
+    if (!topDiv) return;
+
+    const replyBox = topDiv.querySelector('.thread-reply-box');
+    if (!replyBox) return;
+
+    const textarea = replyBox.querySelector('textarea');
+    if (replyTo && replyTo.author) {
+      textarea.value = `@${replyTo.author} `;
+    } else {
+      textarea.value = '';
+    }
+
+    replyBox.classList.add('open');
+    activeThreadId = threadId;
+    activeReplyTo = replyTo;
+  }
+
+  function closeThreadReplyBox() {
+    if (!activeThreadId) return;
+    const topDiv = document.querySelector(`.comment-item.top-level[data-thread-id="${activeThreadId}"]`);
+    if (topDiv) {
+      const replyBox = topDiv.querySelector('.thread-reply-box');
+      if (replyBox) {
+        replyBox.classList.remove('open');
+        replyBox.querySelector('textarea').value = '';
+      }
+    }
+    activeThreadId = null;
+    activeReplyTo = null;
+  }
+
+  function attachThreadReplyEvents(commentDiv, threadId) {
+    const replyBox = commentDiv.querySelector('.thread-reply-box');
+    const cancelBtn = replyBox.querySelector('.cancel-thread-reply');
+    const submitBtn = replyBox.querySelector('.submit-thread-reply');
+    const textarea = replyBox.querySelector('textarea');
+
+    cancelBtn.addEventListener('click', () => closeThreadReplyBox());
+
+    submitBtn.addEventListener('click', async () => {
+      const msg = textarea.value.trim();
+      if (!msg || !user) return;
+
+      // Determine parent_id: if activeReplyTo is set, we reply to that comment,
+      // otherwise reply directly to the top-level comment (thread root)
+      const parentId = activeReplyTo ? activeReplyTo.id : threadId;
+
+      const { error } = await sb.from('anime_comments').insert({
+        anime_id: animeId,
+        user_id: user.id,
+        parent_id: parentId,
+        message: msg
+      });
+
+      if (!error) {
+        closeThreadReplyBox();
+        loadComments();
+      } else {
+        alert('Failed to post reply');
+      }
     });
   }
 
