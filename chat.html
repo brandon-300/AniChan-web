@@ -1911,6 +1911,8 @@
     // Reset mute icon
     $('toggleMuteBtn').querySelector('.material-symbols-outlined').textContent = 'mic';
     $('toggleMuteBtn').classList.remove('toggled');
+    // Restore call buttons if a room is still open
+    if (activeRoom) showCallButtons(true);
   }
 
   // ── Call button event listeners ──
@@ -1936,11 +1938,6 @@
     const icon = $('toggleSpeakerBtn').querySelector('.material-symbols-outlined');
     icon.textContent = isSpeaker ? 'volume_up' : 'volume_off';
     $('toggleSpeakerBtn').classList.toggle('toggled', !isSpeaker);
-  });
-
-  // ── Back arrow hides call buttons ──
-  $('backArrow').addEventListener('click', () => {
-    showCallButtons(false);
   });
 
 })();
