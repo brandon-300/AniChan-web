@@ -1,6 +1,7 @@
 import { supabase } from "../supabase.js";
 import { state } from "../state.js";
 import { filterRooms } from "./rooms.js";
+
 const $ = (id) => document.getElementById(id);
 
 function fmtChat(iso) {
@@ -37,12 +38,10 @@ export function subscribeToProfiles() {
   state.presenceSub
     .on("presence", { event: "sync" }, () => {
       const presenceState = state.presenceSub.presenceState();
-      state.rooms.forEach(room => {
-        if (presenceState[room.other_user.id]) updateOnlineDot(room.other_user.id, true);
-      });
+      state.rooms.forEach(room => { if (presenceState[room.other_user.id]) updateOnlineDot(room.other_user.id, true); });
     })
     .on("presence", { event: "join" }, ({ key }) => updateOnlineDot(key, true))
-    .on("presence", { event: "leave" }, ({ key }) => { /* DB handles offline */ })
+    .on("presence", { event: "leave" }, () => { /* DB handles offline */ })
     .subscribe(async status => {
       if (status === "SUBSCRIBED") {
         await supabase.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", state.currentUser.id);
