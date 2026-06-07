@@ -420,7 +420,7 @@
 
     const items = [
       { id: 'navFindFriends', icon: 'group', text: t('findFriends'), action: () => location.href = 'find_friends.html' },
-      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat/index.html'; } },
+      { id: 'navMessages', icon: 'chat', text: t('messages'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'chat.html'; } },
       { id: 'navProfile', icon: 'person', text: t('profile'), action: () => { $("navDropdown").classList.remove("open"); location.href = 'profile.html'; } }
     ];
     items.forEach(item => {
@@ -560,17 +560,14 @@
     document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
   }
 
-  // Shared navigation timeout – cancelable so rapid taps on different cards work correctly
   let navTimeout = null;
   function scheduleNav(href) {
     if (navTimeout) clearTimeout(navTimeout);
     navTimeout = setTimeout(() => { navTimeout = null; location.href = href; }, 150);
   }
 
-  // Instantly clear play icons when the browser navigates away (back/forward cache safe)
   window.addEventListener('pagehide', clearAllPlayIcons);
 
-  // ── Pure white play triangle SVG (opacity 0.45) ──
   const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%"><polygon points="6,2 20,12 6,22" fill="white" opacity="0.45"/></svg>';
 
   function renderReleases() {
@@ -595,12 +592,10 @@
         card.href = `anime_info.html?id=${a.id}`;
         card.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
 
-        // Full‑card gradient overlay
         const gradient = document.createElement("div");
         gradient.className = "card-gradient";
         card.appendChild(gradient);
 
-        // BD/DVD badge (top‑left)
         const mediaBadge = document.createElement("span");
         mediaBadge.className = "media-badge";
         if (a.release_type) {
@@ -609,13 +604,11 @@
         }
         card.appendChild(mediaBadge);
 
-        // Play icon container (hidden by default)
         const playIcon = document.createElement("div");
         playIcon.className = "play-icon-overlay";
-        playIcon.innerHTML = PLAY_ICON_SVG;   // ← real SVG triangle with opacity
+        playIcon.innerHTML = PLAY_ICON_SVG;
         card.appendChild(playIcon);
 
-        // Bottom text row
         const bottomBar = document.createElement("div");
         bottomBar.className = "card-bottom";
         const titleSpan = document.createElement("span");
@@ -628,12 +621,6 @@
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // ── Event listeners with 150ms delay ──
-        // On mobile we split touch into three phases so scroll is never blocked:
-        //   touchstart  → record finger position (passive, never preventDefault)
-        //   touchmove   → if finger moved >8px mark as scroll
-        //   touchend    → only activate if NOT a scroll gesture
-        // The synthetic click is suppressed by a wasTouch flag instead of preventDefault.
         let touchStartX = 0, touchStartY = 0, touchWasScroll = false, wasTouch = false;
 
         card.addEventListener('touchstart', (e) => {
@@ -649,14 +636,13 @@
         }, { passive: true });
 
         card.addEventListener('touchend', (e) => {
-          if (touchWasScroll) return;   // finger dragged → it was a scroll, ignore
+          if (touchWasScroll) return;
           wasTouch = true;
           clearAllPlayIcons();
           playIcon.classList.add('show');
           scheduleNav(card.href);
         }, { passive: true });
 
-        // Click handler for mouse devices; skipped if the tap already fired touchend
         card.addEventListener('click', (e) => {
           if (wasTouch) { wasTouch = false; return; }
           e.preventDefault();
