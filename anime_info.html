@@ -243,7 +243,27 @@
     padding: 14px; margin-bottom: 12px;
   }
   .comment-meta {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;                /* allow right side to drop to next line if needed */
+    margin-bottom: 8px;
+  }
+  .comment-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .comment-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;               /* push to the right */
+  }
+  .comment-date {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;             /* never break the date */
   }
   .comment-avatar-link {
     flex-shrink: 0;
@@ -264,8 +284,7 @@
   .comment-author-link:hover .comment-author {
     color: var(--accent);
   }
-  .comment-date { font-size: 12px; color: var(--muted); margin-left: auto; }
-  .comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); }
+  .comment-body { font-size: 14px; line-height: 1.5; margin-bottom: 10px; color: var(--text); word-break: break-word; }
   .comment-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .vote-btn {
     background: none; border: none; color: var(--muted); cursor: pointer;
@@ -277,7 +296,6 @@
   .delete-btn {
     background: none; border: none; color: var(--danger); cursor: pointer;
     font-size: 18px; padding: 2px; display: flex; align-items: center;
-    margin-left: auto;
   }
   .reply-box { margin-top: 10px; display: none; }
   .reply-box.open { display: flex; flex-direction: column; gap: 8px; }
@@ -292,6 +310,11 @@
     border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
   }
   .reply-actions button.primary { background: var(--accent); color: #0a2a28; border-color: transparent; }
+
+  /* Nested replies wrapper – hidden by default, toggled with Reply button */
+  .nested-replies { display: none; }
+  .nested-replies.open { display: block; }
+
   .comment-input-area {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px;
     padding: 16px; margin-bottom: 20px;
@@ -822,8 +845,12 @@
       return;
     }
     const topLevel = comments.filter(c => !c.parent_id);
-    const replies = comments.filter(c => c.parent_id);
-    topLevel.forEach(c => renderComment(c, comments, container, 0));
+    topLevel.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'comment-item';  // top-level container
+      renderComment(c, comments, div, 0);
+      container.appendChild(div);
+    });
   }
 
   function renderComment(comment, allComments, parentEl, depth) {
@@ -844,14 +871,18 @@
 
     div.innerHTML = `
       <div class="comment-meta">
-        <a href="${profileLink}" class="comment-avatar-link">
-          <img class="comment-avatar-img" src="${DEFAULT_AVATAR}" data-userid="${esc(comment.user_id)}" alt="" />
-        </a>
-        <a href="${profileLink}" class="comment-author-link">
-          <span class="comment-author" data-userid="${esc(comment.user_id)}">Loading...</span>
-        </a>
-        <span class="comment-date">${dateStr}</span>
-        ${isOwner ? `<button class="delete-btn" title="Delete comment"><span class="material-symbols-outlined">delete</span></button>` : ''}
+        <div class="comment-meta-left">
+          <a href="${profileLink}" class="comment-avatar-link">
+            <img class="comment-avatar-img" src="${DEFAULT_AVATAR}" data-userid="${esc(comment.user_id)}" alt="" />
+          </a>
+          <a href="${profileLink}" class="comment-author-link">
+            <span class="comment-author" data-userid="${esc(comment.user_id)}">Loading...</span>
+          </a>
+        </div>
+        <div class="comment-meta-right">
+          <span class="comment-date">${dateStr}</span>
+          ${isOwner ? `<button class="delete-btn" title="Delete comment"><span class="material-symbols-outlined">delete</span></button>` : ''}
+        </div>
       </div>
       <div class="comment-body">${esc(comment.message || '')}</div>
       <div class="comment-actions">
@@ -870,9 +901,15 @@
           <button class="primary submit-reply" data-comment-id="${comment.id}">Reply</button>
         </div>
       </div>
+      <div class="nested-replies" data-nested="${comment.id}"></div>
     `;
 
     parentEl.appendChild(div);
+
+    // Render children inside the .nested-replies container
+    const nestedContainer = div.querySelector('.nested-replies');
+    const children = allComments.filter(c => c.parent_id === comment.id);
+    children.forEach(child => renderComment(child, allComments, nestedContainer, depth + 1));
 
     // Delete handler
     const deleteBtn = div.querySelector('.delete-btn');
@@ -880,26 +917,43 @@
       deleteBtn.addEventListener('click', async () => {
         if (!confirm('Delete this comment? All replies will also be removed.')) return;
         const { error } = await sb.from('anime_comments').delete().eq('id', comment.id);
-        if (!error) {
-          loadComments();
-        } else {
-          alert('Failed to delete comment.');
-        }
+        if (!error) { loadComments(); }
+        else { alert('Failed to delete comment.'); }
       });
     }
 
-    // Toggle reply box
-    div.querySelector('.reply-toggle').addEventListener('click', () => {
-      const box = div.querySelector('.reply-box');
-      box.classList.toggle('open');
-    });
-    div.querySelector('.cancel-reply').addEventListener('click', () => {
-      div.querySelector('.reply-box').classList.remove('open');
+    // Reply toggle: opens/closes both the reply box and nested replies
+    const replyToggle = div.querySelector('.reply-toggle');
+    const replyBox = div.querySelector('.reply-box');
+    const cancelBtn = div.querySelector('.cancel-reply');
+    const submitBtn = div.querySelector('.submit-reply');
+    const textarea = div.querySelector('.reply-box textarea');
+
+    replyToggle.addEventListener('click', () => {
+      const isOpen = nestedContainer.classList.contains('open');
+      // Close all other open reply sections
+      document.querySelectorAll('.nested-replies.open').forEach(b => b.classList.remove('open'));
+      document.querySelectorAll('.reply-box.open').forEach(b => b.classList.remove('open'));
+
+      if (!isOpen) {
+        nestedContainer.classList.add('open');
+        replyBox.classList.add('open');
+        replyToggle.textContent = 'Collapse';
+        setTimeout(() => textarea?.focus(), 50);
+      } else {
+        nestedContainer.classList.remove('open');
+        replyBox.classList.remove('open');
+        replyToggle.textContent = 'Reply';
+      }
     });
 
-    // Submit reply
-    div.querySelector('.submit-reply').addEventListener('click', async () => {
-      const textarea = div.querySelector('.reply-box textarea');
+    cancelBtn.addEventListener('click', () => {
+      replyBox.classList.remove('open');
+      nestedContainer.classList.remove('open');
+      replyToggle.textContent = 'Reply';
+    });
+
+    submitBtn.addEventListener('click', async () => {
       const msg = textarea.value.trim();
       if (!msg || !user) return;
       const { error } = await sb.from('anime_comments').insert({
@@ -908,8 +962,16 @@
         parent_id: comment.id,
         message: msg
       });
-      if (!error) { textarea.value = ''; loadComments(); }
-      else alert('Reply failed');
+      if (!error) {
+        textarea.value = '';
+        // Keep section open so the new reply is visible after reload
+        nestedContainer.classList.add('open');
+        replyBox.classList.add('open');
+        replyToggle.textContent = 'Collapse';
+        loadComments();
+      } else {
+        alert('Reply failed');
+      }
     });
 
     // Vote handlers
@@ -925,10 +987,6 @@
       await sb.rpc('toggle_comment_dislike', { comment_id: comment.id });
       loadComments();
     });
-
-    // Render nested replies (recursion)
-    const children = allComments.filter(c => c.parent_id === comment.id);
-    children.forEach(child => renderComment(child, allComments, div, depth + 1));
   }
 
   async function resolveCommentUserNames() {
