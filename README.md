@@ -139,8 +139,6 @@ This project is licensed under the **MIT License**.
 
 That means anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and even sell copies of this project, as long as the license notice is kept with the software.
 
-If you want the exact legal text, add a `LICENSE` file containing the full MIT License.
-
 ## 🙏 Acknowledgements
 
 - Supabase for backend services
