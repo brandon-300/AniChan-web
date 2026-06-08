@@ -2065,7 +2065,21 @@
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      const state = pc.connectionState;
+      if (state === 'connected') {
+        // Fallback: if ontrack already fired but audio isn't playing, force it
+        const audio = document.getElementById('_callAudio');
+        if (audio && audio.srcObject && audio.paused) {
+          audio.play().catch(() => {});
+        }
+        // Also start timer if ontrack hasn't fired yet (some Android browsers)
+        if (!timerStarted) {
+          timerStarted = true;
+          callState = 'active';
+          startCallTimer();
+        }
+      }
+      if (state === 'disconnected' || state === 'failed') {
         hangup(false, null);
       }
     };
@@ -2116,8 +2130,8 @@
     setupPeerConnection();
     // Set active AFTER setupPeerConnection so ontrack timer check works
     callState = 'active';
+    // Add tracks BEFORE setRemoteDescription — required for proper SDP negotiation
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: pending.sdp }));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
