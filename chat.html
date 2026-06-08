@@ -543,31 +543,22 @@
   .ctx-menu .split { height: 1px; background: var(--border-solid); margin: 2px 0; }
 
   /* ── Call Log Bubble ── */
-  .call-log-row {
-    display: flex; justify-content: center;
-    margin: 6px 0;
-  }
   .call-log-bubble {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 14px;
-    padding: 10px 14px;
-    max-width: 280px; width: 100%;
+    min-width: 180px;
     cursor: default;
-    transition: background .15s;
-    position: relative;
   }
   .call-log-bubble.tappable { cursor: pointer; }
-  .call-log-bubble.tappable:active { background: rgba(81,218,211,0.08); }
-  .call-log-icon {
-    width: 38px; height: 38px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 18px;
+  .call-log-inner {
+    display: flex; align-items: center; gap: 10px;
   }
-  .call-log-icon.outgoing  { background: rgba(81,218,211,0.12); color: var(--accent); }
-  .call-log-icon.missed    { background: rgba(255,71,87,0.12);   color: var(--danger); }
-  .call-log-icon.incoming  { background: rgba(46,213,115,0.12);  color: var(--success); }
+  .call-log-icon {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 17px;
+  }
+  .call-log-icon.outgoing { background: rgba(81,218,211,0.15); color: var(--accent); }
+  .call-log-icon.missed   { background: rgba(255,71,87,0.15);  color: var(--danger); }
+  .call-log-icon.incoming { background: rgba(46,213,115,0.15); color: var(--success); }
   .call-log-text { flex: 1; min-width: 0; }
   .call-log-title {
     font-size: 14px; font-weight: 600; color: var(--text);
@@ -575,9 +566,7 @@
   }
   .call-log-sub {
     font-size: 12px; color: var(--muted); margin-top: 1px;
-    display: flex; align-items: center; gap: 6px;
   }
-  .call-log-time { font-size: 11px; color: var(--muted); margin-left: auto; align-self: flex-start; padding-top: 2px; }
 
   /* ── Call Buttons in Topbar ── */
   .call-btns {
@@ -1294,55 +1283,60 @@
   function renderCallLogBubble(msg) {
     const feed = $('msgFeed');
     const cl = msg.call_log;
-    const isCaller = msg.sender_id === currentUser.id;
-    const isMissed = cl.status === 'missed';
+    const out = msg.sender_id === currentUser.id; // caller = outgoing, receiver = incoming
+    const isMissed   = cl.status === 'missed';
     const isNoAnswer = cl.status === 'no_answer';
-    const isRinging = cl.status === 'ringing';
+    const isRinging  = cl.status === 'ringing';
 
-    // Determine icon type and style
-    let iconClass, iconName, title, sub, tappable = false;
+    // Determine content
+    let iconName, iconClass, title, sub, tappable = false;
+    const callLabel = cl.type === 'video' ? 'Video' : 'Voice';
+    const emoji     = cl.type === 'video' ? '📹' : '📞';
 
-    if (isCaller) {
-      // Outgoing side
-      iconName = cl.type === 'video' ? 'videocam' : 'call_made';
-      if (isNoAnswer) {
-        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'No answer';
-      } else if (isRinging) {
-        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'Ringing';
-      } else {
-        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'No answer';
-      }
+    if (out) {
+      iconName  = cl.type === 'video' ? 'videocam' : 'call_made';
+      iconClass = isNoAnswer ? 'missed' : 'outgoing';
+      title     = `${callLabel} call`;
+      sub       = isNoAnswer ? 'No answer' : 'Ringing';
     } else {
-      // Receiver side
-      iconName = cl.type === 'video' ? 'videocam_off' : 'call_received';
+      iconName  = cl.type === 'video' ? 'videocam_off' : 'call_received';
       if (isMissed) {
-        iconClass = 'missed'; title = `Missed ${cl.type === 'video' ? 'video' : 'voice'} call`; sub = 'Tap to call back'; tappable = true;
-      } else if (isRinging) {
-        iconClass = 'incoming'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'Ringing';
+        iconClass = 'missed'; title = `Missed ${callLabel.toLowerCase()} call`; sub = 'Tap to call back'; tappable = true;
       } else {
-        iconClass = 'missed'; title = `Missed ${cl.type === 'video' ? 'video' : 'voice'} call`; sub = 'Tap to call back'; tappable = true;
+        iconClass = 'incoming'; title = `${callLabel} call`; sub = 'Ringing';
       }
     }
 
-    // Remove existing bubble for same call_id if updating
-    const existing = feed.querySelector(`.call-log-row[data-call-id="${cl.call_id}"][data-msg-id="${msg.id}"]`);
+    // Remove existing row for this msg id if re-rendering (UPDATE event)
+    const existing = feed.querySelector(`.msg-row[data-msg-id="${msg.id}"]`);
     if (existing) existing.remove();
 
+    // Build as a standard msg-row so alignment, swipe-reply, long-press all work
     const row = document.createElement('div');
-    row.className = 'call-log-row';
-    row.dataset.callId = cl.call_id;
+    row.className = `msg-row ${out ? 'out' : 'in'}`;
     row.dataset.msgId = msg.id;
+    row.dataset.callId = cl.call_id;
+    row.style.position = 'relative';
+
+    const iconSide = out ? 'left' : 'right';
+    const replyIconHtml = `<span class="material-symbols-outlined swipe-reply-icon" style="${iconSide}:-28px">reply</span>`;
 
     row.innerHTML = `
-      <div class="call-log-bubble${tappable ? ' tappable' : ''}">
-        <div class="call-log-icon ${iconClass}">
-          <span class="material-symbols-outlined">${iconName}</span>
+      ${replyIconHtml}
+      <div class="bubble call-log-bubble${tappable ? ' tappable' : ''}">
+        <div class="call-log-inner">
+          <div class="call-log-icon ${iconClass}">
+            <span class="material-symbols-outlined">${iconName}</span>
+          </div>
+          <div class="call-log-text">
+            <div class="call-log-title">${title}</div>
+            <div class="call-log-sub">${sub}</div>
+          </div>
         </div>
-        <div class="call-log-text">
-          <div class="call-log-title">${title}</div>
-          <div class="call-log-sub">${sub}</div>
-        </div>
-        <div class="call-log-time">${fmtTimeOnly(msg.created_at)}</div>
+      </div>
+      <div class="msg-foot">
+        <span>${fmtTimeOnly(msg.created_at)}</span>
+        ${out ? '<span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>' : ''}
       </div>`;
 
     if (tappable) {
@@ -1350,6 +1344,35 @@
         startCall(cl.type || 'voice');
       });
     }
+
+    // Swipe to reply — uses emoji + label as the reply preview text
+    const replyMsg = {
+      ...msg,
+      message: `${emoji} ${title}`,
+      content: `${emoji} ${title}`
+    };
+    attachSwipe(row, replyMsg);
+
+    // Long press context menu (reply only — no edit/delete for call logs)
+    let clLongTimer;
+    row.addEventListener('touchstart', e => {
+      clLongTimer = setTimeout(() => {
+        // Only allow reply action for call log bubbles
+        ctxMsgId = msg.id;
+        const menu = $('ctxMenu');
+        $('ctxEdit').style.display   = 'none';
+        $('ctxDelAll').style.display = 'none';
+        const delAllDivider = $('ctxDelAll').previousElementSibling;
+        if (delAllDivider?.classList.contains('split')) delAllDivider.style.display = 'none';
+        $('ctxDelMe').style.display  = 'none';
+        menu.style.display = 'block';
+        const tx = e.touches[0];
+        menu.style.left = Math.min(tx.clientX, window.innerWidth - 200) + 'px';
+        menu.style.top  = Math.max(tx.clientY - 120, 10) + 'px';
+      }, 500);
+    }, { passive: true });
+    row.addEventListener('touchend',  () => clearTimeout(clLongTimer));
+    row.addEventListener('touchmove', () => clearTimeout(clLongTimer));
 
     feed.appendChild(row);
   }
