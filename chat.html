@@ -1999,17 +1999,21 @@
 
     if (type === 'video') $('localVideo').srcObject = localStream;
 
-    // Pre-unlock audio playback while still inside the user gesture
-    let audio = document.getElementById('_callAudio');
-    if (!audio) {
-      audio = document.createElement('audio');
+    // Unlock audio context within user gesture — don't use audio.src as it conflicts with srcObject
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await ctx.resume();
+      ctx.close();
+    } catch {}
+
+    // Pre-create audio element now (within gesture) so it exists when ontrack fires
+    if (!document.getElementById('_callAudio')) {
+      const audio = document.createElement('audio');
       audio.id = '_callAudio';
       audio.autoplay = true;
       audio.setAttribute('playsinline', '');
       document.body.appendChild(audio);
     }
-    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA=='; // silent stub
-    audio.play().catch(() => {});
 
     const online = isPartnerOnline();
     showActiveCallScreen(online ? 'Ringing...' : 'Calling...');
@@ -2080,9 +2084,9 @@
     } else {
       const audio = document.getElementById('_callAudio');
       if (audio) {
-        // Only update if stream actually has audio tracks
         const audioTracks = stream.getAudioTracks();
         if (audioTracks.length > 0) {
+          audio.removeAttribute('src'); // clear any src before setting srcObject
           audio.srcObject = stream;
           audio.play().catch(() => {});
         }
@@ -2095,17 +2099,21 @@
     if (!pending) return;
     window._pendingOffer = null;
 
-    // Pre-unlock audio inside the user gesture (accept button tap)
-    let audio = document.getElementById('_callAudio');
-    if (!audio) {
-      audio = document.createElement('audio');
+    // Unlock audio context within user gesture — don't use audio.src as it conflicts with srcObject
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await ctx.resume();
+      ctx.close();
+    } catch {}
+
+    // Pre-create audio element now (within gesture) so it exists when ontrack fires
+    if (!document.getElementById('_callAudio')) {
+      const audio = document.createElement('audio');
       audio.id = '_callAudio';
       audio.autoplay = true;
       audio.setAttribute('playsinline', '');
       document.body.appendChild(audio);
     }
-    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA==';
-    audio.play().catch(() => {});
 
     // Receiver inserts their own row
     await insertReceiverLog('ringing');
