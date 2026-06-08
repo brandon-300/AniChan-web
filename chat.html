@@ -1827,6 +1827,7 @@
 
   // ── Insert caller's own call log row ──
   async function insertCallerLog(status) {
+    console.log('[CallLog] insertCallerLog', { activeRoom, currentUserId: currentUser?.id, partnerId, callType, status, currentCallId });
     const { data: row, error } = await supabase.from('messages').insert({
       room_id: activeRoom,
       sender_id: currentUser.id,
@@ -1835,12 +1836,14 @@
       content: callType === 'video' ? 'Video call' : 'Voice call',
       call_log: { type: callType, status, call_id: currentCallId }
     }).select().single();
-    if (error) console.error('insertCallerLog:', error);
+    if (error) console.error('[CallLog] insertCallerLog ERROR:', JSON.stringify(error));
+    else console.log('[CallLog] insertCallerLog SUCCESS, id:', row?.id);
     if (row) callerMsgId = row.id;
   }
 
   // ── Insert receiver's own call log row (called on receiver side) ──
   async function insertReceiverLog(status) {
+    console.log('[CallLog] insertReceiverLog', { activeRoom, currentUserId: currentUser?.id, partnerId, callType, status, currentCallId });
     const { data: row, error } = await supabase.from('messages').insert({
       room_id: activeRoom,
       sender_id: currentUser.id,
@@ -1849,7 +1852,8 @@
       content: callType === 'video' ? 'Video call' : 'Voice call',
       call_log: { type: callType, status, call_id: currentCallId }
     }).select().single();
-    if (error) console.error('insertReceiverLog:', error);
+    if (error) console.error('[CallLog] insertReceiverLog ERROR:', JSON.stringify(error));
+    else console.log('[CallLog] insertReceiverLog SUCCESS, id:', row?.id);
     if (row) receiverMsgId = row.id;
   }
 
