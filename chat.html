@@ -1814,9 +1814,10 @@
   let isSpeaker = true;
   let callPartnerId = null;
   let noAnswerTimeout = null;
-  let callerMsgId = null;   // DB row id of caller's call log message
-  let receiverMsgId = null; // DB row id of receiver's call log message
-  let currentCallId = null; // shared UUID linking both rows
+  let callerMsgId = null;
+  let receiverMsgId = null;
+  let currentCallId = null;
+  let timerStarted = false; // prevents double-start on receiver side
 
   function getCallPartnerInfo() {
     const name = $('partnerName').textContent;
@@ -1998,6 +1999,18 @@
 
     if (type === 'video') $('localVideo').srcObject = localStream;
 
+    // Pre-unlock audio playback while still inside the user gesture
+    let audio = document.getElementById('_callAudio');
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = '_callAudio';
+      audio.autoplay = true;
+      audio.setAttribute('playsinline', '');
+      document.body.appendChild(audio);
+    }
+    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA=='; // silent stub
+    audio.play().catch(() => {});
+
     const online = isPartnerOnline();
     showActiveCallScreen(online ? 'Ringing...' : 'Calling...');
 
@@ -2033,24 +2046,19 @@
 
       if (callType === 'video') {
         $('remoteVideo').srcObject = remoteStream;
-        // Ensure local preview is showing
         if (localStream) $('localVideo').srcObject = localStream;
       } else {
-        // Voice: use a persistent audio element, play() to unblock autoplay
-        let audio = document.getElementById('_callAudio');
-        if (!audio) {
-          audio = document.createElement('audio');
-          audio.id = '_callAudio';
-          audio.autoplay = true;
-          audio.setAttribute('playsinline', '');
-          document.body.appendChild(audio);
+        // Audio element already created and unlocked in startCall/acceptCall
+        const audio = document.getElementById('_callAudio');
+        if (audio) {
+          audio.srcObject = remoteStream;
+          audio.play().catch(() => {});
         }
-        audio.srcObject = remoteStream;
-        audio.play().catch(() => {});
       }
 
-      // Start timer on first audio track arriving
-      if (event.track.kind === 'audio' && callState !== 'active') {
+      // Start timer once on first audio track — use timerStarted flag not callState
+      if (event.track.kind === 'audio' && !timerStarted) {
+        timerStarted = true;
         callState = 'active';
         startCallTimer();
       }
@@ -2067,7 +2075,18 @@
     const pending = window._pendingOffer;
     if (!pending) return;
     window._pendingOffer = null;
-    callState = 'active';
+
+    // Pre-unlock audio inside the user gesture (accept button tap)
+    let audio = document.getElementById('_callAudio');
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = '_callAudio';
+      audio.autoplay = true;
+      audio.setAttribute('playsinline', '');
+      document.body.appendChild(audio);
+    }
+    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA==';
+    audio.play().catch(() => {});
 
     // Receiver inserts their own row
     await insertReceiverLog('ringing');
@@ -2095,6 +2114,8 @@
     if (callType === 'video') $('localVideo').srcObject = localStream;
     showActiveCallScreen('Connecting...');
     setupPeerConnection();
+    // Set active AFTER setupPeerConnection so ontrack timer check works
+    callState = 'active';
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: pending.sdp }));
@@ -2145,6 +2166,7 @@
     callPartnerId = null;
     isMuted = false;
     isSpeaker = true;
+    timerStarted = false;
     callerMsgId = null;
     receiverMsgId = null;
     currentCallId = null;
