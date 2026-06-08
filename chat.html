@@ -542,6 +542,43 @@
   .ctx-menu .danger { color: var(--danger); }
   .ctx-menu .split { height: 1px; background: var(--border-solid); margin: 2px 0; }
 
+  /* ── Call Log Bubble ── */
+  .call-log-row {
+    display: flex; justify-content: center;
+    margin: 6px 0;
+  }
+  .call-log-bubble {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 10px 14px;
+    max-width: 280px; width: 100%;
+    cursor: default;
+    transition: background .15s;
+    position: relative;
+  }
+  .call-log-bubble.tappable { cursor: pointer; }
+  .call-log-bubble.tappable:active { background: rgba(81,218,211,0.08); }
+  .call-log-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 18px;
+  }
+  .call-log-icon.outgoing  { background: rgba(81,218,211,0.12); color: var(--accent); }
+  .call-log-icon.missed    { background: rgba(255,71,87,0.12);   color: var(--danger); }
+  .call-log-icon.incoming  { background: rgba(46,213,115,0.12);  color: var(--success); }
+  .call-log-text { flex: 1; min-width: 0; }
+  .call-log-title {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .call-log-sub {
+    font-size: 12px; color: var(--muted); margin-top: 1px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .call-log-time { font-size: 11px; color: var(--muted); margin-left: auto; align-self: flex-start; padding-top: 2px; }
+
   /* ── Call Buttons in Topbar ── */
   .call-btns {
     display: none; align-items: center; gap: 4px; margin-left: auto;
@@ -1254,9 +1291,78 @@
     }, 600); // 600ms gives perfect visibility to the pill layout before dropping down
   }
 
+  function renderCallLogBubble(msg) {
+    const feed = $('msgFeed');
+    const cl = msg.call_log;
+    const isCaller = msg.sender_id === currentUser.id;
+    const isMissed = cl.status === 'missed';
+    const isNoAnswer = cl.status === 'no_answer';
+    const isRinging = cl.status === 'ringing';
+
+    // Determine icon type and style
+    let iconClass, iconName, title, sub, tappable = false;
+
+    if (isCaller) {
+      // Outgoing side
+      iconName = cl.type === 'video' ? 'videocam' : 'call_made';
+      if (isNoAnswer) {
+        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'No answer';
+      } else if (isRinging) {
+        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'Ringing';
+      } else {
+        iconClass = 'outgoing'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'No answer';
+      }
+    } else {
+      // Receiver side
+      iconName = cl.type === 'video' ? 'videocam_off' : 'call_received';
+      if (isMissed) {
+        iconClass = 'missed'; title = `Missed ${cl.type === 'video' ? 'video' : 'voice'} call`; sub = 'Tap to call back'; tappable = true;
+      } else if (isRinging) {
+        iconClass = 'incoming'; title = `${cl.type === 'video' ? 'Video' : 'Voice'} call`; sub = 'Ringing';
+      } else {
+        iconClass = 'missed'; title = `Missed ${cl.type === 'video' ? 'video' : 'voice'} call`; sub = 'Tap to call back'; tappable = true;
+      }
+    }
+
+    // Remove existing bubble for same call_id if updating
+    const existing = feed.querySelector(`.call-log-row[data-call-id="${cl.call_id}"][data-msg-id="${msg.id}"]`);
+    if (existing) existing.remove();
+
+    const row = document.createElement('div');
+    row.className = 'call-log-row';
+    row.dataset.callId = cl.call_id;
+    row.dataset.msgId = msg.id;
+
+    row.innerHTML = `
+      <div class="call-log-bubble${tappable ? ' tappable' : ''}">
+        <div class="call-log-icon ${iconClass}">
+          <span class="material-symbols-outlined">${iconName}</span>
+        </div>
+        <div class="call-log-text">
+          <div class="call-log-title">${title}</div>
+          <div class="call-log-sub">${sub}</div>
+        </div>
+        <div class="call-log-time">${fmtTimeOnly(msg.created_at)}</div>
+      </div>`;
+
+    if (tappable) {
+      row.querySelector('.call-log-bubble').addEventListener('click', () => {
+        startCall(cl.type || 'voice');
+      });
+    }
+
+    feed.appendChild(row);
+  }
+
   function addMsg(msg) {
     const feed = $('msgFeed');
     const out  = msg.sender_id === currentUser.id;
+
+    // ── Call log bubble ──
+    if (msg.msg_type === 'call_log' && msg.call_log) {
+      renderCallLogBubble(msg);
+      return;
+    }
 
     if (msg.is_deleted) {
       const row = document.createElement('div');
@@ -1665,24 +1771,76 @@
     $('callBtns').style.display = show ? 'flex' : 'none';
   }
 
+  // ── Helper: is partner currently online? ──
+  function isPartnerOnline() {
+    const room = rooms.find(r => r.other_user.id === partnerId);
+    return room ? !!room.other_user.is_online : false;
+  }
+
   // ── WebRTC / Call Feature ──
   const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
   let callChannel = null;
-  let pc = null; // RTCPeerConnection
+  let pc = null;
   let localStream = null;
   let callState = 'idle'; // idle | outgoing | incoming | active
-  let callType = 'voice'; // voice | video
+  let callType = 'voice';
   let callTimerInterval = null;
   let callSeconds = 0;
   let isMuted = false;
   let isSpeaker = true;
   let callPartnerId = null;
+  let noAnswerTimeout = null;
+  let callerMsgId = null;   // DB row id of caller's call log message
+  let receiverMsgId = null; // DB row id of receiver's call log message
+  let currentCallId = null; // shared UUID linking both rows
 
   function getCallPartnerInfo() {
     const name = $('partnerName').textContent;
     const pic  = $('partnerPic').src;
     return { name, pic };
+  }
+
+  // ── Insert call log row to DB ──
+  async function insertCallLog(status) {
+    const callId = currentCallId || crypto.randomUUID();
+    currentCallId = callId;
+
+    // Caller's row
+    const { data: callerRow } = await supabase.from('messages').insert({
+      room_id: activeRoom,
+      sender_id: currentUser.id,
+      receiver_id: partnerId,
+      msg_type: 'call_log',
+      content: callType === 'video' ? 'Video call' : 'Voice call',
+      call_log: { type: callType, status, call_id: callId }
+    }).select().single();
+    if (callerRow) callerMsgId = callerRow.id;
+
+    // Receiver's row (sender/receiver flipped so receiver sees it as incoming)
+    const { data: receiverRow } = await supabase.from('messages').insert({
+      room_id: activeRoom,
+      sender_id: partnerId,
+      receiver_id: currentUser.id,
+      msg_type: 'call_log',
+      content: callType === 'video' ? 'Video call' : 'Voice call',
+      call_log: { type: callType, status, call_id: callId }
+    }).select().single();
+    if (receiverRow) receiverMsgId = receiverRow.id;
+  }
+
+  // ── Update existing call log rows ──
+  async function updateCallLog(status) {
+    if (callerMsgId) {
+      await supabase.from('messages').update({
+        call_log: { type: callType, status, call_id: currentCallId }
+      }).eq('id', callerMsgId);
+    }
+    if (receiverMsgId) {
+      await supabase.from('messages').update({
+        call_log: { type: callType, status, call_id: currentCallId }
+      }).eq('id', receiverMsgId);
+    }
   }
 
   // Setup per-room call signaling channel
@@ -1705,19 +1863,33 @@
   }
 
   async function handleSignal(payload) {
-    const { type, sdp, candidate, callType: ct } = payload;
+    const { type, sdp, candidate, callType: ct, callerMsgId: cmi, receiverMsgId: rmi, callId: cid } = payload;
 
     if (type === 'call-offer') {
-      // Incoming call
       callPartnerId = payload.from;
       callType = ct || 'voice';
+      // Store the msg IDs sent from caller so receiver can update them too
+      callerMsgId   = cmi || null;
+      receiverMsgId = rmi || null;
+      currentCallId = cid || null;
       showIncomingCall(callType);
-      // Store offer to answer later
       window._pendingOffer = payload;
       return;
     }
 
+    if (type === 'call-accepted') {
+      // Receiver came online — switch "Calling..." → "Ringing..."
+      clearTimeout(noAnswerTimeout);
+      $('callInfoStatus').textContent = 'Ringing...';
+      // Restart 60s timeout from when they actually see it
+      noAnswerTimeout = setTimeout(() => {
+        hangup(true, 'no_answer');
+      }, 60000);
+      return;
+    }
+
     if (type === 'call-answer' && pc) {
+      clearTimeout(noAnswerTimeout);
       await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
       return;
     }
@@ -1727,8 +1899,13 @@
       return;
     }
 
-    if (type === 'call-decline' || type === 'call-end') {
-      hangup(false);
+    if (type === 'call-decline') {
+      hangup(false, 'no_answer');
+      return;
+    }
+
+    if (type === 'call-end') {
+      hangup(false, null);
       return;
     }
   }
@@ -1747,11 +1924,11 @@
     $('incomingCallOverlay').classList.add('visible');
   }
 
-  function showActiveCallScreen() {
+  function showActiveCallScreen(statusText = 'Calling...') {
     const { name, pic } = getCallPartnerInfo();
     $('callInfoAvatar').src = pic;
     $('callInfoName').textContent = name;
-    $('callInfoStatus').textContent = 'Connecting...';
+    $('callInfoStatus').textContent = statusText;
     $('callTimer').style.display = 'none';
     if (callType === 'video') {
       $('videoRemoteWrap').style.display = 'block';
@@ -1786,6 +1963,9 @@
     callType = type;
     callState = 'outgoing';
     callPartnerId = partnerId;
+    currentCallId = crypto.randomUUID();
+    callerMsgId = null;
+    receiverMsgId = null;
 
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
@@ -1798,20 +1978,29 @@
       return;
     }
 
-    if (type === 'video') {
-      $('localVideo').srcObject = localStream;
-    }
+    if (type === 'video') $('localVideo').srcObject = localStream;
 
-    showActiveCallScreen();
+    // Show active call screen immediately
+    const online = isPartnerOnline();
+    showActiveCallScreen(online ? 'Ringing...' : 'Calling...');
+
+    // Insert ringing call log rows
+    await insertCallLog('ringing');
+
     setupPeerConnection();
-
-    // Add tracks to peer connection
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-    // Create offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await sendSignal({ type: 'call-offer', sdp: offer.sdp, callType: type });
+    await sendSignal({
+      type: 'call-offer', sdp: offer.sdp, callType: type,
+      callerMsgId, receiverMsgId, callId: currentCallId
+    });
+
+    // 60 second no-answer timeout
+    noAnswerTimeout = setTimeout(() => {
+      hangup(true, 'no_answer');
+    }, 60000);
   }
 
   function setupPeerConnection() {
@@ -1826,7 +2015,6 @@
       if (callType === 'video') {
         $('remoteVideo').srcObject = stream;
       } else {
-        // Voice: play audio through a hidden audio element
         let audio = document.getElementById('_callAudio');
         if (!audio) {
           audio = document.createElement('audio');
@@ -1841,7 +2029,7 @@
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        hangup(false);
+        hangup(false, null);
       }
     };
   }
@@ -1850,8 +2038,10 @@
     const pending = window._pendingOffer;
     if (!pending) return;
     window._pendingOffer = null;
-
     callState = 'active';
+
+    // Signal to caller that we accepted (triggers "Ringing..." on their end)
+    await sendSignal({ type: 'call-accepted' });
 
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
@@ -1861,15 +2051,12 @@
     } catch (err) {
       alert('Could not access microphone' + (callType === 'video' ? '/camera' : '') + '.\n' + err.message);
       await sendSignal({ type: 'call-decline' });
-      resetCallUI();
+      resetCallUI(null);
       return;
     }
 
-    if (callType === 'video') {
-      $('localVideo').srcObject = localStream;
-    }
-
-    showActiveCallScreen();
+    if (callType === 'video') $('localVideo').srcObject = localStream;
+    showActiveCallScreen('Connecting...');
     setupPeerConnection();
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
@@ -1879,7 +2066,8 @@
     await sendSignal({ type: 'call-answer', sdp: answer.sdp });
   }
 
-  async function hangup(sendSignalToRemote = true) {
+  async function hangup(sendSignalToRemote = true, finalStatus = null) {
+    clearTimeout(noAnswerTimeout);
     if (sendSignalToRemote) {
       if (callState === 'incoming') {
         await sendSignal({ type: 'call-decline' });
@@ -1887,11 +2075,31 @@
         await sendSignal({ type: 'call-end' });
       }
     }
+    // Update call log status if we have rows
+    if (finalStatus && (callerMsgId || receiverMsgId)) {
+      // For caller: no_answer → stays as no_answer
+      // For receiver: no_answer → missed
+      if (finalStatus === 'no_answer') {
+        // Update caller's row to no_answer
+        if (callerMsgId) {
+          await supabase.from('messages').update({
+            call_log: { type: callType, status: 'no_answer', call_id: currentCallId }
+          }).eq('id', callerMsgId);
+        }
+        // Update receiver's row to missed
+        if (receiverMsgId) {
+          await supabase.from('messages').update({
+            call_log: { type: callType, status: 'missed', call_id: currentCallId }
+          }).eq('id', receiverMsgId);
+        }
+      }
+    }
     resetCallUI();
   }
 
   function resetCallUI() {
     stopCallTimer();
+    clearTimeout(noAnswerTimeout);
     if (pc) { pc.close(); pc = null; }
     if (localStream) {
       localStream.getTracks().forEach(t => t.stop());
@@ -1908,7 +2116,9 @@
     callPartnerId = null;
     isMuted = false;
     isSpeaker = true;
-    // Reset mute icon
+    callerMsgId = null;
+    receiverMsgId = null;
+    currentCallId = null;
     $('toggleMuteBtn').querySelector('.material-symbols-outlined').textContent = 'mic';
     $('toggleMuteBtn').classList.remove('toggled');
     // Restore call buttons if a room is still open
@@ -1919,8 +2129,8 @@
   $('voiceCallBtn').addEventListener('click', () => startCall('voice'));
   $('videoCallBtn').addEventListener('click', () => startCall('video'));
   $('acceptCallBtn').addEventListener('click', acceptCall);
-  $('declineCallBtn').addEventListener('click', () => hangup(true));
-  $('endCallBtn').addEventListener('click', () => hangup(true));
+  $('declineCallBtn').addEventListener('click', () => hangup(true, 'missed'));
+  $('endCallBtn').addEventListener('click', () => hangup(true, null));
 
   $('toggleMuteBtn').addEventListener('click', () => {
     if (!localStream) return;
