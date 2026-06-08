@@ -2038,25 +2038,11 @@
       if (candidate) sendSignal({ type: 'ice-candidate', candidate });
     };
 
-    // Use a single MediaStream, add tracks as they arrive
     const remoteStream = new MediaStream();
 
     pc.ontrack = (event) => {
       remoteStream.addTrack(event.track);
-
-      if (callType === 'video') {
-        $('remoteVideo').srcObject = remoteStream;
-        if (localStream) $('localVideo').srcObject = localStream;
-      } else {
-        // Audio element already created and unlocked in startCall/acceptCall
-        const audio = document.getElementById('_callAudio');
-        if (audio) {
-          audio.srcObject = remoteStream;
-          audio.play().catch(() => {});
-        }
-      }
-
-      // Start timer once on first audio track — use timerStarted flag not callState
+      attachRemoteStream(remoteStream);
       if (event.track.kind === 'audio' && !timerStarted) {
         timerStarted = true;
         callState = 'active';
@@ -2067,12 +2053,14 @@
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       if (state === 'connected') {
-        // Fallback: if ontrack already fired but audio isn't playing, force it
-        const audio = document.getElementById('_callAudio');
-        if (audio && audio.srcObject && audio.paused) {
-          audio.play().catch(() => {});
+        // Pull remote tracks manually via getReceivers — most reliable on Android Chrome
+        const receiverStream = new MediaStream();
+        pc.getReceivers().forEach(receiver => {
+          if (receiver.track) receiverStream.addTrack(receiver.track);
+        });
+        if (receiverStream.getTracks().length > 0) {
+          attachRemoteStream(receiverStream);
         }
-        // Also start timer if ontrack hasn't fired yet (some Android browsers)
         if (!timerStarted) {
           timerStarted = true;
           callState = 'active';
@@ -2083,6 +2071,23 @@
         hangup(false, null);
       }
     };
+  }
+
+  function attachRemoteStream(stream) {
+    if (callType === 'video') {
+      $('remoteVideo').srcObject = stream;
+      if (localStream) $('localVideo').srcObject = localStream;
+    } else {
+      const audio = document.getElementById('_callAudio');
+      if (audio) {
+        // Only update if stream actually has audio tracks
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          audio.srcObject = stream;
+          audio.play().catch(() => {});
+        }
+      }
+    }
   }
 
   async function acceptCall() {
@@ -2209,6 +2214,7 @@
   $('toggleMuteBtn').addEventListener('click', () => {
     if (!localStream) return;
     isMuted = !isMuted;
+    // Only toggle local mic tracks — never touch remote stream
     localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
     const icon = $('toggleMuteBtn').querySelector('.material-symbols-outlined');
     icon.textContent = isMuted ? 'mic_off' : 'mic';
@@ -2217,8 +2223,15 @@
 
   $('toggleSpeakerBtn').addEventListener('click', () => {
     isSpeaker = !isSpeaker;
+    // Mute/unmute the remote audio element
     const audio = document.getElementById('_callAudio');
     if (audio) audio.muted = !isSpeaker;
+    // For video, mute remote video audio track directly as fallback
+    if (callType === 'video' && pc) {
+      pc.getReceivers().forEach(r => {
+        if (r.track && r.track.kind === 'audio') r.track.enabled = isSpeaker;
+      });
+    }
     const icon = $('toggleSpeakerBtn').querySelector('.material-symbols-outlined');
     icon.textContent = isSpeaker ? 'volume_up' : 'volume_off';
     $('toggleSpeakerBtn').classList.toggle('toggled', !isSpeaker);
