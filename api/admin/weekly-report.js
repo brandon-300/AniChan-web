@@ -1,7 +1,6 @@
 export default async function handler(req, res) {
-  // Wrap everything in try/catch so even missing modules show an error
   try {
-    // Dynamic imports – will throw if modules are missing, and we can catch it
+    // Dynamic imports – safe even if modules are temporarily missing
     const [{ createClient }, { Resend }] = await Promise.all([
       import('@supabase/supabase-js'),
       import('resend')
@@ -17,8 +16,8 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Verify admin token
-    const authHeader = req.headers.get('Authorization');
+    // ✔️ Fixed: use lowercase property name, no .get()
+    const authHeader = req.headers['authorization'];
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -26,7 +25,6 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: invalid admin' });
     }
 
-    // Fetch stats
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const [usersRes, commentsRes, animeRes] = await Promise.all([
@@ -65,7 +63,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, messageId: emailData?.id });
   } catch (err) {
-    // Any crash will be returned as JSON
     return res.status(500).json({
       error: err.message,
       stack: err.stack,
