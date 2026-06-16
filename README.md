@@ -1,3 +1,4 @@
+```markdown
 # AniChan Web
 
 AniChan Web is a **modern, real‑time anime tracker and community platform** built with **vanilla HTML, CSS, and JavaScript**, powered by **Supabase** for backend services and **Vercel** for hosting and serverless functions.
@@ -70,6 +71,7 @@ Browse anime, manage profiles, connect with friends, chat in real time, leave co
 | Backend           | Supabase (Auth, DB, Storage, Realtime, Edge Functions) |
 | Serverless        | Vercel Functions (Node.js)           |
 | Image Processing  | Cropper.js (client), Sharp (server)  |
+| Email             | Resend                               |
 | External API      | Jikan (MyAnimeList unofficial API)   |
 | Hosting           | Vercel                               |
 | Database          | PostgreSQL (via Supabase)            |
@@ -152,7 +154,7 @@ Connect your GitHub repository to Vercel. It will automatically detect the stati
 2. Sign in or create an account (email/password or Google).
 3. Browse anime, view details, leave comments.
 4. Use the chat to message other users.
-5. Admin panel: manage content, regenerate sitemap, purge cache.
+5. Admin panel: manage content, purge cache, regenerate sitemap.
 
 ---
 
@@ -202,6 +204,7 @@ Anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and
 
 · Supabase – backend services, realtime, cron, auth
 · Jikan API – anime metadata
+· Resend – email delivery
 · Cropper.js – client‑side image cropping
 · Sharp – server‑side image resizing
 · Vercel – hosting & serverless functions
