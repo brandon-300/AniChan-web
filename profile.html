@@ -6,6 +6,8 @@
 <title>AniChan · Profile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
+<!-- Cropper.js CSS -->
+<link href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
@@ -73,7 +75,7 @@
     transition:transform .1s;
   }
   .pencil-btn:active{transform:scale(0.95)}
-  .pencil-btn:disabled{opacity:0.7; cursor:not-allowed;}
+  .pencil-btn:disabled{opacity:0.7;cursor:not-allowed;}
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
@@ -123,7 +125,6 @@
     border-radius:50%;animation:spin .6s linear infinite;
     vertical-align:middle;flex-shrink:0;
   }
-  /* Adjust spinner color for primary/accent buttons */
   .btn.primary .btn-spinner{
     border:2px solid rgba(0,0,0,0.2);
     border-top-color:#0a2a28;
@@ -132,13 +133,55 @@
     border:2px solid rgba(255,255,255,0.3);
     border-top-color:#fff;
   }
-  /* Smaller spinner for the pencil button */
   .pencil-btn .btn-spinner{
     width:12px; height:12px;
     border-width:2px;
     border-color: rgba(0,0,0,0.2);
     border-top-color:#0a2a28;
   }
+
+  /* ── Crop modal ── */
+  .crop-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .crop-modal.active { display: flex; }
+
+  .crop-container {
+    width: 100%; max-width: 500px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .crop-container h3 {
+    color: var(--text); font-size: 18px; font-weight: 700;
+    text-align: center; margin: 0;
+  }
+  .crop-image-wrapper {
+    width: 100%; height: 350px;
+    background: #000; border-radius: 12px; overflow: hidden;
+  }
+  .crop-image-wrapper img {
+    max-width: 100%; max-height: 100%;
+    display: block;
+  }
+  .crop-actions {
+    display: flex; gap: 12px; justify-content: flex-end;
+  }
+  .crop-actions button {
+    padding: 10px 20px; border-radius: 12px;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--panel); color: var(--text);
+    transition: all 0.15s;
+  }
+  .crop-actions button:hover { background: var(--card); border-color: var(--accent); }
+  .crop-actions button.primary {
+    background: var(--accent); color: #0a2a28; border-color: transparent;
+  }
+  .crop-actions button.primary:hover { filter: brightness(1.08); }
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 
@@ -204,8 +247,23 @@
     <div class="bottom-actions" id="bottomActions"><!-- dynamic --></div>
   </main>
 
+  <!-- Crop Modal -->
+  <div class="crop-modal" id="cropModal">
+    <div class="crop-container">
+      <h3>Crop your photo</h3>
+      <div class="crop-image-wrapper">
+        <img id="cropImage" src="" alt="" />
+      </div>
+      <div class="crop-actions">
+        <button id="cancelCropBtn">Cancel</button>
+        <button id="confirmCropBtn" class="primary">Crop &amp; Save</button>
+      </div>
+    </div>
+  </div>
+
   <footer>AniChan · powered by Supabase</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -221,6 +279,7 @@
   let isOwner = false;
   let originalProfile = null;
   let isEditing = false;
+  let cropper = null;
 
   // Apply translated labels
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
@@ -287,7 +346,6 @@
     updateHeaderButtons();
   }
 
-  // Helper to set loading state on any button
   function setButtonLoading(btn, loading, label) {
     if (loading) {
       btn._originalHTML = btn.innerHTML;
@@ -324,7 +382,6 @@
       return;
     }
 
-    // Show language selector for own profile
     $('langSelectorContainer').style.display = 'block';
 
     if (isEditing) {
@@ -342,12 +399,18 @@
       container.appendChild(cancelBtn);
     } else {
       const editBtn = document.createElement('button');
-      editBtn.className = 'btn primary'; editBtn.textContent = t('editProfile'); editBtn.addEventListener('click', () => setEditMode(true));
+      editBtn.className = 'btn primary'; editBtn.textContent = t('editProfile');
+      editBtn.addEventListener('click', () => setEditMode(true));
       container.appendChild(editBtn);
     }
   }
 
-  function cancelEdit() { if (originalProfile) renderProfile(originalProfile); setEditMode(false); $('updateErr').classList.remove('show'); $('updateSuccess').classList.remove('show'); }
+  function cancelEdit() {
+    if (originalProfile) renderProfile(originalProfile);
+    setEditMode(false);
+    $('updateErr').classList.remove('show');
+    $('updateSuccess').classList.remove('show');
+  }
 
   async function saveProfile() {
     const fullName = $('fullNameInput').value.trim();
@@ -373,23 +436,103 @@
     } catch(e) { errEl.textContent = e.message; errEl.classList.add('show'); }
   }
 
-  async function uploadAvatar(file) {
-    const ext = file.name.split('.').pop();
-    const path = `${currentUserId}-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-    if (upErr) throw new Error('Upload failed: '+upErr.message);
-    const { data: url } = supabase.storage.from('avatars').getPublicUrl(path);
-    if (!url?.publicUrl) throw new Error('Could not get URL');
-    const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url.publicUrl }).eq('id', currentUserId);
-    if (updateErr) throw new Error('Update failed: '+updateErr.message);
-    $('avatarImg').src = url.publicUrl;
-    return url.publicUrl;
+  // ── Crop & upload avatar ──
+  function openCropModal(file) {
+    // Reset any previous cropper
+    if (cropper) { cropper.destroy(); cropper = null; }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      $('cropImage').src = e.target.result;
+      $('cropModal').classList.add('active');
+
+      cropper = new Cropper($('cropImage'), {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 1,
+        cropBoxResizable: false,
+        background: false
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
+  function closeCropModal() {
+    $('cropModal').classList.remove('active');
+    if (cropper) { cropper.destroy(); cropper = null; }
+    $('cropImage').src = '';
+    // Reset the file input so the same file can be selected again
+    $('avatarInput').value = '';
+  }
+
+  async function handleCropConfirm() {
+    if (!cropper) return;
+
+    const confirmBtn = $('confirmCropBtn');
+    setButtonLoading(confirmBtn, true, 'Uploading…');
+
+    try {
+      // Get cropped canvas as a Blob
+      const canvas = cropper.getCroppedCanvas({ width: 256, height: 256 });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.9));
+
+      // Send to Vercel function for resize + upload to Supabase
+      const formData = new FormData();
+      formData.append('file', blob, 'avatar.webp');
+      formData.append('userId', currentUserId);
+
+      const response = await fetch('/api/resize-avatar', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      if (!url) throw new Error('No URL returned from server');
+
+      // Update the profile avatar_url in DB
+      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', currentUserId);
+      if (updateErr) throw new Error('DB update failed: ' + updateErr.message);
+
+      // Update UI
+      $('avatarImg').src = url;
+      $('updateSuccess').textContent = t('avatarUpdated');
+      $('updateSuccess').classList.add('show');
+
+      closeCropModal();
+    } catch (err) {
+      $('updateErr').textContent = err.message;
+      $('updateErr').classList.add('show');
+    } finally {
+      setButtonLoading(confirmBtn, false);
+    }
+  }
+
+  $('cancelCropBtn').addEventListener('click', closeCropModal);
+  $('confirmCropBtn').addEventListener('click', handleCropConfirm);
+
+  // Pencil button triggers file input
+  const pencilBtn = $('pencilBtn');
+  pencilBtn.addEventListener('click', () => $('avatarInput').click());
+
+  $('avatarInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    openCropModal(file);
+  });
+
+  // ── Message / start chat ──
   async function startChat() {
     const otherUserId = new URLSearchParams(window.location.search).get('user');
     if (!otherUserId || otherUserId === currentUserId) return;
-    const { data: room } = await supabase.from('chat_rooms').select('id').or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`).maybeSingle();
+    const { data: room } = await supabase.from('chat_rooms').select('id')
+      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`)
+      .maybeSingle();
     if (room) { location.href = "chat.html?room=" + room.id; }
     else {
       const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUserId, user_two_id: otherUserId }).select('id').single();
@@ -424,32 +567,6 @@
     if (profile) renderProfile(profile); else renderProfile({});
     updateHeaderButtons();
 
-    // Avatar upload with local loading state for pencil button
-    const pencilBtn = $('pencilBtn');
-    $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
-    $('avatarInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Show spinner in pencil button
-      pencilBtn.disabled = true;
-      pencilBtn.innerHTML = '<span class="btn-spinner"></span>';
-
-      try {
-        await uploadAvatar(file);
-        $('updateSuccess').textContent = t('avatarUpdated');
-        $('updateSuccess').classList.add('show');
-      } catch(err) {
-        $('updateErr').textContent = err.message;
-        $('updateErr').classList.add('show');
-      } finally {
-        // Restore pencil button icon
-        pencilBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">edit</span>';
-        pencilBtn.disabled = false;
-        e.target.value = ''; // allow re-upload of same file
-      }
-    });
-
     const bottom = $('bottomActions');
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn-red';
@@ -457,8 +574,6 @@
     logoutBtn.addEventListener('click', async () => {
       setButtonLoading(logoutBtn, true, 'Logging out…');
       await handleLogout();
-      // handleLogout redirects, but just in case:
-      setButtonLoading(logoutBtn, false);
     });
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn-red';
@@ -474,7 +589,6 @@
       stopHeartbeat(); clearTimeout(inactivityTimer);
       await supabase.auth.signOut();
       location.href = "user_login.html";
-      // No need to restore button because we navigate away
     });
     bottom.appendChild(logoutBtn);
     bottom.appendChild(deleteBtn);
