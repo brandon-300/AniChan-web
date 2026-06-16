@@ -220,6 +220,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <a class="sidebar-link" data-section="member-section"><span class="material-symbols-outlined">group</span> Members</a>
       <a class="sidebar-link" data-section="log-section"><span class="material-symbols-outlined">history</span> Log</a>
       <a class="sidebar-link" data-section="collection-section"><span class="material-symbols-outlined">library_books</span> Collection</a>
+      <a class="sidebar-link" data-section="maintenance-section"><span class="material-symbols-outlined">build</span> Maintenance</a>
     </nav>
     <button class="logout-btn-side" id="logoutBtn"><span class="material-symbols-outlined">logout</span> Logout</button>
   </aside>
@@ -357,6 +358,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
+          <!-- Maintenance Section -->
+          <div class="bento-section glass-panel span-2" id="maintenance-section">
+            <h3><span class="material-symbols-outlined">build</span> Maintenance</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Perform site‑wide maintenance tasks.</p>
+
+            <div style="margin-bottom:16px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Cache</h4>
+              <button class="btn btn-danger" id="purgeCacheBtn"><span class="material-symbols-outlined" style="font-size:16px">refresh</span> Purge Cache</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Bumps the cache version so all open browser tabs reload the site.</p>
+            </div>
+
+            <div style="margin-bottom:16px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Weekly Report</h4>
+              <button class="btn" id="sendReportBtn"><span class="material-symbols-outlined" style="font-size:16px">mail</span> Send Now</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Emails a summary of new users, comments, and anime from the past week to your admin address.</p>
+            </div>
+
+            <div style="margin-bottom:8px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Sitemap</h4>
+              <button class="btn" id="regenerateSitemapBtn"><span class="material-symbols-outlined" style="font-size:16px">map</span> Regenerate</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Creates a fresh sitemap.xml from all anime pages and uploads it to Supabase Storage.</p>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -371,6 +396,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <button class="bottom-nav-item" data-section="anime-form-section"><span class="material-symbols-outlined">edit_note</span><span class="nav-label">Add/Edit</span></button>
   <button class="bottom-nav-item" data-section="member-section"><span class="material-symbols-outlined">group</span><span class="nav-label">Members</span></button>
   <button class="bottom-nav-item" data-section="collection-section"><span class="material-symbols-outlined">library_books</span><span class="nav-label">Collection</span></button>
+  <button class="bottom-nav-item" data-section="maintenance-section"><span class="material-symbols-outlined">build</span><span class="nav-label">Maintenance</span></button>
 </nav>
 
 <!-- Suspend/Delete dialog -->
@@ -998,6 +1024,69 @@ async function loadActionLog(){
   log.innerHTML=data.map(e=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${e.action||"Action"}</span><span style="float:right;font-size:10px">${new Date(e.created_at).toLocaleString()}</span></div>`).join("");
 }
 
+// ── Maintenance Section Handlers ──
+
+// Purge Cache
+$("purgeCacheBtn").addEventListener("click", async () => {
+  if (!confirm("Force ALL users to reload the site? This will bump the cache version.")) return;
+  const btn = $("purgeCacheBtn");
+  setLoading(btn, true, 'Purging…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/purge-cache', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed');
+    toast('Cache purged successfully.');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// Send Weekly Report
+$("sendReportBtn").addEventListener("click", async () => {
+  if (!confirm("Send the weekly report email now?")) return;
+  const btn = $("sendReportBtn");
+  setLoading(btn, true, 'Sending…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/weekly-report', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed to send report');
+    toast('Weekly report sent!');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// Regenerate Sitemap
+$("regenerateSitemapBtn").addEventListener("click", async () => {
+  if (!confirm("Regenerate the sitemap now?")) return;
+  const btn = $("regenerateSitemapBtn");
+  setLoading(btn, true, 'Regenerating…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/regenerate-sitemap', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed');
+    toast('Sitemap regenerated successfully.');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// ── Init ──
 (async()=>{
   resetIdleTimer();
   const ok = await gate();
