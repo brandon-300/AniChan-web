@@ -286,7 +286,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
-          <!-- Add/Edit Anime Form – only English and Japanese title fields -->
+          <!-- Add/Edit Anime Form -->
           <div class="bento-section glass-panel span-2" id="anime-form-section">
             <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
             <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the main title is required.</p>
@@ -597,7 +597,6 @@ function extractLanguageTitles(jikanAnime) {
   return result;
 }
 function getAllTitleVariations(anime) {
-  // Only English, Japanese, and main title
   const titles = [];
   if (anime.title && anime.title.trim()) titles.push(anime.title.trim().toLowerCase());
   if (anime.title_en && anime.title_en.trim()) titles.push(anime.title_en.trim().toLowerCase());
@@ -1024,7 +1023,9 @@ async function loadActionLog(){
   log.innerHTML=data.map(e=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${e.action||"Action"}</span><span style="float:right;font-size:10px">${new Date(e.created_at).toLocaleString()}</span></div>`).join("");
 }
 
-// ── Maintenance Section Handlers ──
+// ═══════════════════════════════════════════
+//  MAINTENANCE SECTION HANDLERS
+// ═══════════════════════════════════════════
 
 // Purge Cache
 $("purgeCacheBtn").addEventListener("click", async () => {
@@ -1046,7 +1047,7 @@ $("purgeCacheBtn").addEventListener("click", async () => {
   }
 });
 
-// Send Weekly Report
+// Send Weekly Report (shows real server error)
 $("sendReportBtn").addEventListener("click", async () => {
   if (!confirm("Send the weekly report email now?")) return;
   const btn = $("sendReportBtn");
@@ -1057,7 +1058,15 @@ $("sendReportBtn").addEventListener("click", async () => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) throw new Error('Failed to send report');
+
+    const rawText = await res.text();
+    let parsed;
+    try { parsed = JSON.parse(rawText); } catch { parsed = null; }
+
+    if (!res.ok) {
+      const msg = parsed?.error || parsed?.message || rawText || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
     toast('Weekly report sent!');
   } catch (e) {
     toast('Error: ' + e.message);
@@ -1066,7 +1075,7 @@ $("sendReportBtn").addEventListener("click", async () => {
   }
 });
 
-// Regenerate Sitemap
+// Regenerate Sitemap (shows real server error)
 $("regenerateSitemapBtn").addEventListener("click", async () => {
   if (!confirm("Regenerate the sitemap now?")) return;
   const btn = $("regenerateSitemapBtn");
@@ -1077,7 +1086,15 @@ $("regenerateSitemapBtn").addEventListener("click", async () => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) throw new Error('Failed');
+
+    const rawText = await res.text();
+    let parsed;
+    try { parsed = JSON.parse(rawText); } catch { parsed = null; }
+
+    if (!res.ok) {
+      const msg = parsed?.error || parsed?.message || rawText || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
     toast('Sitemap regenerated successfully.');
   } catch (e) {
     toast('Error: ' + e.message);
@@ -1086,7 +1103,6 @@ $("regenerateSitemapBtn").addEventListener("click", async () => {
   }
 });
 
-// ── Init ──
 (async()=>{
   resetIdleTimer();
   const ok = await gate();
