@@ -1,53 +1,117 @@
 # AniChan Web
 
-AniChan Web is a lightweight anime community web app built with **HTML, CSS, and JavaScript**, backed by **Supabase** for authentication, data storage, and realtime features.
+AniChan Web is a **modern, real‑time anime tracker and community platform** built with **vanilla HTML, CSS, and JavaScript**, powered by **Supabase** for backend services and **Vercel** for hosting and serverless functions.
 
-It is designed to let users browse anime content, manage profiles, connect with friends, and chat in real time from a clean browser-based interface.
+Browse anime, manage profiles, connect with friends, chat in real time, leave comments, and receive weekly reports — all from a clean, responsive interface.
+
+---
 
 ## ✨ Features
 
-- Anime browsing and catalog pages
-- Anime details, episodes, genres, status, type, and season views
-- User authentication
-- User profiles
-- Friends system
-- Realtime chat
-- Admin/login-related pages
-- Static, fast-loading frontend structure
-- Supabase-powered backend services
+### 📺 Anime Library
+- Browse **Latest Releases** (currently airing, upcoming, finished)
+- **Full‑text live search** across English, Japanese, and main titles
+- Detailed **anime info pages**: synopsis, metadata, genres, episodes, external links
+- **Episode grid** with sorting (asc/desc)
+- **Animepahe‑style** episode cards with duration badges
+- Genre, type, status, season, and alphabetical directory pages
+
+### 👤 User System
+- **Email/password** and **Google OAuth** sign‑up / login
+- Custom **onboarding flow** for Google users
+- User **profiles** with online status, avatar, and editable details
+- **Crop avatar** before upload (client‑side crop via Cropper.js, server‑side resize to 256 px)
+- Inactivity auto‑logout
+
+### 💬 Comments
+- YouTube‑style **flat threading** (no deep indent)
+- Like / dislike with secure Supabase RPC functions
+- Reply with @mention auto‑prefill
+- Delete own comments (cascade deletion)
+- Publicly visible; only logged‑in users can post
+
+### 💬 Real‑Time Chat
+- Telegram‑inspired **two‑panel layout** (messages directory + conversation room)
+- Real‑time **messaging**, typing indicators, online presence
+- Swipe‑to‑reply, long‑press context menu (edit, delete)
+- Unread badges, date separators, read receipts
+- **Voice / video call placeholders** (UI ready, WebRTC signalling in place)
+
+### 🛠️ Admin Panel
+- **Broadcast messages** (shown on homepage)
+- **Site logo** upload
+- **Auto‑Fetch**: search Jikan, fill form, bulk import, fix missing fields, delete duplicates
+- **Collection management** with pagination
+- **Member management** (suspend, unsuspend, delete)
+- **Purge Cache** (forces all open tabs to reload)
+- **Regenerate Sitemap** (uploads to Supabase Storage)
+- **Weekly Report** (emails stats: new users, comments, anime, most liked comments, new users, most active user, etc.)
+
+### ⚡ Automation
+- **Cron job** (Supabase `pg_cron`) runs every 30 minutes to fetch **currently airing anime** from Jikan, inserts new ones, and **updates** existing ones (episode count, status, etc.)
+- **Index page sorting**: Currently Airing → Not yet aired → Finished, newest first
+- **Cache version polling**: index page reloads automatically when admin purges cache
+
+### 🧰 Serverless Functions (Vercel)
+- **`/api/resize-avatar`** – crops & resizes avatars to 256 px using Sharp, uploads to Supabase Storage
+- **`/api/admin/purge-cache`** – increments cache version in settings
+- **`/api/admin/weekly-report`** – sends rich HTML email via Resend
+- **`/api/admin/regenerate-sitemap`** – generates and uploads sitemap.xml
+
+### 🌍 SEO
+- Sitemap can be submitted to Google / Bing
+- Auto‑regenerated via admin panel
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** HTML, CSS, JavaScript
-- **Backend services:** Supabase
-- **Database:** Supabase/PostgreSQL
-- **Realtime:** Supabase Realtime
-- **Authentication:** Supabase Auth
-- **Hosting:** Works well on static hosting platforms such as Vercel, Netlify, or GitHub Pages
+| Category          | Technology                           |
+|-------------------|--------------------------------------|
+| Frontend          | HTML, CSS, JavaScript (vanilla)      |
+| Backend           | Supabase (Auth, DB, Storage, Realtime, Edge Functions) |
+| Serverless        | Vercel Functions (Node.js)           |
+| Image Processing  | Cropper.js (client), Sharp (server)  |
+| Email             | Resend                               |
+| External API      | Jikan (MyAnimeList unofficial API)   |
+| Hosting           | Vercel                               |
+| Database          | PostgreSQL (via Supabase)            |
+
+---
 
 ## 📁 Project Structure
 
-This repository is organized as a multi-page frontend application. Common pages include:
+```
 
-- `index.html`
-- `anime.html`
-- `anime-details.html`
-- `episode.html`
-- `genres.html`
-- `status.html`
-- `type.html`
-- `season.html`
-- `login.html`
-- `profile.html`
-- `friends.html`
-- `chat.html`
-- `admin.html`
+AniChan-web/
+├── index.html                  # Home page (Latest Releases, search)
+├── anime_info.html             # Anime details, episodes, comments
+├── anime.html                  # Alphabetical directory
+├── episode_info.html           # Episode page (video placeholder)
+├── chat.html                   # Real‑time chat
+├── profile.html                # User profile & avatar crop
+├── user_login.html             # Login / Signup / Google OAuth
+├── admin.html                  # Admin dashboard
+├── admin_login.html            # Admin login
+├── find_friends.html           # Friends list
+├── forgot_password.html        # Password reset
+├── reset_password.html         # New password form
+├── genre.html, type.html, status.html, season.html   # Filter pages
+├── i18n.js                     # English / Japanese translations
+├── api/                        # Vercel serverless functions
+│   ├── resize-avatar.js
+│   └── admin/
+│       ├── purge-cache.js
+│       ├── weekly-report.js
+│       └── regenerate-sitemap.js
+├── css/                        # (optional modular CSS)
+├── js/                         # (optional modular JS)
+├── package.json                # Dependencies (sharp, resend, etc.)
+└── README.md
 
-You may also have supporting:
+```
 
-- JavaScript files
-- CSS files
-- assets such as images, icons, and logos
+---
 
 ## 🚀 Getting Started
 
@@ -58,93 +122,99 @@ git clone https://github.com/brandon-300/AniChan-web.git
 cd AniChan-web
 ```
 
-### 2. Open the project
+2. Open locally
 
-Because this is a frontend web app, you can open `index.html` directly in your browser or serve it with a local web server.
-
-For example, with Python:
+Because this is a frontend web app, you can open index.html directly or serve it with a local server:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then open:
+Then visit http://localhost:8000.
 
-```text
-http://localhost:8000
-```
+3. Configure Supabase
 
-### 3. Configure Supabase
+Create a Supabase project and set the following environment variables (in Vercel or a local .env):
 
-If your build uses Supabase, make sure your project is connected to:
+Variable Description
+SUPABASE_URL Your Supabase project URL
+SUPABASE_ANON_KEY Public anon key
+SUPABASE_SERVICE_ROLE_KEY Service role key (for serverless functions)
+ADMIN_EMAIL Your admin email address
+RESEND_API_KEY API key from Resend (for weekly report)
 
-- Supabase project URL
-- Supabase anon/public key
-- Any required database tables, policies, and realtime settings
+Run the necessary SQL migrations to create tables (anime, profiles, chat_rooms, messages, anime_comments, calls, call_signals, etc.), RLS policies, and the fetch_airing_anime Postgres function.
 
-Add those values in the place used by your JavaScript configuration.
+4. Deploy to Vercel
 
-## ⚙️ Usage
+Connect your GitHub repository to Vercel. It will automatically detect the static site and serverless functions. Add the environment variables above in Vercel's project settings.
+
+---
+
+⚙️ Usage
 
 1. Open the home page.
-2. Sign in or create an account.
-3. Browse anime content.
-4. View details, episodes, genres, and seasons.
-5. Use profile, friends, and chat features after authentication.
+2. Sign in or create an account (email/password or Google).
+3. Browse anime, view details, leave comments.
+4. Use the chat to message other users.
+5. Admin panel: manage content, send reports, purge cache.
 
-## 🔧 Customization
+---
 
-You can customize AniChan Web by editing:
+🔧 Customization
 
-- Page content
-- Styling in CSS
-- Navigation structure
-- Supabase queries
-- Authentication flow
-- Realtime chat behavior
-- Profile and friends features
+You can customize almost every aspect by editing the HTML/CSS/JS files. Key configuration points:
 
-## 📦 Deployment
+· Supabase URL & keys in config.js (or inline)
+· Cron schedule in Supabase SQL
+· Resend sender & recipient in the weekly report function
+· UI strings in i18n.js
 
-AniChan Web can be deployed as a static site.
+---
 
-Recommended platforms:
+📦 Deployment
 
-- Vercel
-- Netlify
-- GitHub Pages
+AniChan Web is designed to run on Vercel (static hosting + serverless functions). It also works on any static host if you proxy the API routes to a separate backend.
 
-Before deployment, confirm that:
+Before deployment, ensure:
 
-- All links work correctly
-- Supabase keys are configured
-- CORS / auth settings are correct
-- Realtime permissions are set properly
+· All Supabase tables and RLS policies are applied
+· Environment variables are set in Vercel
+· CORS is correctly configured (Supabase automatically handles this)
 
-## 🤝 Contributing
+---
 
-Contributions are welcome.
+🤝 Contributing
 
-Suggested workflow:
+Contributions are welcome!
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test the site locally
+4. Test thoroughly
 5. Open a pull request
 
-## 📄 License
+---
 
-This project is licensed under the **MIT License**.
+📄 License
 
-That means anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and even sell copies of this project, as long as the license notice is kept with the software.
+This project is licensed under the MIT License.
 
-## 🙏 Acknowledgements
+Anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, provided the license notice is kept.
 
-- Supabase for backend services
-- Anime data sources used by the project
-- Everyone who contributes to AniChan Web
+---
 
-## 📬 Contact
+🙏 Acknowledgements
+
+· Supabase – backend services, realtime, cron, auth
+· Jikan API – anime metadata
+· Resend – email delivery
+· Cropper.js – client‑side image cropping
+· Sharp – server‑side image resizing
+· Vercel – hosting & serverless functions
+
+---
+
+📬 Contact
 
 For questions, feature ideas, or contributions, use the repository issues page on GitHub.
