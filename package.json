@@ -1,0 +1,9 @@
+{
+  "name": "anichan",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "sharp": "^0.33.5"
+  }
+}
