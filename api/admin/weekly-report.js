@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify admin using the token sent from the frontend
+  // Verify admin token
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
   const token = authHeader.split(' ')[1];
@@ -52,7 +52,6 @@ export default async function handler(req, res) {
     });
 
     if (emailError) {
-      console.error('Resend error:', emailError);
       return res.status(500).json({
         error: emailError.message,
         code: emailError.name || 'RESEND_ERROR',
