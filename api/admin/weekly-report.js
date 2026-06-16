@@ -60,7 +60,7 @@ export default async function handler(req, res) {
       .order('created_at', { ascending: false })
       .limit(5);
 
-    // ── Most active user (by number of comments) ──
+    // ── Most active user ──
     const { data: activeUsers } = await supabase
       .from('anime_comments')
       .select('user_id')
@@ -84,6 +84,38 @@ export default async function handler(req, res) {
       if (topUser) topUserName = topUser.username;
     }
 
+    // ── New anime titles (up to 5) ──
+    const { data: newAnimeTitles } = await supabase
+      .from('anime')
+      .select('title')
+      .gte('created_at', weekAgo)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    // ── Most commented anime this week ──
+    const { data: animeComments } = await supabase
+      .from('anime_comments')
+      .select('anime_id')
+      .gte('created_at', weekAgo);
+
+    const animeCommentCounts = {};
+    (animeComments || []).forEach(c => {
+      animeCommentCounts[c.anime_id] = (animeCommentCounts[c.anime_id] || 0) + 1;
+    });
+    let topAnimeId = null, topAnimeComments = 0;
+    for (const [aid, cnt] of Object.entries(animeCommentCounts)) {
+      if (cnt > topAnimeComments) { topAnimeComments = cnt; topAnimeId = aid; }
+    }
+    let topAnimeTitle = '—';
+    if (topAnimeId) {
+      const { data: topAnime } = await supabase
+        .from('anime')
+        .select('title')
+        .eq('id', topAnimeId)
+        .single();
+      if (topAnime) topAnimeTitle = topAnime.title;
+    }
+
     // Resolve usernames for top‑liked comments
     const commentUserIds = [...new Set(sortedComments.map(c => c.userId))];
     const userMap = {};
@@ -105,6 +137,10 @@ export default async function handler(req, res) {
       ? recentUsers.map(u => `<li>@${u.username}</li>`).join('')
       : '<li>None</li>';
 
+    const newAnimeLines = newAnimeTitles?.length
+      ? newAnimeTitles.map(a => `<li>${a.title}</li>`).join('')
+      : '<li>None</li>';
+
     const emailBody = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
         <h2 style="color:#51dad3">AniChan Weekly Report</h2>
@@ -124,8 +160,14 @@ export default async function handler(req, res) {
         <h3 style="margin-bottom:4px">👋 New Users</h3>
         <ul>${newUserLines}</ul>
 
+        <h3 style="margin-bottom:4px">📺 New Anime This Week</h3>
+        <ul>${newAnimeLines}</ul>
+
         <h3 style="margin-bottom:4px">💬 Most Active User</h3>
         <p>@${topUserName} (${topCount} comments)</p>
+
+        <h3 style="margin-bottom:4px">🔥 Most Discussed Anime</h3>
+        <p>«${topAnimeTitle}» – ${topAnimeComments} comments this week</p>
 
         <p style="margin-top:24px;color:#999">🔧 <a href="https://ani-chan-web.vercel.app/admin.html">Admin Panel</a></p>
         <p style="color:#aaa;font-size:12px">Sent automatically by AniChan</p>
