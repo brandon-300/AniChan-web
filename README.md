@@ -1,4 +1,3 @@
-```markdown
 # AniChan Web
 
 AniChan Web is a **modern, real‑time anime tracker and community platform** built with **vanilla HTML, CSS, and JavaScript**, powered by **Supabase** for backend services and **Vercel** for hosting and serverless functions.
