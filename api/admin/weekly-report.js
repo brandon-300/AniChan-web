@@ -1,18 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
+  // Verify admin using the token sent from the frontend
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
   const token = authHeader.split(' ')[1];
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user || user.email !== process.env.ADMIN_EMAIL) {
-    return res.status(403).json({ error: 'Forbidden' });
+    return res.status(403).json({ error: 'Forbidden: invalid admin' });
   }
 
   try {
@@ -38,16 +44,28 @@ export default async function handler(req, res) {
       <p><em>Sent automatically by AniChan</em></p>
     `;
 
-    await resend.emails.send({
-      from: 'AniChan <report@yourdomain.com>',   // verified domain in Resend
+    const { data: emailData, error: emailError } = await resend.emails.send({
+      from: 'AniChan <onboarding@resend.dev>',
       to: [process.env.ADMIN_EMAIL],
       subject: 'AniChan Weekly Report',
       html: emailBody,
     });
 
-    return res.status(200).json({ success: true });
+    if (emailError) {
+      console.error('Resend error:', emailError);
+      return res.status(500).json({
+        error: emailError.message,
+        code: emailError.name || 'RESEND_ERROR',
+      });
+    }
+
+    return res.status(200).json({ success: true, messageId: emailData?.id });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: err.message,
+      code: err.code || 'UNKNOWN',
+      details: err.toString()
+    });
   }
 }
