@@ -192,7 +192,6 @@
     opacity:1;
     transition:none;
   }
-  /* hover only for devices with a mouse */
   @media (hover: hover) {
     .release-card:hover .play-icon-overlay {
       opacity:1;
@@ -343,6 +342,26 @@
   let currentSession = null;
   let currentPage = 1;
 
+  // ═══════════════════════════════════════
+  //  CACHE VERSION POLLING
+  //  (forces reload when Purge Cache is used)
+  // ═══════════════════════════════════════
+  let currentCacheVersion = '0';
+
+  async function checkCacheVersion() {
+    const { data } = await sb.from('settings')
+      .select('value')
+      .eq('key', 'cache_version')
+      .maybeSingle();
+    const serverVersion = data?.value || '0';
+    if (currentCacheVersion === '0') {
+      currentCacheVersion = serverVersion;
+    } else if (serverVersion !== currentCacheVersion) {
+      location.reload();
+    }
+  }
+
+  // ── Basic translations ──
   const latestReleasesText = t('latestReleases') === 'latestReleases' ? 'Latest Releases' : t('latestReleases');
   $("offline").textContent = t("offline");
   $("latestReleasesHeading").textContent = latestReleasesText;
@@ -561,17 +580,14 @@
     document.querySelectorAll('.play-icon-overlay.show').forEach(icon => icon.classList.remove('show'));
   }
 
-  // Shared navigation timeout – cancelable so rapid taps on different cards work correctly
   let navTimeout = null;
   function scheduleNav(href) {
     if (navTimeout) clearTimeout(navTimeout);
     navTimeout = setTimeout(() => { navTimeout = null; location.href = href; }, 150);
   }
 
-  // Instantly clear play icons when the browser navigates away (back/forward cache safe)
   window.addEventListener('pagehide', clearAllPlayIcons);
 
-  // ── Pure white play triangle SVG (opacity 0.45) ──
   const PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%"><polygon points="6,2 20,12 6,22" fill="white" opacity="0.45"/></svg>';
 
   function renderReleases() {
@@ -596,12 +612,10 @@
         card.href = `anime_info.html?id=${a.id}`;
         card.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
 
-        // Full‑card gradient overlay
         const gradient = document.createElement("div");
         gradient.className = "card-gradient";
         card.appendChild(gradient);
 
-        // BD/DVD badge (top‑left)
         const mediaBadge = document.createElement("span");
         mediaBadge.className = "media-badge";
         if (a.release_type) {
@@ -610,13 +624,11 @@
         }
         card.appendChild(mediaBadge);
 
-        // Play icon container (hidden by default)
         const playIcon = document.createElement("div");
         playIcon.className = "play-icon-overlay";
         playIcon.innerHTML = PLAY_ICON_SVG;
         card.appendChild(playIcon);
 
-        // Bottom text row
         const bottomBar = document.createElement("div");
         bottomBar.className = "card-bottom";
         const titleSpan = document.createElement("span");
@@ -629,7 +641,6 @@
         bottomBar.appendChild(epSpan);
         card.appendChild(bottomBar);
 
-        // ── Event listeners with 150ms delay ──
         let touchStartX = 0, touchStartY = 0, touchWasScroll = false, wasTouch = false;
 
         card.addEventListener('touchstart', (e) => {
@@ -678,7 +689,6 @@
   }
 
   async function loadLibrary() {
-    // Fetch all anime, no pre‑ordering – we'll sort in JS for exact control
     const { data, error } = await sb
       .from("anime")
       .select("*");
@@ -686,15 +696,13 @@
       library = [];
     } else {
       library = data || [];
-      // Sort: 1) Currently Airing, 2) Not yet aired, 3) Aired
-      // Within each group, most recent aired_from first
       const statusOrder = { 'Currently Airing': 0, 'Not yet aired': 1, 'Aired': 2 };
       library.sort((a, b) => {
         const diff = statusOrder[a.status] - statusOrder[b.status];
         if (diff !== 0) return diff;
         const aDate = a.aired_from ? new Date(a.aired_from) : new Date(0);
         const bDate = b.aired_from ? new Date(b.aired_from) : new Date(0);
-        return bDate - aDate; // descending
+        return bDate - aDate;
       });
     }
     currentPage = 1;
@@ -728,7 +736,10 @@
     renderBroadcast();
     loadLibrary();
 
-    // Refresh the library when the tab becomes visible (after being in background)
+    // Start cache version polling
+    checkCacheVersion();
+    setInterval(checkCacheVersion, 30000);
+
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         loadLibrary();
