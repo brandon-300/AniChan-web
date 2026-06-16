@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify admin token
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
   const token = authHeader.split(' ')[1];
@@ -30,8 +29,9 @@ export default async function handler(req, res) {
     }
     xml += '</urlset>';
 
+    // Change bucket name from 'public' to 'public-files'
     const { error } = await supabase.storage
-      .from('public')
+      .from('public-files')   // ← updated bucket name
       .upload('sitemap.xml', xml, { contentType: 'application/xml', upsert: true });
     if (error) throw error;
 
