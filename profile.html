@@ -93,9 +93,8 @@
   .field input:focus,.field select:focus{border-color:var(--accent)}
   .field input[readonly]{opacity:0.8;cursor:default}
 
-  .err-msg,.success-msg{font-size:13px;margin-top:12px;display:none}
-  .err-msg{color:var(--danger)}.success-msg{color:var(--accent)}
-  .err-msg.show,.success-msg.show{display:block}
+  /* Remove old inline messages */
+  .err-msg, .success-msg{display:none}
 
   .lang-selector{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
   .lang-btn{
@@ -183,6 +182,33 @@
   }
   .crop-actions button.primary:hover { filter: brightness(1.08); }
 
+  /* ── Toast Notification ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    white-space: nowrap;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #toast.success { border-color: var(--success); color: var(--success); }
+  #toast.error { border-color: var(--danger); color: var(--danger); }
+
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 
   @media(max-width:500px){
@@ -231,8 +257,6 @@
         <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
         <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
       </div>
-      <div class="err-msg" id="updateErr"></div>
-      <div class="success-msg" id="updateSuccess"></div>
 
       <!-- Language selector (own profile only) -->
       <div id="langSelectorContainer" style="display:none;">
@@ -261,6 +285,9 @@
     </div>
   </div>
 
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
   <footer>AniChan · powered by Supabase</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
@@ -284,6 +311,19 @@
   // Apply translated labels
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
+
+  // ── Toast helper ──
+  let toastTimer;
+  function showToast(msg, type = 'success') {
+    const toast = $('toast');
+    toast.textContent = msg;
+    toast.className = type;   // 'success' or 'error'
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
+  }
 
   // Inactivity auto-logout
   let inactivityTimer;
@@ -408,8 +448,6 @@
   function cancelEdit() {
     if (originalProfile) renderProfile(originalProfile);
     setEditMode(false);
-    $('updateErr').classList.remove('show');
-    $('updateSuccess').classList.remove('show');
   }
 
   async function saveProfile() {
@@ -419,26 +457,25 @@
     const age = parseInt($('ageInput').value) || null;
     const dob = $('dobInput').value;
     const country = $('countryInput').value.trim();
-    const errEl = $('updateErr'); const successEl = $('updateSuccess');
-    errEl.classList.remove('show'); successEl.classList.remove('show');
-    if (!fullName || !username || !email) { errEl.textContent = t('allFieldsRequired'); errEl.classList.add('show'); return; }
-    if (age && age < 14) { errEl.textContent = t('ageMin14'); errEl.classList.add('show'); return; }
+
+    if (!fullName || !username || !email) { showToast(t('allFieldsRequired'), 'error'); return; }
+    if (age && age < 14) { showToast(t('ageMin14'), 'error'); return; }
+
     try {
       const { data: exist } = await supabase.from('profiles').select('id').eq('username', username).neq('id', currentUserId).maybeSingle();
-      if (exist) { errEl.textContent = t('usernameTaken'); errEl.classList.add('show'); return; }
+      if (exist) { showToast(t('usernameTaken'), 'error'); return; }
       const updates = { full_name: fullName, username, email, age: age || null, dob: dob || null, country: country || null };
       const { error } = await supabase.from('profiles').update(updates).eq('id', currentUserId);
       if (error) throw error;
       $('displayFullName').textContent = fullName;
       $('displayUsername').textContent = '@' + username;
-      successEl.textContent = t('profileUpdated'); successEl.classList.add('show');
+      showToast(t('profileUpdated'), 'success');
       setEditMode(false);
-    } catch(e) { errEl.textContent = e.message; errEl.classList.add('show'); }
+    } catch(e) { showToast(e.message, 'error'); }
   }
 
   // ── Crop & upload avatar ──
   function openCropModal(file) {
-    // Reset any previous cropper
     if (cropper) { cropper.destroy(); cropper = null; }
 
     const reader = new FileReader();
@@ -462,7 +499,6 @@
     $('cropModal').classList.remove('active');
     if (cropper) { cropper.destroy(); cropper = null; }
     $('cropImage').src = '';
-    // Reset the file input so the same file can be selected again
     $('avatarInput').value = '';
   }
 
@@ -473,11 +509,9 @@
     setButtonLoading(confirmBtn, true, 'Uploading…');
 
     try {
-      // Get cropped canvas as a Blob
       const canvas = cropper.getCroppedCanvas({ width: 256, height: 256 });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.9));
 
-      // Send to Vercel function for resize + upload to Supabase
       const formData = new FormData();
       formData.append('file', blob, 'avatar.webp');
       formData.append('userId', currentUserId);
@@ -495,19 +529,14 @@
       const { url } = await response.json();
       if (!url) throw new Error('No URL returned from server');
 
-      // Update the profile avatar_url in DB
       const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', currentUserId);
       if (updateErr) throw new Error('DB update failed: ' + updateErr.message);
 
-      // Update UI
       $('avatarImg').src = url;
-      $('updateSuccess').textContent = t('avatarUpdated');
-      $('updateSuccess').classList.add('show');
-
+      showToast(t('avatarUpdated'), 'success');
       closeCropModal();
     } catch (err) {
-      $('updateErr').textContent = err.message;
-      $('updateErr').classList.add('show');
+      showToast(err.message, 'error');
     } finally {
       setButtonLoading(confirmBtn, false);
     }
@@ -516,7 +545,6 @@
   $('cancelCropBtn').addEventListener('click', closeCropModal);
   $('confirmCropBtn').addEventListener('click', handleCropConfirm);
 
-  // Pencil button triggers file input
   const pencilBtn = $('pencilBtn');
   pencilBtn.addEventListener('click', () => $('avatarInput').click());
 
