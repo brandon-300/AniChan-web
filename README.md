@@ -13,7 +13,7 @@ Browse anime, manage profiles, connect with friends, chat in real time, leave co
 - **Full‑text live search** across English, Japanese, and main titles
 - Detailed **anime info pages**: synopsis, metadata, genres, episodes, external links
 - **Episode grid** with sorting (asc/desc)
-- **Animepahe‑style** episode cards with duration badges
+- Episode cards with duration badges
 - Genre, type, status, season, and alphabetical directory pages
 
 ### 👤 User System
@@ -45,7 +45,6 @@ Browse anime, manage profiles, connect with friends, chat in real time, leave co
 - **Member management** (suspend, unsuspend, delete)
 - **Purge Cache** (forces all open tabs to reload)
 - **Regenerate Sitemap** (uploads to Supabase Storage)
-- **Weekly Report** (emails stats: new users, comments, anime, most liked comments, new users, most active user, etc.)
 
 ### ⚡ Automation
 - **Cron job** (Supabase `pg_cron`) runs every 30 minutes to fetch **currently airing anime** from Jikan, inserts new ones, and **updates** existing ones (episode count, status, etc.)
@@ -55,7 +54,6 @@ Browse anime, manage profiles, connect with friends, chat in real time, leave co
 ### 🧰 Serverless Functions (Vercel)
 - **`/api/resize-avatar`** – crops & resizes avatars to 256 px using Sharp, uploads to Supabase Storage
 - **`/api/admin/purge-cache`** – increments cache version in settings
-- **`/api/admin/weekly-report`** – sends rich HTML email via Resend
 - **`/api/admin/regenerate-sitemap`** – generates and uploads sitemap.xml
 
 ### 🌍 SEO
@@ -72,7 +70,6 @@ Browse anime, manage profiles, connect with friends, chat in real time, leave co
 | Backend           | Supabase (Auth, DB, Storage, Realtime, Edge Functions) |
 | Serverless        | Vercel Functions (Node.js)           |
 | Image Processing  | Cropper.js (client), Sharp (server)  |
-| Email             | Resend                               |
 | External API      | Jikan (MyAnimeList unofficial API)   |
 | Hosting           | Vercel                               |
 | Database          | PostgreSQL (via Supabase)            |
@@ -102,7 +99,6 @@ AniChan-web/
 │   ├── resize-avatar.js
 │   └── admin/
 │       ├── purge-cache.js
-│       ├── weekly-report.js
 │       └── regenerate-sitemap.js
 ├── css/                        # (optional modular CSS)
 ├── js/                         # (optional modular JS)
@@ -141,7 +137,6 @@ SUPABASE_URL Your Supabase project URL
 SUPABASE_ANON_KEY Public anon key
 SUPABASE_SERVICE_ROLE_KEY Service role key (for serverless functions)
 ADMIN_EMAIL Your admin email address
-RESEND_API_KEY API key from Resend (for weekly report)
 
 Run the necessary SQL migrations to create tables (anime, profiles, chat_rooms, messages, anime_comments, calls, call_signals, etc.), RLS policies, and the fetch_airing_anime Postgres function.
 
@@ -157,7 +152,7 @@ Connect your GitHub repository to Vercel. It will automatically detect the stati
 2. Sign in or create an account (email/password or Google).
 3. Browse anime, view details, leave comments.
 4. Use the chat to message other users.
-5. Admin panel: manage content, send reports, purge cache.
+5. Admin panel: manage content, regenerate sitemap, purge cache.
 
 ---
 
@@ -167,7 +162,6 @@ You can customize almost every aspect by editing the HTML/CSS/JS files. Key conf
 
 · Supabase URL & keys in config.js (or inline)
 · Cron schedule in Supabase SQL
-· Resend sender & recipient in the weekly report function
 · UI strings in i18n.js
 
 ---
@@ -208,7 +202,6 @@ Anyone is free to copy, use, modify, merge, publish, distribute, sublicense, and
 
 · Supabase – backend services, realtime, cron, auth
 · Jikan API – anime metadata
-· Resend – email delivery
 · Cropper.js – client‑side image cropping
 · Sharp – server‑side image resizing
 · Vercel – hosting & serverless functions
