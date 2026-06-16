@@ -3,530 +3,1100 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AniChan · Anime Directory</title>
+<title>Admin · AniChan</title>
+<meta name="robots" content="noindex" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="i18n.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
-  :root{
-    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
-    --accent:#51dad3; --accent2:#ffb597;
-    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
-    --danger:#ff4757; --success:#2ed573; --offline:#555;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    background:var(--bg);color:var(--text);
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    min-height:100vh;display:flex;flex-direction:column;
-    -webkit-font-smoothing:antialiased;
-  }
+:root{
+  --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+  --accent:#51dad3; --accent2:#ffb597;
+  --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+  --danger:#ff4757; --success:#2ed573; --offline:#555;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{display:block;max-width:100%}
 
-  header.app{
-    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--border);padding:12px 16px;
-    display:flex;align-items:center;justify-content:space-between;
-    position:sticky;top:0;z-index:50;
-  }
-  .brand{font-weight:800;font-size:20px}
-  .brand span{color:var(--accent)}
-  .header-left{display:flex;align-items:center;gap:12px}
-  .back-btn{
-    background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;
-    padding:0 8px;line-height:1;
-  }
-  .header-actions{display:flex;align-items:center;gap:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(255,255,255,.25);
+  border-top-color:currentColor;
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+  vertical-align:middle;
+  flex-shrink:0;
+}
 
-  .menu-btn{
-    background:var(--panel);border:1px solid var(--border);border-radius:12px;
-    padding:8px 12px;font-size:24px;color:var(--text);cursor:pointer;
-    transition:background .15s,border-color .15s;
-  }
-  .menu-btn:hover{border-color:var(--accent);background:var(--card)}
+.app-layout{display:flex;min-height:100vh;}
 
-  .nav-dropdown{
-    display:none;background:rgba(26,26,26,.85);backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
-    padding:16px 16px 20px;
-  }
-  .nav-dropdown.open{display:block}
-  .nav-dropdown .nav-item{
-    display:flex;align-items:center;gap:10px;padding:10px 14px;
-    border-radius:10px;font-size:14px;font-weight:500;color:var(--text);
-    transition:background .15s;cursor:pointer;
-  }
-  .nav-dropdown .nav-item:hover{background:var(--panel);color:var(--accent)}
-  .nav-dropdown .nav-item .material-symbols-outlined{font-size:20px}
-  .nav-dropdown .nav-divider{height:1px;background:var(--border);margin:8px 0}
+.sidebar{
+  width:260px;background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;
+  position:sticky;top:0;height:100vh;z-index:30;
+}
+.sidebar-brand{padding:18px 16px;font-weight:800;font-size:20px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
+.sidebar-brand .accent{color:var(--accent)}
+.sidebar-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;}
+.sidebar-link{
+  padding:10px 14px;border-radius:10px;font-size:14px;font-weight:500;
+  color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:10px;
+  cursor:pointer;
+}
+.sidebar-link:hover,.sidebar-link.active{
+  background:rgba(81,218,211,.12);color:var(--accent);border-left:3px solid var(--accent);
+}
+.sidebar-link .material-symbols-outlined{font-size:20px}
+.logout-btn-side{
+  margin:12px;padding:10px;border-radius:10px;background:transparent;
+  border:1px solid rgba(255,71,87,.25);color:var(--danger);
+  font-weight:600;font-size:14px;transition:background .15s;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.logout-btn-side:hover{background:rgba(255,71,87,.12)}
 
-  .nav-search-wrap{margin-top:8px;position:relative}
-  .nav-search-wrap input{
-    width:100%;padding:12px 14px 12px 44px;border-radius:12px;
-    background:var(--panel);border:1px solid var(--border);color:var(--text);
-    font-size:14px;outline:none;
-  }
-  .nav-search-wrap input:focus{border-color:var(--accent)}
-  .nav-search-wrap .ico{
-    position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;
-    pointer-events:none;
-  }
+.main-area{flex:1;min-width:0;display:flex;flex-direction:column;}
 
-  .search-results-dropdown{
-    position:fixed;
-    background:#1a1a1a;
-    border:1px solid var(--border);border-radius:12px;
-    overflow:hidden;
-    display:none;
-    box-shadow:0 12px 24px rgba(0,0,0,.6);
-    z-index:99999;
-  }
-  .search-results-dropdown.show{display:block}
-  .search-result-item{
-    display:flex;align-items:center;gap:12px;padding:10px 14px;
-    cursor:pointer;transition:background .15s;
-  }
-  .search-result-item:hover{background:var(--panel)}
-  .search-thumb{
-    width:42px;height:42px;border-radius:50%;object-fit:cover;
-    background:var(--panel);border:1px solid var(--border);flex-shrink:0;
-  }
-  .search-info{flex:1;min-width:0}
-  .search-info .name{font-weight:600;font-size:14px;line-height:1.3;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .search-info .meta{font-size:11px;color:var(--muted);margin-top:2px}
-  .no-results{
-    padding:24px 18px;text-align:center;color:var(--muted);font-size:13px;
-    background:#1a1a1a;
-  }
+.top-bar-mobile{display:none;}
 
-  .broadcast{display:none;margin:16px;padding:14px 16px;border-radius:16px;
-    background:rgba(81,218,211,.08);border:1px solid rgba(81,218,211,.25);color:#dffaf8;
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    display:flex;gap:12px;align-items:flex-start}
-  .broadcast.hidden{display:none}
+.content{padding:20px 24px;flex:1;}
 
-  .container{max-width:1100px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+.glass-panel{
+  background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.glass-panel h3{
+  font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:#c8cdd0;margin:0 0 12px;display:flex;align-items:center;gap:8px;
+}
+.glass-panel h3 .material-symbols-outlined{font-size:20px;color:var(--accent)}
 
-  .glass-panel{
-    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border:1px solid var(--border);border-radius:20px;padding:20px;
-    margin-bottom:24px;box-shadow:0 8px 24px rgba(0,0,0,.4);
-  }
-  .glass-panel h2{
-    font-size:20px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;
-  }
+.bento-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.bento-grid .span-2{grid-column:span 2}
+.bento-grid .span-3{grid-column:span 3}
 
-  .alpha-grid{
-    display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;
-  }
-  .alpha-btn{
-    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
-    border:1px solid var(--border);border-radius:10px;
-    background:var(--panel);color:var(--text);font-weight:600;font-size:13px;
-    cursor:pointer;transition:background .15s,color .15s,border-color .15s;
-  }
-  .alpha-btn.active{
-    background:var(--accent);color:#0a2a28;border-color:var(--accent);
-  }
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=url],input[type=number],input[type=email],input[type=password],
+select,textarea{
+  width:100%;padding:12px;border-radius:12px;background:var(--panel);
+  border:1px solid var(--border);color:var(--text);font-size:14px;outline:none;
+  transition:border-color .15s;font-family:inherit;
+}
+textarea{resize:vertical;min-height:80px;line-height:1.45}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239aa0a6'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:36px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
-  .release-list{display:flex;flex-direction:column;gap:16px}
-  .release-card{
-    border-radius:18px;overflow:hidden;
-    border:1px solid var(--border);
-    background:var(--card);
-    display:flex;flex-direction:column;
-    transition:transform .15s ease,box-shadow .15s ease;
-    cursor:pointer;text-decoration:none;color:inherit;
-  }
-  .release-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.6)}
+.btn{
+  padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;
+  border:1px solid var(--border);background:var(--panel);color:var(--text);
+  cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn-primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
+.btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn-danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+.btn-danger:hover:not(:disabled){background:rgba(255,71,87,.12)}
 
-  .card-image{
-    width:100%;aspect-ratio:16/9;
-    background-size:cover;background-position:center;
-    position:relative;
-  }
-  .card-image .overlay{
-    position:absolute;inset:0;
-    background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.4) 50%, transparent 100%);
-    pointer-events:none;
-  }
-  .card-title-overlay{
-    position:absolute;bottom:0;left:0;right:0;
-    padding:12px 16px;
-    font-size:15px;font-weight:700;line-height:1.4;
-    color:#fff;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-    z-index:2;
-  }
-  .media-badge{
-    position:absolute;top:10px;left:10px;
-    background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    color:var(--accent);font-size:12px;font-weight:700;
-    padding:3px 10px;border-radius:6px;
-    text-transform:uppercase;letter-spacing:.5px;
-    z-index:2;
-    display:none;
-  }
-  .media-badge.show{display:block}
-  .ep-badge-overlay{
-    position:absolute;bottom:10px;right:10px;
-    background:var(--accent);color:#0a2a28;
-    font-size:14px;font-weight:700;
-    padding:4px 14px;border-radius:20px;
-    z-index:2;
-  }
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.row.end{justify-content:flex-end}
 
-  .empty{padding:32px;text-align:center;color:var(--muted);
-    border:1px dashed var(--border);border-radius:18px;background:var(--card);font-size:13px}
+.chip-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.35);color:#9eece9;}
 
-  .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
-  .pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
-  .pagination button:disabled{opacity:.4;cursor:default}
-  .pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
-  .page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
+.member-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
+.member-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
 
-  /* Scroll to top button – identical to index page */
-  #toTop{position:fixed;right:18px;bottom:18px;width:46px;height:46px;border-radius:50%;
-    background:var(--accent);color:#0a2a28;font-size:20px;font-weight:800;
-    box-shadow:0 12px 28px rgba(81,218,211,.30);opacity:0;pointer-events:none;
-    transition:opacity .25s ease,transform .25s ease;z-index:40;transform:translateY(20px)}
-  #toTop.visible{opacity:1;pointer-events:auto;transform:translateY(0)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.3px;margin-left:6px;}
+.badge.online{background:rgba(46,213,115,.15);color:var(--success)}
+.badge.offline{background:rgba(85,85,85,.15);color:var(--muted)}
+.badge.suspended{background:rgba(255,181,151,.15);color:var(--accent2)}
+.badge.pending{background:rgba(255,71,87,.15);color:var(--danger)}
 
-  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+.pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}
+.pagination button{padding:8px 22px;border-radius:20px;background:var(--panel);border:1px solid var(--border);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s}
+.pagination button:disabled{opacity:.4;cursor:default}
+.pagination button:hover:not(:disabled){border-color:var(--accent);background:var(--card)}
+.page-indicator{font-size:13px;color:var(--muted);min-width:80px;text-align:center}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  background:#062525;color:#dffaf8;border:1px solid rgba(81,218,211,.4);
+  padding:10px 18px;border-radius:12px;font-size:13px;opacity:0;pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;z-index:9999;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.modal{
+  position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(0,0,0,.6);backdrop-filter:blur(12px);
+}
+.modal.show{display:flex}
+.modal .panel{
+  width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:24px;box-shadow:0 30px 60px rgba(0,0,0,.5);
+}
+
+.star-rating{display:flex;gap:2px;align-items:center;}
+.star-rating .star{color:var(--accent);font-size:18px;}
+.star-rating .star.empty{color:var(--muted);opacity:0.4;}
+.added-date{font-size:10px;color:var(--muted);margin-top:2px}
+
+.bottom-nav{display:none;}
+
+@media(max-width:768px){
+  .sidebar{display:none !important;}
+  .top-bar-mobile{
+    display:flex;
+    position:sticky;top:0;left:0;right:0;z-index:50;
+    padding:14px 16px;
+    background:rgba(19,19,19,.92);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    align-items:center;justify-content:space-between;
+  }
+  .top-bar-mobile .brand{font-weight:800;font-size:18px;}
+  .top-bar-mobile .brand .accent{color:var(--accent)}
+  .logout-btn-mobile{
+    background:transparent;border:1px solid rgba(255,71,87,.25);color:var(--danger);
+    padding:6px 14px;border-radius:10px;font-weight:600;font-size:13px;
+    cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;
+  }
+  .logout-btn-mobile:hover{background:rgba(255,71,87,.12)}
+
+  .app-layout{flex-direction:column;min-height:100vh;}
+  .main-area{flex:1;}
+  .content{padding:14px 12px 100px;}
+
+  .bento-grid{grid-template-columns:1fr !important;}
+  .bento-grid .span-2,.bento-grid .span-3{grid-column:span 1 !important;}
+
+  .bottom-nav{
+    display:flex;
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    background:rgba(26,26,26,.95);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  }
+  .bottom-nav-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    gap:3px;padding:6px 4px;cursor:pointer;
+    color:var(--muted);font-size:10px;font-weight:500;
+    transition:color .15s;border:none;background:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bottom-nav-item .material-symbols-outlined{font-size:22px;transition:color .15s;}
+  .bottom-nav-item.active,.bottom-nav-item:active{color:var(--accent);}
+  .bottom-nav-item .nav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center;}
+
+  .bento-section{display:none;}
+  .bento-section.mobile-active{display:block;}
+
+  .toast{bottom:80px;}
+}
+
+@media(min-width:769px){
+  .bento-section{display:contents;}
+}
 </style>
 </head>
 <body>
-  <header class="app">
-    <div class="header-left">
-      <button class="back-btn" onclick="history.back()">←</button>
-      <div class="brand">Ani<span>Chan</span></div>
+<div class="app-layout">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">Ani<span class="accent">Chan</span></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link active" data-section="broadcast-section"><span class="material-symbols-outlined">campaign</span> Broadcast</a>
+      <a class="sidebar-link" data-section="logo-section"><span class="material-symbols-outlined">image</span> Logo</a>
+      <a class="sidebar-link" data-section="autofetch-section"><span class="material-symbols-outlined">search</span> Auto‑Fetch</a>
+      <a class="sidebar-link" data-section="anime-form-section"><span class="material-symbols-outlined">edit_note</span> Add / Edit</a>
+      <a class="sidebar-link" data-section="member-section"><span class="material-symbols-outlined">group</span> Members</a>
+      <a class="sidebar-link" data-section="log-section"><span class="material-symbols-outlined">history</span> Log</a>
+      <a class="sidebar-link" data-section="collection-section"><span class="material-symbols-outlined">library_books</span> Collection</a>
+      <a class="sidebar-link" data-section="maintenance-section"><span class="material-symbols-outlined">build</span> Maintenance</a>
+    </nav>
+    <button class="logout-btn-side" id="logoutBtn"><span class="material-symbols-outlined">logout</span> Logout</button>
+  </aside>
+
+  <div class="main-area">
+
+    <div class="top-bar-mobile">
+      <div class="brand">Ani<span class="accent">Chan</span></div>
+      <button class="logout-btn-mobile" id="logoutBtnMobile"><span class="material-symbols-outlined">logout</span> Logout</button>
     </div>
-    <div class="header-actions" id="headerActions">
-      <!-- Hamburger inserted by JS -->
+
+    <div id="gate" style="display:none;min-height:60vh;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px">
+      <h2>Checking access…</h2>
+      <p id="gateMsg" style="color:var(--muted)">Verifying your session.</p>
+      <a href="index.html" class="btn" style="margin-top:16px">← Back to Home</a>
     </div>
-  </header>
 
-  <div class="nav-dropdown" id="navDropdown">
-    <div class="nav-item" id="navHome"><span class="material-symbols-outlined">home</span> Home</div>
-    <div class="nav-item" id="navAnime"><span class="material-symbols-outlined">library_books</span> Anime</div>
-    <div class="nav-search-wrap" id="navSearchWrap">
-      <span class="ico material-symbols-outlined">search</span>
-      <input type="text" id="navSearchInput" placeholder="Search" autocomplete="off" />
-    </div>
-  </div>
+    <div id="app" style="display:none;flex:1">
+      <div class="content">
+        <div class="bento-grid">
 
-  <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+          <!-- Broadcast -->
+          <div class="bento-section glass-panel span-2" id="broadcast-section">
+            <h3><span class="material-symbols-outlined">campaign</span> Broadcast</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Shown to everyone on the homepage. Leave empty and save to clear.</p>
+            <textarea id="broadcastInput" rows="2" placeholder="e.g. Site under maintenance tonight at 10pm UTC"></textarea>
+            <div class="row end">
+              <button class="btn" id="broadcastClear">Clear</button>
+              <button class="btn btn-primary" id="broadcastSave">Save</button>
+            </div>
+          </div>
 
-  <div class="broadcast hidden" id="broadcast">
-    <span class="material-symbols-outlined" style="font-size:20px">campaign</span>
-    <div style="font-size:14px;line-height:1.45" id="broadcastMsg"></div>
-  </div>
+          <!-- Site Logo -->
+          <div class="bento-section glass-panel" id="logo-section">
+            <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
+            <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+              <img id="currentLogoPreview" src="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
+            </div>
+            <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
+            <button class="btn btn-primary" id="uploadLogoBtn">Upload &amp; Save</button>
+          </div>
 
-  <main class="container">
-    <div class="glass-panel">
-      <h2>Anime Directory</h2>
-      <div class="alpha-grid" id="alphaGrid"></div>
-      <div class="release-list" id="releaseList"></div>
-      <div class="pagination" id="paginationControls" style="display:none;">
-        <button id="prevPageBtn">← Previous</button>
-        <span class="page-indicator" id="pageIndicator">1 / 1</span>
-        <button id="nextPageBtn">Next →</button>
+          <!-- Auto‑Fetch -->
+          <div class="bento-section glass-panel span-2" id="autofetch-section">
+            <h3><span class="material-symbols-outlined">search</span> Smart Auto‑Fetch</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Search the Jikan API and click a result to auto‑fill the form below.</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input id="searchQ" type="text" placeholder="Search anime by title…" style="flex:1" />
+              <button class="btn btn-primary" id="searchBtn">Search</button>
+            </div>
+            <div id="searchResults" style="display:none;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px"></div>
+            <div id="searchStatus" style="padding:16px;text-align:center;color:var(--muted);display:none"></div>
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+              <p style="color:var(--muted);font-size:13px;margin:0 0 10px">Import 50 popular anime at once (no duplicates).</p>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" id="bulkImportBtn">Bulk Import</button>
+                <button class="btn" id="fixAllBtn">Fix All</button>
+                <button class="btn" id="deleteDupBtn">Delete Duplicates</button>
+                <span id="bulkStatus" style="font-size:12px;color:var(--muted)"></span>
+                <button class="btn btn-danger" id="cancelOperationBtn" style="display:none;">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add/Edit Anime Form -->
+          <div class="bento-section glass-panel span-2" id="anime-form-section">
+            <h3 id="formTitle"><span class="material-symbols-outlined">edit_note</span> Add to Latest Releases</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Add a new anime or update an existing one. Only the main title is required.</p>
+            <input type="hidden" id="editId" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="grid-column:span 2"><label for="titleInput">Title (English) *</label><input id="titleInput" type="text" placeholder="e.g. Frieren: Beyond Journey's End" /></div>
+              <div><label for="titleJpInput">Japanese</label><input id="titleJpInput" type="text" placeholder="日本語タイトル" /></div>
+              <div><label for="imageInput">Image URL</label><input id="imageInput" type="url" placeholder="https://…" /></div>
+              <div>
+                <label for="statusInput">Status</label>
+                <select id="statusInput">
+                  <option value="">— None —</option>
+                  <option value="Aired">Finished Airing</option>
+                  <option value="Currently Airing">Currently Airing</option>
+                  <option value="Not yet aired">Not yet aired</option>
+                </select>
+              </div>
+              <div>
+                <label for="typeInput">Type</label>
+                <select id="typeInput"><option value="">— None —</option><option value="TV">TV</option><option value="Movie">Movie</option><option value="OVA">OVA</option><option value="ONA">ONA</option><option value="Special">Special</option><option value="Music">Music</option></select>
+              </div>
+              <div>
+                <label for="releaseTypeInput">Release Type</label>
+                <select id="releaseTypeInput">
+                  <option value="">— None —</option>
+                  <option value="BD">BD (Blu‑ray)</option>
+                  <option value="DVD">DVD</option>
+                </select>
+              </div>
+              <div><label for="scoreInput">Score (1–10)</label><input id="scoreInput" type="number" min="1" max="10" step="0.1" placeholder="—" /></div>
+              <div><label>Rating</label><div class="star-rating" id="starRating"></div></div>
+              <div><label for="epTotalInput">Eps total</label><input id="epTotalInput" type="number" min="0" step="1" placeholder="—" /></div>
+              <div><label for="yearInput">Year</label><input id="yearInput" type="number" min="1900" max="2100" step="1" placeholder="e.g. 2024" /></div>
+              <div style="grid-column:span 2"><label for="genresInput">Genres (comma‑separated)</label><input id="genresInput" type="text" placeholder="Action, Fantasy, Adventure" /><div id="genresPreview" class="chip-preview"></div></div>
+              <div style="grid-column:span 2"><label for="studioInput">Studio</label><input id="studioInput" type="text" placeholder="e.g. Madhouse, Bones" /></div>
+              <div style="grid-column:span 2"><label for="notesInput">Notes</label><textarea id="notesInput" rows="3" placeholder="Personal thoughts..."></textarea></div>
+            </div>
+            <div class="row end">
+              <button class="btn" id="cancelEdit" style="display:none">Cancel Edit</button>
+              <button class="btn btn-primary" id="saveItem">Save</button>
+            </div>
+          </div>
+
+          <!-- Member Management -->
+          <div class="bento-section glass-panel span-2" id="member-section">
+            <h3><span class="material-symbols-outlined">group</span> Member Management</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">View, suspend, or delete any registered user.</p>
+            <div id="memberList"></div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn" id="refreshMembers">Refresh list</button>
+            </div>
+          </div>
+
+          <!-- Admin Actions Log -->
+          <div class="bento-section glass-panel span-2" id="log-section">
+            <h3><span class="material-symbols-outlined">history</span> Recent Admin Actions</h3>
+            <div id="actionLog" style="max-height:300px;overflow-y:auto;font-size:13px;color:var(--muted)"></div>
+          </div>
+
+          <!-- Collection List -->
+          <div class="bento-section glass-panel span-3" id="collection-section">
+            <h3><span class="material-symbols-outlined">library_books</span> Collection <span id="countBadge" style="margin-left:8px;padding:2px 10px;border-radius:20px;background:var(--accent);color:#0a2a28;font-size:12px;font-weight:700;display:none">0</span></h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">All anime currently saved in the AniChan database.</p>
+            <div id="list" style="display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto"></div>
+            <div class="pagination" id="paginationControls" style="display:none">
+              <button id="prevPageBtn">← Previous</button>
+              <span class="page-indicator" id="pageIndicator">1 / 1</span>
+              <button id="nextPageBtn">Next →</button>
+            </div>
+          </div>
+
+          <!-- Maintenance Section -->
+          <div class="bento-section glass-panel span-2" id="maintenance-section">
+            <h3><span class="material-symbols-outlined">build</span> Maintenance</h3>
+            <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Perform site‑wide maintenance tasks.</p>
+
+            <div style="margin-bottom:16px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Cache</h4>
+              <button class="btn btn-danger" id="purgeCacheBtn"><span class="material-symbols-outlined" style="font-size:16px">refresh</span> Purge Cache</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Bumps the cache version so all open browser tabs reload the site.</p>
+            </div>
+
+            <div style="margin-bottom:16px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Weekly Report</h4>
+              <button class="btn" id="sendReportBtn"><span class="material-symbols-outlined" style="font-size:16px">mail</span> Send Now</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Emails a summary of new users, comments, and anime from the past week to your admin address.</p>
+            </div>
+
+            <div style="margin-bottom:8px">
+              <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Sitemap</h4>
+              <button class="btn" id="regenerateSitemapBtn"><span class="material-symbols-outlined" style="font-size:16px">map</span> Regenerate</button>
+              <p style="font-size:11px;color:var(--muted);margin-top:6px">Creates a fresh sitemap.xml from all anime pages and uploads it to Supabase Storage.</p>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
-  </main>
+  </div>
+</div>
 
-  <!-- Scroll to top button -->
-  <button id="toTop" aria-label="Scroll to top">↑</button>
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav" id="bottomNav" style="display:none">
+  <button class="bottom-nav-item active" data-section="broadcast-section"><span class="material-symbols-outlined">campaign</span><span class="nav-label">Broadcast</span></button>
+  <button class="bottom-nav-item" data-section="logo-section"><span class="material-symbols-outlined">image</span><span class="nav-label">Logo</span></button>
+  <button class="bottom-nav-item" data-section="autofetch-section"><span class="material-symbols-outlined">search</span><span class="nav-label">Fetch</span></button>
+  <button class="bottom-nav-item" data-section="anime-form-section"><span class="material-symbols-outlined">edit_note</span><span class="nav-label">Add/Edit</span></button>
+  <button class="bottom-nav-item" data-section="member-section"><span class="material-symbols-outlined">group</span><span class="nav-label">Members</span></button>
+  <button class="bottom-nav-item" data-section="collection-section"><span class="material-symbols-outlined">library_books</span><span class="nav-label">Collection</span></button>
+  <button class="bottom-nav-item" data-section="maintenance-section"><span class="material-symbols-outlined">build</span><span class="nav-label">Maintenance</span></button>
+</nav>
 
-  <footer>AniChan · powered by Supabase</footer>
+<!-- Suspend/Delete dialog -->
+<div class="modal" id="memberModal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true">
+    <h3 id="memberModalTitle" style="margin-top:0">Suspend user</h3>
+    <div id="memberModalContent"></div>
+    <div class="row end">
+      <button class="btn" id="memberModalCancel">Cancel</button>
+      <button class="btn btn-primary" id="memberModalConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 (() => {
-  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+const ADMIN_EMAIL = "g09649009@gmail.com";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
+const ADMIN_ITEMS_PER_PAGE = 20;
+let totalAnimeCount = 0, adminPage = 1, cancelFlag = false;
+let memberAction = null, selectedUserId = null;
 
-  const $ = id => document.getElementById(id);
-  const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="#1a1a1a"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+function setLoading(btn, loading, label) {
+  if (loading) {
+    btn._origHTML = btn.innerHTML;
+    btn._origDisabled = btn.disabled;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>${label || 'Loading…'}`;
+  } else {
+    btn.innerHTML = btn._origHTML || btn.innerHTML;
+    btn.disabled = btn._origDisabled || false;
+    delete btn._origHTML;
+    delete btn._origDisabled;
+  }
+}
 
-  const ITEMS_PER_PAGE = 26;
-  let library = [];
-  let filtered = [];
-  let currentPage = 1;
-  let activeLetter = 'A';
+const isMobile = () => window.innerWidth <= 768;
 
-  // ── Scroll to top button ──
-  let lastScrollY = window.scrollY;
-  window.addEventListener("scroll", () => {
-    const y = window.scrollY;
-    const btn = $("toTop");
-    if (y < lastScrollY && y > 200) btn.classList.add("visible");
-    else if (y <= 200) btn.classList.remove("visible");
-    else if (y > lastScrollY) btn.classList.remove("visible");
-    lastScrollY = y;
-  }, { passive: true });
-  $("toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+function initMobileNav() {
+  if (!isMobile()) return;
+  const bottomNav = $('bottomNav');
+  bottomNav.style.display = 'flex';
 
-  // ── Hamburger menu ──
-  (function renderHamburger() {
-    const container = $("headerActions");
-    const menuBtn = document.createElement("button");
-    menuBtn.className = "menu-btn";
-    menuBtn.innerHTML = '<span class="material-symbols-outlined">menu</span>';
-    menuBtn.addEventListener("click", () => {
-      $("navDropdown").classList.toggle("open");
+  const sections = document.querySelectorAll('.bento-section');
+  sections.forEach(s => s.classList.remove('mobile-active'));
+  const firstSection = document.querySelector('.bento-section');
+  if (firstSection) firstSection.classList.add('mobile-active');
+
+  bottomNav.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.section;
+      sections.forEach(s => s.classList.remove('mobile-active'));
+      const target = $(targetId);
+      if (target) target.classList.add('mobile-active');
+      bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-    container.appendChild(menuBtn);
-  })();
+  });
 
-  $("navHome").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "index.html"; });
-  $("navAnime").addEventListener("click", () => { $("navDropdown").classList.remove("open"); location.href = "anime.html"; });
-
-  // ── Live search ──
-  const navSearchInput = $("navSearchInput");
-  const searchResultsDropdown = $("searchResultsDropdown");
-  const MAX_RESULTS = 15;
-  let searchLibrary = [];
-
-  function positionDropdown() {
-    const rect = navSearchInput.getBoundingClientRect();
-    searchResultsDropdown.style.top = (rect.bottom + 4) + 'px';
-    searchResultsDropdown.style.left = rect.left + 'px';
-    searchResultsDropdown.style.width = rect.width + 'px';
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    searchResultsDropdown.style.maxHeight = spaceBelow + 'px';
-  }
-
-  function hideSearchResults() {
-    searchResultsDropdown.classList.remove("show");
-    searchResultsDropdown.innerHTML = '';
-  }
-
-  function performSearch(query) {
-    searchResultsDropdown.innerHTML = '';
-    const q = query.trim();
-    if (!q || searchLibrary.length === 0) { hideSearchResults(); return; }
-
-    const lowerQ = q.toLowerCase();
-    const words = lowerQ.split(/\s+/).filter(Boolean);
-    if (words.length === 0) { hideSearchResults(); return; }
-
-    const scored = searchLibrary.map(a => {
-      const fields = [a.title, a.title_en, a.title_jp, a.title_zh, a.title_de, a.title_fr].filter(f => f);
-      let matchCount = 0;
-      for (const word of words) {
-        if (fields.some(f => f.toLowerCase().includes(word))) matchCount++;
+  document.querySelectorAll('.sidebar-link[data-section]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const targetId = link.dataset.section;
+      if (isMobile()) {
+        sections.forEach(s => s.classList.remove('mobile-active'));
+        const target = $(targetId);
+        if (target) target.classList.add('mobile-active');
+        bottomNav.querySelectorAll('.bottom-nav-item').forEach(b => {
+          b.classList.toggle('active', b.dataset.section === targetId);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const target = $(targetId);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      if (words.length === 1 && matchCount === 0) return null;
-      if (words.length > 1 && matchCount < 2) return null;
+    });
+  });
+}
 
-      let score = matchCount;
-      for (const f of fields) {
-        if (f.toLowerCase().startsWith(lowerQ)) { score += 200; break; }
-      }
-      if (score < 200) {
-        for (const f of fields) {
-          if (f.toLowerCase().includes(lowerQ)) { score += 100; break; }
+const IDLE_LIMIT = 5 * 60 * 1000;
+let idleTimer;
+window.isLoggingOut = false;
+function resetIdleTimer() { clearTimeout(idleTimer); idleTimer = setTimeout(forceLogout, IDLE_LIMIT); }
+function forceLogout() {
+  clearTimeout(idleTimer); sessionStorage.removeItem('admin_unload'); window.isLoggingOut = true;
+  sb.auth.signOut().then(() => window.location.replace("admin_login.html"));
+}
+window.addEventListener('beforeunload', () => { if (!window.isLoggingOut) sessionStorage.setItem('admin_unload','1'); });
+window.addEventListener('load', () => {
+  const flag = sessionStorage.getItem('admin_unload');
+  if (flag) {
+    sessionStorage.removeItem('admin_unload');
+    const nav = performance.getEntriesByType('navigation');
+    if (!nav.length || nav[0].type !== 'reload') {
+      window.isLoggingOut = true;
+      sb.auth.signOut().then(() => window.location.replace("admin_login.html"));
+    }
+  }
+});
+['mousemove','keydown','mousedown','touchstart','scroll'].forEach(evt =>
+  document.addEventListener(evt, resetIdleTimer, { passive: true })
+);
+
+function updateStarRating(score) {
+  const container = $('starRating'); if (!container) return; container.innerHTML = '';
+  const stars = score ? Math.round(score / 2) : 0;
+  for (let i = 1; i <= 5; i++) {
+    const star = document.createElement('span');
+    star.className = `star ${i <= stars ? '' : 'empty'}`; star.textContent = '★';
+    container.appendChild(star);
+  }
+}
+
+async function gate() {
+  $("gate").style.display = "flex";
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $("gateMsg").textContent = "You're not signed in. Redirecting…"; setTimeout(() => location.replace("admin_login.html"), 800); return false; }
+  if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) { $("gateMsg").textContent = "Not authorized for admin access."; return false; }
+  $("gate").style.display = "none";
+  $("app").style.display = "block";
+  initMobileNav();
+  return true;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+async function handleLogout() {
+  clearTimeout(idleTimer); sessionStorage.removeItem('admin_unload'); window.isLoggingOut = true;
+  await sb.auth.signOut(); window.location.replace("index.html");
+}
+$("logoutBtn").addEventListener("click", handleLogout);
+$("logoutBtnMobile").addEventListener("click", handleLogout);
+
+async function loadBroadcast() {
+  const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
+  $("broadcastInput").value = (data && data.value) || "";
+}
+$("broadcastSave").addEventListener("click", async () => {
+  const btn = $("broadcastSave");
+  const value = $("broadcastInput").value.trim();
+  setLoading(btn, true, value ? 'Saving broadcast…' : 'Clearing…');
+  const { error } = await sb.from("settings").upsert({ key:"broadcast_message", value: value || "" });
+  setLoading(btn, false);
+  if (error) toast("Save failed: " + error.message);
+  else toast(value ? "Broadcast saved" : "Broadcast cleared");
+});
+$("broadcastClear").addEventListener("click", async () => {
+  const btn = $("broadcastClear");
+  setLoading(btn, true, 'Clearing…');
+  $("broadcastInput").value = "";
+  const { error } = await sb.from("settings").upsert({ key:"broadcast_message", value: "" });
+  setLoading(btn, false);
+  if (error) toast("Clear failed: " + error.message);
+  else toast("Broadcast cleared");
+});
+
+async function loadCurrentLogo() {
+  const { data } = await sb.from("settings").select("value").eq("key","site_logo").maybeSingle();
+  const url = data?.value || "";
+  $("currentLogoPreview").src = url || DEFAULT_AVATAR;
+}
+$("uploadLogoBtn").addEventListener("click", async () => {
+  const btn = $("uploadLogoBtn");
+  const file = $("logoFileInput").files[0];
+  if (!file) { toast("Please select an image file."); return; }
+  setLoading(btn, true, 'Uploading logo…');
+  try {
+    const { error: uploadError } = await sb.storage.from("avatars").upload("site-logo/logo.png", file, { upsert: true });
+    if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+    const { data: urlData } = sb.storage.from("avatars").getPublicUrl("site-logo/logo.png");
+    const newUrl = urlData?.publicUrl;
+    if (!newUrl) throw new Error("Could not get public URL.");
+    const { error: upsertError } = await sb.from("settings").upsert({ key:"site_logo", value: newUrl });
+    if (upsertError) throw new Error("Settings update failed: " + upsertError.message);
+    $("currentLogoPreview").src = newUrl + '?t=' + Date.now();
+    toast("Logo updated successfully!");
+  } catch (e) { toast(e.message); }
+  finally { setLoading(btn, false); }
+});
+
+function extractLanguageTitles(jikanAnime) {
+  const titles = jikanAnime.titles || []; const result = { en:null, jp:null };
+  for (const t of titles) { if(t.type==='English')result.en=t.title; if(t.type==='Japanese')result.jp=t.title; }
+  if (!result.en && jikanAnime.title_english) result.en = jikanAnime.title_english;
+  if (!result.jp && jikanAnime.title_japanese) result.jp = jikanAnime.title_japanese;
+  return result;
+}
+function getAllTitleVariations(anime) {
+  const titles = [];
+  if (anime.title && anime.title.trim()) titles.push(anime.title.trim().toLowerCase());
+  if (anime.title_en && anime.title_en.trim()) titles.push(anime.title_en.trim().toLowerCase());
+  if (anime.title_jp && anime.title_jp.trim()) titles.push(anime.title_jp.trim().toLowerCase());
+  return titles;
+}
+function normalizeType(t){ if (!t) return ""; const opts=["TV","Movie","OVA","ONA","Special","Music"]; return opts.find(o=>o.toLowerCase()===t.toLowerCase())||""; }
+function parseGenres(str){ return String(str||"").split(",").map(s=>s.trim()).filter(Boolean); }
+function numOrNull(v){ if (v===""||v==null) return null; const n=Number(v); return Number.isFinite(n)?n:null; }
+function mapAiringStatus(s){
+  if(!s)return null; const l=s.toLowerCase();
+  if(l.includes("currently airing"))return"Currently Airing";
+  if(l.includes("finished"))return"Aired";
+  if(l.includes("not yet aired"))return"Not yet aired"; return null;
+}
+
+function renderGenreChips(){
+  const host=$("genresPreview"); host.innerHTML="";
+  for(const g of parseGenres($("genresInput").value)){const c=document.createElement("span");c.className="chip";c.textContent=g;host.appendChild(c);}
+}
+$("genresInput").addEventListener("input", renderGenreChips);
+
+let searchAbort;
+$("searchBtn").addEventListener("click", async () => {
+  const btn = $("searchBtn");
+  const q = $("searchQ").value.trim();
+  const results = $("searchResults"); const status = $("searchStatus");
+  results.style.display = "none"; results.innerHTML = ""; status.style.display = "block";
+  if (!q) { status.textContent = "Type something to search."; return; }
+  if (!navigator.onLine) { status.textContent = "Offline."; return; }
+  if (searchAbort) searchAbort.abort(); searchAbort = new AbortController();
+  setLoading(btn, true, 'Searching…');
+  status.textContent = "Searching…";
+  try {
+    const res = await fetch("https://api.jikan.moe/v4/anime?q=" + encodeURIComponent(q) + "&limit=6", { signal: searchAbort.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json(); const list = (data && data.data) || [];
+    if (!list.length) { status.textContent = "No results found."; return; }
+    status.style.display = "none"; results.style.display = "grid";
+    for (const a of list) {
+      const btn2 = document.createElement("button");
+      btn2.type = "button";
+      btn2.style.cssText = "display:flex;gap:10px;padding:10px;border:1px solid var(--border);background:var(--panel);border-radius:12px;cursor:pointer;text-align:left;transition:border-color .15s;width:100%";
+      btn2.onmouseover = () => btn2.style.borderColor='var(--accent)';
+      btn2.onmouseout = () => btn2.style.borderColor='var(--border)';
+      const src = a.images?.jpg?.image_url || a.images?.jpg?.large_image_url;
+      const img = document.createElement("img");
+      img.src = src || PLACEHOLDER; img.onerror = () => { img.src = PLACEHOLDER; };
+      img.style.cssText = "width:48px;height:64px;object-fit:cover;border-radius:6px;background:#0a0a0a;flex-shrink:0";
+      const info = document.createElement("div");
+      const t = document.createElement("div"); t.style.cssText = "font-size:13px;line-height:1.3;font-weight:600;"; t.textContent = a.title || "Untitled";
+      const y = document.createElement("div"); y.style.cssText = "color:var(--muted);font-size:11px;margin-top:4px";
+      y.textContent = [a.type, a.year||(a.aired?.from?new Date(a.aired.from).getFullYear():null)].filter(Boolean).join(" · ");
+      info.appendChild(t); info.appendChild(y); btn2.appendChild(img); btn2.appendChild(info);
+      btn2.addEventListener("click", () => {
+        fillFormFromJikan(a, src);
+        toast("Filled from Jikan — review and Save");
+        if (isMobile()) {
+          document.querySelectorAll('.bento-section').forEach(s => s.classList.remove('mobile-active'));
+          $('anime-form-section').classList.add('mobile-active');
+          document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.toggle('active', b.dataset.section==='anime-form-section'));
+          window.scrollTo({top:0,behavior:'smooth'});
         }
-      }
-      return { anime: a, score };
-    }).filter(Boolean);
-
-    if (scored.length === 0) {
-      const noRes = document.createElement("div");
-      noRes.className = "no-results";
-      noRes.textContent = "No results found";
-      searchResultsDropdown.appendChild(noRes);
-      positionDropdown();
-      searchResultsDropdown.classList.add("show");
-      return;
-    }
-
-    const matches = scored.sort((a,b) => b.score - a.score).slice(0, MAX_RESULTS).map(s => s.anime);
-    matches.forEach(a => {
-      const item = document.createElement("div");
-      item.className = "search-result-item";
-      item.innerHTML = `
-        <img class="search-thumb" src="${a.image_url || ''}" onerror="this.style.display='none'" />
-        <div class="search-info">
-          <div class="name">${a.title || "Untitled"}</div>
-          <div class="meta">${[a.type, a.year, a.ep_total ? a.ep_total + ' eps' : ''].filter(Boolean).join(" · ")}</div>
-        </div>`;
-      item.addEventListener("click", () => {
-        hideSearchResults();
-        navSearchInput.value = '';
-        $("navDropdown").classList.remove("open");
-        location.href = `anime_info.html?id=${a.id}`;
       });
-      searchResultsDropdown.appendChild(item);
-    });
-    positionDropdown();
-    searchResultsDropdown.classList.add("show");
+      results.appendChild(btn2);
+    }
+  } catch (err) { if (err.name==="AbortError") return; status.textContent = "Search failed. Try again."; }
+  finally { setLoading(btn, false); }
+});
+$("searchQ").addEventListener("keydown", e => { if (e.key==="Enter") $("searchBtn").click(); });
+
+const STATUS_LABELS = { "Aired":"Finished Airing","Currently Airing":"Currently Airing","Not yet aired":"Not yet aired" };
+
+function fillFormFromJikan(a, imgSrc){
+  const lang = extractLanguageTitles(a);
+  $("titleInput").value = lang.en || a.title || "";
+  $("titleJpInput").value = lang.jp || "";
+  $("imageInput").value = imgSrc || "";
+  $("typeInput").value = normalizeType(a.type);
+  $("releaseTypeInput").value = "";
+  $("yearInput").value = a.year||(a.aired?.from?new Date(a.aired.from).getFullYear():"")||"";
+  $("epTotalInput").value = a.episodes!=null?a.episodes:"";
+  $("scoreInput").value = a.score!=null?a.score:"";
+  updateStarRating(a.score);
+  $("genresInput").value = (a.genres||[]).map(g=>g?.name).filter(Boolean).join(", ");
+  $("studioInput").value = (a.studios||[]).map(s=>s.name).join(", ");
+  renderGenreChips(); $("titleInput").focus();
+}
+
+function setEditMode(item){
+  $("editId").value = item.id;
+  $("titleInput").value = item.title_en||item.title||"";
+  $("titleJpInput").value = item.title_jp||"";
+  $("imageInput").value = item.image_url||"";
+  $("statusInput").value = item.status||"";
+  $("typeInput").value = normalizeType(item.type);
+  $("releaseTypeInput").value = item.release_type||"";
+  $("scoreInput").value = item.score!=null?item.score:"";
+  updateStarRating(item.score);
+  $("epTotalInput").value = item.ep_total!=null?item.ep_total:"";
+  $("yearInput").value = item.year!=null?item.year:"";
+  $("genresInput").value = Array.isArray(item.genres)?item.genres.join(", "):(item.genres||"");
+  $("studioInput").value = item.studio||"";
+  $("notesInput").value = item.notes||"";
+  renderGenreChips();
+  $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Edit Item';
+  $("cancelEdit").style.display = "inline-flex";
+  if (isMobile()) {
+    document.querySelectorAll('.bento-section').forEach(s => s.classList.remove('mobile-active'));
+    $('anime-form-section').classList.add('mobile-active');
+    document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.toggle('active', b.dataset.section==='anime-form-section'));
   }
+  window.scrollTo({top:0,behavior:'smooth'});
+  $("titleInput").focus();
+}
 
-  navSearchInput.addEventListener("input", () => performSearch(navSearchInput.value));
-  navSearchInput.addEventListener("focus", () => { if (navSearchInput.value.trim()) performSearch(navSearchInput.value); });
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("#navSearchWrap") && !e.target.closest("#searchResultsDropdown")) hideSearchResults();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") hideSearchResults();
-  });
-  window.addEventListener("scroll", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); }, { passive: true });
-  window.addEventListener("resize", () => { if (searchResultsDropdown.classList.contains("show")) positionDropdown(); });
+function clearForm(){
+  $("editId").value = "";
+  ["titleInput","titleJpInput","imageInput","statusInput","typeInput","releaseTypeInput","scoreInput","epTotalInput","yearInput","genresInput","studioInput","notesInput"].forEach(id => $(id).value = "");
+  updateStarRating(null); renderGenreChips();
+  $("formTitle").innerHTML = '<span class="material-symbols-outlined">edit_note</span> Add to Latest Releases';
+  $("cancelEdit").style.display = "none";
+}
+$("cancelEdit").addEventListener("click", clearForm);
 
-  // ── Broadcast ──
-  async function loadBroadcast() {
-    const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
-    const msg = (data && data.value || "").trim();
-    if (msg) { $("broadcastMsg").textContent = msg; $("broadcast").classList.remove("hidden"); }
-    else { $("broadcast").classList.add("hidden"); }
-  }
+$("saveItem").addEventListener("click", async () => {
+  const btn = $("saveItem");
+  const id = $("editId").value;
+  const titleEn = $("titleInput").value.trim();
+  if (!titleEn) { toast("Title (English) is required"); $("titleInput").focus(); return; }
+  const payload = {
+    title: titleEn, title_en: titleEn,
+    title_jp: $("titleJpInput").value.trim()||null,
+    image_url: $("imageInput").value.trim()||null,
+    status: $("statusInput").value||null,
+    type: normalizeType($("typeInput").value)||null,
+    release_type: $("releaseTypeInput").value||null,
+    score: numOrNull($("scoreInput").value),
+    ep_total: numOrNull($("epTotalInput").value),
+    year: numOrNull($("yearInput").value),
+    genres: parseGenres($("genresInput").value),
+    studio: $("studioInput").value.trim()||null,
+    notes: $("notesInput").value.trim()||null,
+  };
+  setLoading(btn, true, id ? 'Updating anime…' : 'Saving anime…');
+  let error;
+  if (id) { ({ error } = await sb.from("anime").update(payload).eq("id", id)); }
+  else    { ({ error } = await sb.from("anime").insert(payload)); }
+  setLoading(btn, false);
+  if (error) { toast("Save failed: " + error.message); return; }
+  toast(id ? "Updated ✓" : "Added to collection ✓");
+  clearForm(); await loadAnimeList();
+});
 
-  // ── Alphabetical filter ──
-  function buildAlphaGrid() {
-    const grid = $("alphaGrid");
-    grid.innerHTML = '';
-    const letters = ['#', ...Array.from({length:26}, (_,i) => String.fromCharCode(65+i))];
-    letters.forEach(letter => {
-      const btn = document.createElement("button");
-      btn.className = "alpha-btn";
-      if (letter === activeLetter) btn.classList.add("active");
-      btn.textContent = letter;
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".alpha-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeLetter = letter;
-        currentPage = 1;
-        applyFilter();
+async function loadAnimeList() {
+  const { count } = await sb.from("anime").select("*", { count:"exact", head:true });
+  totalAnimeCount = count || 0;
+  const totalPages = Math.ceil(totalAnimeCount / ADMIN_ITEMS_PER_PAGE);
+  if (adminPage < 1) adminPage = 1;
+  if (adminPage > totalPages) adminPage = totalPages || 1;
+  const start = (adminPage - 1) * ADMIN_ITEMS_PER_PAGE;
+  const { data: pageItems, error } = await sb.from("anime").select("*").order("created_at",{ascending:false}).range(start, start + ADMIN_ITEMS_PER_PAGE - 1);
+  if (error) { toast("Failed to load collection."); return; }
+  const badge = $("countBadge"); badge.style.display = "inline-block"; badge.textContent = totalAnimeCount;
+  const list = $("list"); list.innerHTML = "";
+  if (!pageItems?.length) {
+    list.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:12px">No items on this page.</div>';
+  } else {
+    const editingId = $("editId").value;
+    for (const a of pageItems) {
+      const row = document.createElement("div");
+      row.style.cssText = `display:flex;align-items:center;gap:12px;padding:10px;border:1px solid ${a.id===editingId?'var(--accent)':'var(--border)'};background:var(--panel);border-radius:12px${a.id===editingId?';box-shadow:0 0 0 2px rgba(81,218,211,.2)':''}`;
+      const img = document.createElement("img");
+      img.src = a.image_url||PLACEHOLDER; img.onerror=()=>{img.src=PLACEHOLDER;};
+      img.style.cssText = "width:42px;height:58px;object-fit:cover;border-radius:6px;background:#0a0a0a;flex-shrink:0";
+      const wrap = document.createElement("div"); wrap.style.cssText = "flex:1;min-width:0";
+      const t = document.createElement("div"); t.style.cssText = "font-size:14px;font-weight:600;"; t.textContent = a.title||"Untitled"; wrap.appendChild(t);
+      const meta = document.createElement("div"); meta.style.cssText = "font-size:11px;color:var(--muted);margin-top:3px";
+      const parts = [];
+      if (a.status && STATUS_LABELS[a.status]) parts.push(STATUS_LABELS[a.status]);
+      if (a.type) parts.push(a.type); if (a.year) parts.push(String(a.year));
+      if (a.score!=null) { const s=Math.round(a.score/2); parts.push('★'.repeat(s)+'☆'.repeat(5-s)); }
+      if (a.ep_total!=null) parts.push(`${a.ep_total} eps`);
+      meta.textContent = parts.join(" · "); wrap.appendChild(meta);
+      const added = document.createElement("div"); added.className="added-date";
+      added.textContent = "Added: " + new Date(a.created_at).toLocaleString(); wrap.appendChild(added);
+      const acts = document.createElement("div"); acts.style.cssText = "display:flex;gap:6px;flex-shrink:0";
+      const editBtn = document.createElement("button"); editBtn.className="btn"; editBtn.textContent="Edit";
+      editBtn.addEventListener("click", () => { setEditMode(a); loadAnimeList(); });
+      const delBtn = document.createElement("button"); delBtn.className="btn btn-danger"; delBtn.textContent="Delete";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(`Delete "${a.title||'this item'}"?`)) return;
+        setLoading(delBtn, true, 'Deleting…');
+        const { error } = await sb.from("anime").delete().eq("id", a.id);
+        if (error) { setLoading(delBtn, false); toast("Delete failed: " + error.message); return; }
+        if ($("editId").value===a.id) clearForm();
+        await loadAnimeList(); toast("Deleted ✓");
       });
-      grid.appendChild(btn);
-    });
-  }
-
-  function applyFilter() {
-    if (!activeLetter) {
-      filtered = [...library].sort((a,b) => (a.title || "").localeCompare(b.title || ""));
-    } else if (activeLetter === '#') {
-      filtered = library.filter(a => /^[^a-zA-Z]/.test(a.title || ''))
-                        .sort((a,b) => (a.title || "").localeCompare(b.title || ""));
-    } else {
-      const letter = activeLetter.toLowerCase();
-      filtered = library.filter(a => (a.title || "").toLowerCase().startsWith(letter))
-                        .sort((a,b) => (a.title || "").localeCompare(b.title || ""));
+      acts.appendChild(editBtn); acts.appendChild(delBtn);
+      row.appendChild(img); row.appendChild(wrap); row.appendChild(acts); list.appendChild(row);
     }
-    renderList();
   }
+  const pagination = $("paginationControls");
+  const totalPages2 = Math.ceil(totalAnimeCount / ADMIN_ITEMS_PER_PAGE);
+  if (totalPages2 <= 1) { pagination.style.display = "none"; }
+  else {
+    pagination.style.display = "flex";
+    $("prevPageBtn").disabled = adminPage <= 1;
+    $("nextPageBtn").disabled = adminPage >= totalPages2;
+    $("pageIndicator").textContent = `${adminPage} / ${totalPages2}`;
+  }
+}
+$("prevPageBtn").addEventListener("click", () => { if (adminPage>1){adminPage--;loadAnimeList();} });
+$("nextPageBtn").addEventListener("click", () => { const tp=Math.ceil(totalAnimeCount/ADMIN_ITEMS_PER_PAGE); if(adminPage<tp){adminPage++;loadAnimeList();} });
 
-  function renderList() {
-    const list = $("releaseList");
-    const totalItems = filtered.length;
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-    if (currentPage < 1) currentPage = 1;
-    if (currentPage > totalPages) currentPage = totalPages || 1;
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = filtered.slice(start, start + ITEMS_PER_PAGE);
+function showCancelButton() { $("cancelOperationBtn").style.display="inline-flex"; cancelFlag=false; }
+function hideCancelButton() { $("cancelOperationBtn").style.display="none"; }
+$("cancelOperationBtn").addEventListener("click", () => {
+  if (confirm("Cancel the operation?")) {
+    cancelFlag = true; $("cancelOperationBtn").disabled=true; $("cancelOperationBtn").textContent="Cancelling…";
+  }
+});
 
-    list.innerHTML = "";
-    if (!pageItems.length) {
-      const e = document.createElement("div");
-      e.className = "empty";
-      e.textContent = "No anime found for this letter.";
-      list.appendChild(e);
-    } else {
-      for (const a of pageItems) {
-        const card = document.createElement("a");
-        card.className = "release-card";
-        card.href = `anime_info.html?id=${a.id}`;
-        card.title = a.title || "Untitled";
-
-        const imgDiv = document.createElement("div");
-        imgDiv.className = "card-image";
-        imgDiv.style.backgroundImage = `url('${a.image_url || PLACEHOLDER}')`;
-
-        const overlay = document.createElement("div");
-        overlay.className = "overlay";
-        imgDiv.appendChild(overlay);
-
-        const mediaBadge = document.createElement("span");
-        mediaBadge.className = "media-badge";
-        if (a.release_type) {
-          mediaBadge.textContent = a.release_type;
-          mediaBadge.classList.add("show");
-        }
-        imgDiv.appendChild(mediaBadge);
-
-        const titleOverlay = document.createElement("span");
-        titleOverlay.className = "card-title-overlay";
-        titleOverlay.textContent = a.title || "Untitled";
-        imgDiv.appendChild(titleOverlay);
-
-        const epBadge = document.createElement("span");
-        epBadge.className = "ep-badge-overlay";
-        epBadge.textContent = a.ep_total != null ? a.ep_total : '?';
-        imgDiv.appendChild(epBadge);
-
-        card.appendChild(imgDiv);
-        list.appendChild(card);
+$("bulkImportBtn").addEventListener("click", async () => {
+  const btn = $("bulkImportBtn"), status = $("bulkStatus");
+  setLoading(btn, true, 'Importing…');
+  status.textContent = "Fetching existing titles…";
+  showCancelButton();
+  const existingTitlesSet = new Set();
+  try {
+    let from=0;
+    while(true){
+      const{data:batch,error}=await sb.from("anime").select("title,title_en,title_jp").range(from,from+999);
+      if(error)throw error; if(!batch?.length)break;
+      for(const item of batch) for(const v of getAllTitleVariations(item)) existingTitlesSet.add(v);
+      if(batch.length<1000)break; from+=1000;
+    }
+  } catch(e){ toast("Failed to fetch existing titles."); setLoading(btn,false); hideCancelButton(); return; }
+  const insertsAccum=[]; let page=1;
+  try {
+    while(insertsAccum.length<50&&page<=200&&!cancelFlag){
+      status.textContent=`Scanning page ${page}… (${insertsAccum.length}/50 collected)`;
+      const res=await fetch(`https://api.jikan.moe/v4/top/anime?limit=25&page=${page}`);
+      if(!res.ok){page++;continue;}
+      const json=await res.json(); const list=(json&&json.data)||[];
+      if(!list.length)break;
+      for(const a of list){
+        if(cancelFlag||insertsAccum.length>=50)break;
+        const mainTitle=(a.title||'').trim(); const lang=extractLanguageTitles(a);
+        const candidate={title:mainTitle,title_en:lang.en,title_jp:lang.jp};
+        const candVars=getAllTitleVariations(candidate);
+        if(candVars.some(v=>existingTitlesSet.has(v)))continue;
+        if(insertsAccum.some(ex=>getAllTitleVariations(ex).some(v=>candVars.includes(v))))continue;
+        const image_url=a.images?.jpg?.large_image_url||a.images?.jpg?.image_url||null;
+        const type=normalizeType(a.type)||null;
+        const year=a.year||(a.aired?.from?new Date(a.aired.from).getFullYear():null);
+        const genres=(a.genres||[]).map(g=>g.name).filter(Boolean);
+        const studio=(a.studios||[]).map(s=>s.name).join(", ")||null;
+        const entry={title:lang.en||mainTitle,title_en:lang.en,title_jp:lang.jp,image_url,type,year,genres,studio,score:a.score||null,ep_total:a.episodes!=null?a.episodes:null,status:mapAiringStatus(a.status)||'Not yet aired',release_type:null,aired_from:a.aired?.from?new Date(a.aired.from).toISOString():null,aired_to:a.aired?.to?new Date(a.aired.to).toISOString():null};
+        insertsAccum.push(entry); for(const v of candVars) existingTitlesSet.add(v);
       }
+      page++; await new Promise(r=>setTimeout(r,300));
     }
+    if(cancelFlag){ status.textContent="Cancelled."; toast("Import cancelled."); }
+    else if(insertsAccum.length>0){
+      const{error}=await sb.from("anime").insert(insertsAccum);
+      if(error)throw error;
+      toast(`Imported ${insertsAccum.length} anime ✓`); await loadAnimeList();
+      status.textContent=`Added ${insertsAccum.length} new titles.`;
+    } else { status.textContent="No new titles found."; }
+  } catch(e){ console.warn(e); status.textContent="Import failed."; toast("Import failed."); }
+  finally { setLoading(btn,false); hideCancelButton(); cancelFlag=false; }
+});
 
-    const pagination = $("paginationControls");
-    const prevBtn = $("prevPageBtn");
-    const nextBtn = $("nextPageBtn");
-    const indicator = $("pageIndicator");
-    if (totalPages <= 1) { pagination.style.display = "none"; }
-    else {
-      pagination.style.display = "flex";
-      prevBtn.disabled = currentPage <= 1;
-      nextBtn.disabled = currentPage >= totalPages;
-      indicator.textContent = `${currentPage} / ${totalPages}`;
-    }
+class RateLimiter{
+  constructor(max,ms){this.max=max;this.ms=ms;this.calls=[];}
+  async wait(){
+    const now=Date.now(); this.calls=this.calls.filter(t=>now-t<this.ms);
+    if(this.calls.length>=this.max){const oldest=this.calls[0];await new Promise(r=>setTimeout(r,oldest+this.ms-now));return this.wait();}
+    this.calls.push(Date.now());
   }
+}
+const jikanLimiter=new RateLimiter(4,1000);
 
-  $("prevPageBtn").addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderList(); } });
-  $("nextPageBtn").addEventListener("click", () => {
-    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-    if (currentPage < totalPages) { currentPage++; renderList(); }
-  });
-
-  // ── Load all anime ──
-  async function loadLibrary() {
-    const all = [];
-    let from = 0, to = 999;
-    while (true) {
-      const { data, error } = await sb
-        .from("anime")
-        .select("*")
-        .order("title", { ascending: true })
-        .range(from, to);
-      if (error) break;
-      if (!data || data.length === 0) break;
-      all.push(...data);
-      if (data.length < 1000) break;
-      from += 1000;
-      to += 1000;
+$("fixAllBtn").addEventListener("click", async () => {
+  const btn=$("fixAllBtn"),status=$("bulkStatus");
+  const LAST_FIX_KEY='anichan_last_fix_time';
+  const lastFix=localStorage.getItem(LAST_FIX_KEY);
+  if(lastFix&&(Date.now()-parseInt(lastFix))<5*60*1000){status.textContent="Please wait 5 min between fixes.";return;}
+  setLoading(btn,true,'Scanning for fixes…');
+  status.textContent="Finding anime that need fixing…"; showCancelButton();
+  let incompleteAnime=[];
+  try{
+    let from=0;
+    while(true){
+      const{data,error}=await sb.from("anime").select("id,title,status,title_en,title_jp,aired_from,aired_to,score,ep_total,genres,studio,release_type").range(from,from+999);
+      if(error)throw error; if(!data?.length)break;
+      for(const a of data){
+        if(!a.title_en||!a.title_jp||(a.status==='Currently Airing'&&a.aired_to&&new Date(a.aired_to)<new Date())||a.score==null||a.ep_total==null||!a.genres||(Array.isArray(a.genres)&&a.genres.length===0)||!a.studio) incompleteAnime.push(a);
+      }
+      if(data.length<1000)break; from+=1000;
     }
-    library = all;
-    activeLetter = 'A';
-    buildAlphaGrid();
-    applyFilter();
+  }catch(e){toast("Failed to scan."); setLoading(btn,false); hideCancelButton(); return;}
+  if(!incompleteAnime.length){toast("All anime already complete — nothing to fix.");setLoading(btn,false);hideCancelButton();status.textContent="";return;}
+  status.textContent=`Fixing ${incompleteAnime.length} anime…`;
+  const total=incompleteAnime.length; let processed=0,fixedCount=0; const updatedIds=[];
+  for(const anime of incompleteAnime){
+    if(cancelFlag)break;
+    await jikanLimiter.wait(); if(cancelFlag)break;
+    try{
+      const res=await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(anime.title)}&limit=1`);
+      if(!res.ok)continue; const json=await res.json(); const match=json.data&&json.data[0]; if(!match)continue;
+      const updates={}; const jS=mapAiringStatus(match.status); if(jS&&jS!==anime.status)updates.status=jS;
+      const lang=extractLanguageTitles(match);
+      if(lang.en&&lang.en!==anime.title_en)updates.title_en=lang.en;
+      if(lang.jp&&lang.jp!==anime.title_jp)updates.title_jp=lang.jp;
+      if(match.aired?.from){const f=new Date(match.aired.from).toISOString();if(f!==anime.aired_from)updates.aired_from=f;}
+      if(match.aired?.to){const t=new Date(match.aired.to).toISOString();if(t!==anime.aired_to)updates.aired_to=t;}
+      if(anime.score==null&&match.score!=null)updates.score=match.score;
+      if(anime.ep_total==null&&match.episodes!=null)updates.ep_total=match.episodes;
+      if((!anime.genres||(Array.isArray(anime.genres)&&!anime.genres.length))&&match.genres?.length)updates.genres=match.genres.map(g=>g.name).filter(Boolean);
+      if((!anime.studio||!anime.studio.trim())&&match.studios?.length)updates.studio=match.studios.map(s=>s.name).join(", ");
+      if(Object.keys(updates).length){const{error:ue}=await sb.from("anime").update(updates).eq("id",anime.id);if(!ue){fixedCount++;updatedIds.push(anime.id);}}
+    }catch(e){console.warn(`Failed to fix ${anime.title}`,e);}
+    finally{processed++;status.textContent=`Fixing ${processed}/${total} (${Math.round(processed/total*100)}%)`;}
   }
+  if(cancelFlag){
+    status.textContent="Reverting changes…";
+    for(const id of updatedIds){
+      const orig=incompleteAnime.find(a=>a.id===id);
+      if(orig)await sb.from("anime").update({status:orig.status,title_en:orig.title_en,title_jp:orig.title_jp,aired_from:orig.aired_from,aired_to:orig.aired_to,score:orig.score,ep_total:orig.ep_total,genres:orig.genres,studio:orig.studio}).eq("id",id);
+    }
+    toast("Cancelled — changes reverted."); status.textContent="Cancelled.";
+  } else {
+    localStorage.setItem(LAST_FIX_KEY, Date.now().toString());
+    toast(`Fixed ${fixedCount} anime ✓`); await loadAnimeList();
+    status.textContent=`Fixed ${fixedCount} of ${total}.`;
+  }
+  setLoading(btn,false); hideCancelButton(); cancelFlag=false;
+});
 
-  (async function preloadSearch() {
-    const { data } = await sb.from("anime").select("id, title, title_en, title_jp, title_zh, title_de, title_fr, image_url, type, year, ep_total");
-    searchLibrary = data || [];
-  })();
+$("deleteDupBtn").addEventListener("click", async () => {
+  const btn=$("deleteDupBtn"),status=$("bulkStatus");
+  setLoading(btn,true,'Scanning duplicates…'); status.textContent="Loading all anime…";
+  try{
+    let allAnime=[],from=0;
+    while(true){
+      const{data,error}=await sb.from("anime").select("id,title,title_en,title_jp,created_at").range(from,from+999);
+      if(error)throw error; if(!data?.length)break; allAnime=[...allAnime,...data]; if(data.length<1000)break; from+=1000;
+    }
+    const seen=new Set(),toDelete=[];
+    for(const a of allAnime.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))){
+      const vars=getAllTitleVariations(a);
+      if(vars.some(v=>seen.has(v))){toDelete.push(a.id);}else{vars.forEach(v=>seen.add(v));}
+    }
+    if(!toDelete.length){toast("No duplicates found ✓");status.textContent="No duplicates.";return;}
+    if(!confirm(`Found ${toDelete.length} duplicate(s). Delete them?`)){status.textContent="";return;}
+    status.textContent=`Deleting ${toDelete.length} duplicates…`;
+    const CHUNK=50; let deleted=0;
+    for(let i=0;i<toDelete.length;i+=CHUNK){
+      const chunk=toDelete.slice(i,i+CHUNK);
+      const{error}=await sb.from("anime").delete().in("id",chunk);
+      if(error)throw error; deleted+=chunk.length; status.textContent=`Deleted ${deleted}/${toDelete.length}…`;
+    }
+    toast(`Deleted ${deleted} duplicates ✓`); await loadAnimeList(); status.textContent=`Removed ${deleted} duplicates.`;
+  }catch(e){console.warn(e);toast("Failed: "+e.message);status.textContent="Failed.";}
+  finally{setLoading(btn,false);}
+});
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    loadBroadcast();
-    await loadLibrary();
-  });
+async function loadMembers() {
+  const btn=$("refreshMembers"); setLoading(btn,true,'Loading members…');
+  const{data,error}=await sb.from("profiles").select("*").order("created_at",{ascending:false});
+  setLoading(btn,false);
+  if(error){toast("Failed to load members.");return;}
+  const list=$("memberList"); list.innerHTML="";
+  if(!data?.length){list.innerHTML='<div style="color:var(--muted);padding:12px">No members yet.</div>';return;}
+  const DEFAULT_AVA="data:image/svg+xml;utf8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>');
+  for(const m of data){
+    const item=document.createElement("div"); item.className="member-item";
+    const img=document.createElement("img"); img.className="member-avatar"; img.src=m.avatar_url||DEFAULT_AVA; img.onerror=()=>{img.src=DEFAULT_AVA;};
+    const info=document.createElement("div"); info.style.flex="1;min-width:0";
+    const nameRow=document.createElement("div"); nameRow.style.cssText="font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:4px";
+    nameRow.textContent=m.display_name||m.username||"Unknown";
+    const badge=document.createElement("span"); badge.className="badge "+(m.is_suspended?"suspended":m.is_online?"online":"offline");
+    badge.textContent=m.is_suspended?"Suspended":m.is_online?"Online":"Offline"; nameRow.appendChild(badge);
+    const emailDiv=document.createElement("div"); emailDiv.style.cssText="font-size:11px;color:var(--muted);margin-top:2px"; emailDiv.textContent=m.email||"";
+    info.appendChild(nameRow); info.appendChild(emailDiv);
+    const acts=document.createElement("div"); acts.style.cssText="display:flex;gap:6px;flex-shrink:0";
+    const susBtn=document.createElement("button"); susBtn.className="btn btn-danger";
+    susBtn.textContent=m.is_suspended?"Unsuspend":"Suspend";
+    susBtn.addEventListener("click",()=>openMemberModal(m.is_suspended?"unsuspend":"suspend",m.id,m.display_name||m.username||"User"));
+    const delBtn=document.createElement("button"); delBtn.className="btn btn-danger"; delBtn.textContent="Delete";
+    delBtn.addEventListener("click",()=>openMemberModal("delete",m.id,m.display_name||m.username||"User"));
+    acts.appendChild(susBtn); acts.appendChild(delBtn);
+    item.appendChild(img); item.appendChild(info); item.appendChild(acts); list.appendChild(item);
+  }
+}
+$("refreshMembers").addEventListener("click", loadMembers);
+
+function openMemberModal(action,userId,name){
+  memberAction=action; selectedUserId=userId;
+  $("memberModalTitle").textContent=action==="suspend"?`Suspend ${name}`:action==="unsuspend"?`Unsuspend ${name}`:`Delete ${name}`;
+  $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">${action==="delete"?`Permanently delete <strong>${name}</strong>? This cannot be undone.`:action==="suspend"?`Suspend <strong>${name}</strong>? They won't be able to log in.`:`Restore access for <strong>${name}</strong>?`}</p>`;
+  $("memberModalConfirm").className="btn "+(action==="delete"?"btn-danger":"btn-primary");
+  $("memberModalConfirm").textContent=action==="suspend"?"Yes, Suspend":action==="unsuspend"?"Yes, Unsuspend":"Yes, Delete";
+  $("memberModal").classList.add("show");
+}
+$("memberModalCancel").addEventListener("click",()=>$("memberModal").classList.remove("show"));
+$("memberModalConfirm").addEventListener("click", async ()=>{
+  const btn=$("memberModalConfirm");
+  setLoading(btn,true,memberAction==="delete"?"Deleting…":memberAction==="suspend"?"Suspending…":"Unsuspending…");
+  let error;
+  if(memberAction==="delete") ({error}=await sb.from("profiles").delete().eq("id",selectedUserId));
+  else ({error}=await sb.from("profiles").update({is_suspended:memberAction==="suspend"}).eq("id",selectedUserId));
+  setLoading(btn,false); $("memberModal").classList.remove("show");
+  if(error)toast("Action failed: "+error.message);
+  else{toast(memberAction==="delete"?"User deleted ✓":memberAction==="suspend"?"User suspended ✓":"User unsuspended ✓"); await loadMembers();}
+});
+
+async function loadActionLog(){
+  const{data,error}=await sb.from("admin_log").select("*").order("created_at",{ascending:false}).limit(30);
+  const log=$("actionLog");
+  if(error||!data?.length){log.innerHTML='<div style="padding:12px;text-align:center">No log entries.</div>';return;}
+  log.innerHTML=data.map(e=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${e.action||"Action"}</span><span style="float:right;font-size:10px">${new Date(e.created_at).toLocaleString()}</span></div>`).join("");
+}
+
+// ═══════════════════════════════════════════
+//  MAINTENANCE SECTION HANDLERS
+// ═══════════════════════════════════════════
+
+// Purge Cache
+$("purgeCacheBtn").addEventListener("click", async () => {
+  if (!confirm("Force ALL users to reload the site? This will bump the cache version.")) return;
+  const btn = $("purgeCacheBtn");
+  setLoading(btn, true, 'Purging…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/purge-cache', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed');
+    toast('Cache purged successfully.');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// Send Weekly Report (with detailed error)
+$("sendReportBtn").addEventListener("click", async () => {
+  if (!confirm("Send the weekly report email now?")) return;
+  const btn = $("sendReportBtn");
+  setLoading(btn, true, 'Sending…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/weekly-report', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.details || `HTTP ${res.status}`);
+    }
+    toast('Weekly report sent!');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+// Regenerate Sitemap
+$("regenerateSitemapBtn").addEventListener("click", async () => {
+  if (!confirm("Regenerate the sitemap now?")) return;
+  const btn = $("regenerateSitemapBtn");
+  setLoading(btn, true, 'Regenerating…');
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/regenerate-sitemap', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed');
+    toast('Sitemap regenerated successfully.');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
+});
+
+(async()=>{
+  resetIdleTimer();
+  const ok = await gate();
+  if(!ok) return;
+  await Promise.all([loadBroadcast(), loadCurrentLogo(), loadAnimeList(), loadMembers(), loadActionLog()]);
+})();
+
 })();
 </script>
 </body>
