@@ -11,7 +11,6 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // ✔️ Fixed: use lowercase property name, no .get()
     const authHeader = req.headers['authorization'];
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
     const token = authHeader.split(' ')[1];
@@ -20,6 +19,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: invalid admin' });
     }
 
+    // Build sitemap XML
     const { data: anime } = await supabase.from('anime').select('id,title');
     const baseUrl = 'https://ani-chan-web.vercel.app';
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
@@ -30,18 +30,24 @@ export default async function handler(req, res) {
     }
     xml += '</urlset>';
 
-    // Use your bucket name (create it first in Supabase if it doesn't exist)
+    // Upload to Supabase Storage
     const { error } = await supabase.storage
-      .from('public-files')
+      .from('public-files')   // <-- make sure this bucket exists and is public
       .upload('sitemap.xml', xml, { contentType: 'application/xml', upsert: true });
-    if (error) throw error;
+
+    if (error) {
+      // Return detailed Supabase error
+      return res.status(500).json({
+        error: error.message,
+        details: error
+      });
+    }
 
     return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({
       error: err.message,
-      stack: err.stack,
-      type: err.constructor.name
+      stack: err.stack
     });
   }
 }
