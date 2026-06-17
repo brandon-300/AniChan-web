@@ -258,7 +258,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
             <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
             <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-              <img id="currentLogoPreview" src="" style="width:150px;height:150px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
+              <img id="currentLogoPreview" src="" style="width:200px;height:200px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
             </div>
             <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
             <button class="btn btn-primary" id="uploadLogoBtn">Upload &amp; Save</button>
@@ -1102,9 +1102,12 @@ $("regenerateSitemapBtn").addEventListener("click", async () => {
 
 (async()=>{
   resetIdleTimer();
-  const ok = await gate();
-  if(!ok) return;
-  await Promise.all([loadBroadcast(), loadCurrentLogo(), loadAnimeList(), loadMembers(), loadActionLog()]);
+  // Small delay ensures Supabase session is fully restored after a redirect
+  setTimeout(async () => {
+    const ok = await gate();
+    if(!ok) return;
+    await Promise.all([loadBroadcast(), loadCurrentLogo(), loadAnimeList(), loadMembers(), loadActionLog()]);
+  }, 300);
 })();
 
 })();
