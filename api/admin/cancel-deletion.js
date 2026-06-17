@@ -66,6 +66,9 @@ export default async function handler(req, res) {
         });
       } catch (emailErr) {
         console.error('Failed to send cancellation email:', emailErr);
+        return res.status(500).json({
+          error: 'Email failed: ' + emailErr.message,
+        });
       }
     }
 
