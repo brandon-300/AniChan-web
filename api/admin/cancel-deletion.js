@@ -24,14 +24,12 @@ export default async function handler(req, res) {
     const { userId, adminNote } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
-    // Fetch user details before clearing
     const { data: profile } = await supabase
       .from('profiles')
       .select('email, username')
       .eq('id', userId)
       .single();
 
-    // Clear deletion flags
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -43,7 +41,6 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    // Send email to user
     if (profile?.email) {
       try {
         const transporter = nodemailer.createTransport({
@@ -58,11 +55,14 @@ export default async function handler(req, res) {
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
           subject: 'Account deletion cancelled',
-          html: `<p>Hi ${profile.username || 'user'},</p>
-                 <p>The deletion of your AniChan account has been <strong>cancelled</strong>.</p>
-                 ${adminNote ? `<p><strong>Admin note:</strong> ${adminNote}</p>` : ''}
-                 <p>You can continue using your account as normal.</p>
-                 <p>— AniChan Team</p>`,
+          html: `<div style="text-align:center;margin-bottom:16px">
+                  <img src="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" alt="AniChan" style="width:60px;height:60px;border-radius:50%" />
+                </div>
+                <p>Hi ${profile.username || 'user'},</p>
+                <p>The deletion of your AniChan account has been <strong>cancelled</strong>.</p>
+                ${adminNote ? `<p><strong>Admin note:</strong> ${adminNote}</p>` : ''}
+                <p>You can continue using your account as normal.</p>
+                <p>— AniChan Team</p>`,
         });
       } catch (emailErr) {
         console.error('Failed to send cancellation email:', emailErr);
