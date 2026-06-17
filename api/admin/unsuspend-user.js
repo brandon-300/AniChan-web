@@ -13,7 +13,6 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Verify admin token
     const authHeader = req.headers['authorization'];
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
     const token = authHeader.split(' ')[1];
@@ -22,36 +21,32 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: invalid admin' });
     }
 
-    const { userId } = req.body || {};
-    if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' });
+    const { userId, durationHours, adminNote } = req.body || {};
+    if (!userId || !durationHours) {
+      return res.status(400).json({ error: 'Missing userId or durationHours' });
     }
 
-    // Fetch user email before clearing suspension
-    const { data: profile, error: fetchError } = await supabase
-      .from('profiles')
-      .select('email, username')
-      .eq('id', userId)
-      .single();
+    const suspendedUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
 
-    if (fetchError || !profile) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Clear suspension
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_suspended: false,
-        suspended_until: null,
-        admin_note: null,
+        is_suspended: true,
+        suspended_until: suspendedUntil,
+        admin_note: adminNote || null,
       })
       .eq('id', userId);
 
     if (error) throw error;
 
-    // Send email via Gmail SMTP
-    if (profile.email) {
+    // Send suspension email to the user
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, username')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.email) {
       try {
         const transporter = nodemailer.createTransport({
           service: 'gmail',
@@ -61,31 +56,26 @@ export default async function handler(req, res) {
           },
         });
 
-        const info = await transporter.sendMail({
+        const hours = durationHours;
+        const durationText = hours >= 24 ? `${hours / 24} day(s)` : `${hours} hour(s)`;
+
+        await transporter.sendMail({
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
-          subject: 'Your account has been reinstated',
+          subject: 'Your account has been suspended',
           html: `<p>Hi ${profile.username || 'user'},</p>
-                 <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
+                 <p>Your account on AniChan has been suspended for <strong>${durationText}</strong>.</p>
+                 ${adminNote ? `<p><strong>Reason:</strong> ${adminNote}</p>` : ''}
+                 <p>You will be able to log in again after the suspension period ends.</p>
                  <p>— AniChan Team</p>`,
         });
-
-        console.log('Email sent:', info.messageId);
       } catch (emailErr) {
-        console.error('Failed to send email:', emailErr);
-        // Return the error so the admin can see it
-        return res.status(500).json({
-          error: 'Email failed: ' + emailErr.message,
-          code: emailErr.code,
-        });
+        console.error('Failed to send suspension email:', emailErr);
       }
     }
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(500).json({
-      error: err.message,
-      stack: err.stack,
-    });
+    return res.status(500).json({ error: err.message });
   }
 }
