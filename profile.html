@@ -61,11 +61,7 @@
     width:100%;height:100%;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);background:var(--panel);
   }
-  .online-dot{
-    position:absolute;top:-2px;right:-2px;width:18px;height:18px;
-    border-radius:50%;background:var(--offline);border:2px solid var(--card);
-  }
-  .online-dot.online{background:var(--success)}
+  /* Removed absolute‑positioned online dot from here */
   .pencil-btn{
     position:absolute;bottom:2px;right:2px;
     width:28px;height:28px;border-radius:50%;
@@ -79,7 +75,17 @@
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
-  .last-seen{color:var(--muted);font-size:12px;margin-top:8px}
+  .last-seen{color:var(--muted);font-size:12px;margin-top:8px;display:flex;align-items:center;gap:6px}
+
+  /* Inline status dot */
+  .status-dot-inline{
+    display:inline-block;
+    width:10px;height:10px;
+    border-radius:50%;
+    background:var(--offline);
+    flex-shrink:0;
+  }
+  .status-dot-inline.online{background:var(--success)}
 
   .field-group{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
   .field{flex:1 1 calc(50% - 7px);min-width:200px}
@@ -229,7 +235,7 @@
       <div class="profile-header">
         <div class="avatar-section" id="avatarSection">
           <img class="avatar-img" id="avatarImg" src="" alt="Profile picture" />
-          <div class="online-dot" id="onlineDot"></div>
+          <!-- The online dot has been moved to the last‑seen line -->
           <button class="pencil-btn" id="pencilBtn" title="Change photo">
             <span class="material-symbols-outlined" style="font-size:16px">edit</span>
           </button>
@@ -238,7 +244,10 @@
         <div class="user-info">
           <h2 id="displayFullName">—</h2>
           <div class="username" id="displayUsername">@—</div>
-          <div class="last-seen" id="displayLastSeen">—</div>
+          <div class="last-seen" id="displayLastSeen">
+            <span class="status-dot-inline" id="statusDot"></span>
+            <span id="statusText">—</span>
+          </div>
         </div>
       </div>
     </div>
@@ -317,7 +326,7 @@
   function showToast(msg, type = 'success') {
     const toast = $('toast');
     toast.textContent = msg;
-    toast.className = type;   // 'success' or 'error'
+    toast.className = type;
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
@@ -358,14 +367,14 @@
     $('avatarImg').src = profile?.avatar_url || DEFAULT_AVATAR;
     $('avatarImg').onerror = () => { $('avatarImg').src = DEFAULT_AVATAR; };
 
-    const dot = $('onlineDot');
-    const lastSeenEl = $('displayLastSeen');
+    const dot = $('statusDot');
+    const textEl = $('statusText');
     if (profile?.is_online) {
       dot.classList.add('online');
-      lastSeenEl.textContent = t('online');
+      textEl.textContent = t('online');
     } else {
       dot.classList.remove('online');
-      lastSeenEl.textContent = profile?.last_seen ? t('lastSeen') + ': ' + new Date(profile.last_seen).toLocaleString() : t('lastSeen') + ': —';
+      textEl.textContent = profile?.last_seen ? t('lastSeen') + ': ' + new Date(profile.last_seen).toLocaleString() : t('lastSeen') + ': —';
     }
 
     $('displayFullName').textContent = profile?.full_name || '—';
