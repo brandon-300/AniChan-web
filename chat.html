@@ -63,7 +63,6 @@
     flex-shrink: 0;
   }
 
-  /* AniChan brand in header */
   .screen-brand {
     flex: 1;
     font-size: 26px;
@@ -542,149 +541,6 @@
   .ctx-menu .danger { color: var(--danger); }
   .ctx-menu .split { height: 1px; background: var(--border-solid); margin: 2px 0; }
 
-  /* ── Call Log Bubble ── */
-  .call-log-bubble {
-    min-width: 180px;
-    cursor: default;
-  }
-  .call-log-bubble.tappable { cursor: pointer; }
-  .call-log-inner {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .call-log-icon {
-    width: 34px; height: 34px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 17px;
-  }
-  .call-log-icon.outgoing { background: rgba(81,218,211,0.15); color: var(--accent); }
-  .call-log-icon.missed   { background: rgba(255,71,87,0.15);  color: var(--danger); }
-  .call-log-icon.incoming { background: rgba(46,213,115,0.15); color: var(--success); }
-  .call-log-text { flex: 1; min-width: 0; }
-  .call-log-title {
-    font-size: 14px; font-weight: 600; color: var(--text);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .call-log-sub {
-    font-size: 12px; color: var(--muted); margin-top: 1px;
-  }
-
-  /* ── Call Buttons in Topbar ── */
-  .call-btns {
-    display: none; align-items: center; gap: 4px; margin-left: auto;
-  }
-  .call-btn {
-    background: none; border: none; color: var(--muted);
-    width: 38px; height: 38px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: background .15s, color .15s;
-    font-size: 20px;
-  }
-  .call-btn:hover { background: rgba(255,255,255,0.08); color: var(--accent); }
-  .call-btn:active { background: rgba(81,218,211,.15); }
-
-  /* ── Incoming call overlay ── */
-  .incoming-call-overlay {
-    position: fixed; inset: 0; z-index: 500;
-    background: rgba(0,0,0,0.82);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    display: none; flex-direction: column;
-    align-items: center; justify-content: center; gap: 20px;
-  }
-  .incoming-call-overlay.visible { display: flex; }
-  .incoming-call-avatar {
-    width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
-    border: 3px solid var(--accent);
-    box-shadow: 0 0 0 8px rgba(81,218,211,.12), 0 0 0 16px rgba(81,218,211,.06);
-    animation: callPulse 1.8s ease-in-out infinite;
-  }
-  @keyframes callPulse {
-    0%, 100% { box-shadow: 0 0 0 8px rgba(81,218,211,.12), 0 0 0 16px rgba(81,218,211,.06); }
-    50%       { box-shadow: 0 0 0 12px rgba(81,218,211,.2), 0 0 0 24px rgba(81,218,211,.1); }
-  }
-  .incoming-call-name {
-    font-size: 22px; font-weight: 700; color: #fff;
-  }
-  .incoming-call-type {
-    font-size: 14px; color: var(--muted);
-  }
-  .incoming-call-actions {
-    display: flex; gap: 32px; margin-top: 12px;
-  }
-  .call-action-btn {
-    width: 62px; height: 62px; border-radius: 50%;
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px; transition: transform .1s, filter .15s;
-  }
-  .call-action-btn:active { transform: scale(0.92); }
-  .call-action-btn.accept { background: var(--success); color: #fff; }
-  .call-action-btn.decline { background: var(--danger); color: #fff; }
-  .call-action-btn.accept:hover { filter: brightness(1.15); }
-  .call-action-btn.decline:hover { filter: brightness(1.15); }
-
-  /* ── Active call screen ── */
-  .active-call-screen {
-    position: fixed; inset: 0; z-index: 500;
-    background: #090d10;
-    display: none; flex-direction: column;
-    align-items: center; justify-content: space-between;
-    padding: 48px 24px max(32px, env(safe-area-inset-bottom));
-  }
-  .active-call-screen.visible { display: flex; }
-
-  /* Video containers */
-  .video-remote-wrap {
-    position: absolute; inset: 0; background: #050709; overflow: hidden;
-  }
-  .video-remote-wrap video {
-    width: 100%; height: 100%; object-fit: cover;
-  }
-  .video-local-wrap {
-    position: absolute; bottom: 130px; right: 16px;
-    width: 110px; height: 165px; border-radius: 14px;
-    overflow: hidden; background: #1a1f26;
-    border: 2px solid rgba(255,255,255,0.12);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    z-index: 10;
-  }
-  .video-local-wrap video { width: 100%; height: 100%; object-fit: cover; }
-
-  /* Top info bar over video */
-  .call-info-bar {
-    position: relative; z-index: 11;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-  }
-  .call-info-avatar {
-    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.15);
-  }
-  .call-info-name { font-size: 20px; font-weight: 700; color: #fff; }
-  .call-info-status { font-size: 13px; color: rgba(255,255,255,0.5); }
-  .call-timer { font-size: 15px; font-weight: 500; color: var(--accent); margin-top: 2px; }
-
-  /* Controls row */
-  .call-controls {
-    position: relative; z-index: 11;
-    display: flex; gap: 20px; align-items: center;
-  }
-  .ctrl-btn {
-    width: 54px; height: 54px; border-radius: 50%;
-    background: rgba(255,255,255,0.1);
-    border: none; cursor: pointer; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; transition: background .15s, transform .1s;
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  }
-  .ctrl-btn:hover { background: rgba(255,255,255,0.18); }
-  .ctrl-btn:active { transform: scale(0.92); }
-  .ctrl-btn.toggled { background: rgba(81,218,211,0.2); color: var(--accent); }
-  .ctrl-btn.end-call {
-    width: 64px; height: 64px; font-size: 24px;
-    background: var(--danger); color: #fff;
-    box-shadow: 0 4px 20px rgba(255,71,87,0.4);
-  }
-  .ctrl-btn.end-call:hover { filter: brightness(1.1); }
-
   /* Empty state */
   .empty-state {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -692,6 +548,93 @@
     flex-direction: column; gap: 12px;
   }
   .empty-state .material-symbols-outlined { font-size: 48px; color: rgba(81,218,211,0.2); }
+
+  /* ── Call overlay & related styles ── */
+  .call-actions {
+    display: flex; gap: 8px;
+    margin-left: auto;
+  }
+  .call-actions button {
+    background: none; border: none;
+    color: var(--accent); font-size: 22px;
+    cursor: pointer; padding: 4px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    transition: background 0.15s;
+  }
+  .call-actions button:hover { background: rgba(81,218,211,0.12); }
+
+  .call-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.95);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .call-overlay.active { display: flex; }
+
+  .call-videos {
+    display: flex; gap: 16px;
+    align-items: center; justify-content: center;
+    flex-wrap: wrap; width: 100%; padding: 20px;
+  }
+  .call-videos video {
+    max-width: 45%; max-height: 80vh;
+    border-radius: 12px; background: #000;
+    border: 1px solid var(--border);
+  }
+  #localVideo {
+    width: 160px; height: 120px;
+    position: absolute; bottom: 100px; right: 20px;
+    border-radius: 12px; border: 2px solid var(--accent);
+  }
+
+  .call-controls {
+    display: flex; gap: 20px;
+    margin-top: 20px;
+    position: absolute; bottom: 40px;
+  }
+  .call-controls button {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: none; background: var(--panel);
+    color: var(--text); font-size: 24px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .call-controls button:hover { background: var(--card); }
+  #endCallBtn { background: var(--danger); color: #fff; }
+  #endCallBtn:hover { background: #e03a4e; }
+
+  .call-timer {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 18px; color: #fff; background: rgba(0,0,0,0.5);
+    padding: 4px 16px; border-radius: 20px;
+  }
+
+  .incoming-call-popup {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+  }
+  .incoming-call-popup.hidden { display: none; }
+  .incoming-call-popup:not(.hidden) { display: flex; }
+
+  .incoming-call-content {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px;
+    text-align: center; color: var(--text);
+    min-width: 280px;
+  }
+  .incoming-call-content p { margin-bottom: 16px; font-size: 16px; }
+  .incoming-call-content button {
+    margin: 0 8px; padding: 10px 20px;
+    border-radius: 12px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text);
+    font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .incoming-call-content button:hover { background: var(--card); }
+  #acceptCallBtn { background: var(--success); color: #fff; border-color: transparent; }
+  #declineCallBtn { background: var(--danger); color: #fff; border-color: transparent; }
 
   /* Responsive */
   @media (max-width: 768px) {
@@ -748,11 +691,12 @@
         <div class="partner-name" id="partnerName"></div>
         <div class="partner-sub" id="partnerSub"></div>
       </div>
-      <div class="call-btns" id="callBtns">
-        <button class="call-btn" id="voiceCallBtn" title="Voice call">
+      <!-- NEW: Call buttons -->
+      <div class="call-actions">
+        <button id="voiceCallBtn" title="Voice Call">
           <span class="material-symbols-outlined">call</span>
         </button>
-        <button class="call-btn" id="videoCallBtn" title="Video call">
+        <button id="videoCallBtn" title="Video Call">
           <span class="material-symbols-outlined">videocam</span>
         </button>
       </div>
@@ -785,52 +729,6 @@
   </div>
 </div>
 
-<!-- Incoming Call Overlay -->
-<div class="incoming-call-overlay" id="incomingCallOverlay">
-  <img class="incoming-call-avatar" id="incomingCallAvatar" src="" alt="" />
-  <div class="incoming-call-name" id="incomingCallName"></div>
-  <div class="incoming-call-type" id="incomingCallType">Incoming voice call...</div>
-  <div class="incoming-call-actions">
-    <button class="call-action-btn decline" id="declineCallBtn" title="Decline">
-      <span class="material-symbols-outlined">call_end</span>
-    </button>
-    <button class="call-action-btn accept" id="acceptCallBtn" title="Accept">
-      <span class="material-symbols-outlined">call</span>
-    </button>
-  </div>
-</div>
-
-<!-- Active Call Screen -->
-<div class="active-call-screen" id="activeCallScreen">
-  <!-- Remote video (hidden for voice calls) -->
-  <div class="video-remote-wrap" id="videoRemoteWrap" style="display:none;">
-    <video id="remoteVideo" autoplay playsinline></video>
-  </div>
-  <!-- Local video (hidden for voice calls) -->
-  <div class="video-local-wrap" id="videoLocalWrap" style="display:none;">
-    <video id="localVideo" autoplay playsinline muted></video>
-  </div>
-
-  <div class="call-info-bar">
-    <img class="call-info-avatar" id="callInfoAvatar" src="" alt="" />
-    <div class="call-info-name" id="callInfoName"></div>
-    <div class="call-info-status" id="callInfoStatus">Calling...</div>
-    <div class="call-timer" id="callTimer" style="display:none;">0:00</div>
-  </div>
-
-  <div class="call-controls">
-    <button class="ctrl-btn" id="toggleMuteBtn" title="Mute">
-      <span class="material-symbols-outlined">mic</span>
-    </button>
-    <button class="ctrl-btn end-call" id="endCallBtn" title="End call">
-      <span class="material-symbols-outlined">call_end</span>
-    </button>
-    <button class="ctrl-btn" id="toggleSpeakerBtn" title="Speaker">
-      <span class="material-symbols-outlined">volume_up</span>
-    </button>
-  </div>
-</div>
-
 <!-- Friends overlay -->
 <div class="friends-overlay" id="friendsOverlay">
   <div class="friends-panel">
@@ -852,6 +750,35 @@
   <div class="split"></div>
   <button id="ctxDelAll" class="danger">Delete for everyone</button>
   <button id="ctxCancel" style="color:var(--muted)">Cancel</button>
+</div>
+
+<!-- Call overlay -->
+<div id="callOverlay" class="call-overlay">
+  <div class="call-videos">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay muted playsinline></video>
+  </div>
+  <div class="call-timer" id="callTimer">00:00</div>
+  <div class="call-controls">
+    <button id="muteBtn" title="Mute">
+      <span class="material-symbols-outlined">mic</span>
+    </button>
+    <button id="cameraBtn" title="Camera">
+      <span class="material-symbols-outlined">videocam</span>
+    </button>
+    <button id="endCallBtn" title="End call">
+      <span class="material-symbols-outlined">call_end</span>
+    </button>
+  </div>
+</div>
+
+<!-- Incoming call popup -->
+<div id="incomingCallPopup" class="incoming-call-popup hidden">
+  <div class="incoming-call-content">
+    <p>Incoming <span id="incomingCallType"></span> from <span id="incomingCaller"></span></p>
+    <button id="acceptCallBtn">Accept</button>
+    <button id="declineCallBtn">Decline</button>
+  </div>
 </div>
 
 <script>
@@ -1045,7 +972,7 @@
         .eq('room_id', room.id)
         .eq('receiver_id', currentUser.id)
         .eq('is_read', false)
-        .eq('is_deleted', false); // Filters out messages deleted for everyone
+        .eq('is_deleted', false);
       enriched.push({
         id: room.id,
         last_message: room.last_message,
@@ -1068,19 +995,18 @@
   let profilesChangeSub = null;
 
   function subscribeToProfiles() {
-    // ── Channel 1: DB changes listener ──
+    // ── Channel 1: DB changes listener (RENAMED channel to avoid collisions) ──
     if (profilesChangeSub) supabase.removeChannel(profilesChangeSub);
-    profilesChangeSub = supabase.channel('profile-is-online-changes')
+    profilesChangeSub = supabase.channel('profile-status-chan')   // <-- NEW UNIQUE NAME
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'profiles'
       }, payload => {
         const updated = payload.new;
-        // Client-side filter — only care about our conversation partners
+        // Only care about our conversation partners
         const partnerIds = new Set(rooms.map(r => r.other_user.id));
         if (!partnerIds.has(updated.id)) return;
-        // This fires for BOTH online=true (login) and online=false (logout)
         updateOnlineDot(updated.id, !!updated.is_online, updated.last_seen);
       })
       .subscribe();
@@ -1100,7 +1026,6 @@
         });
       })
       .on('presence', { event: 'join' }, ({ key }) => {
-        // Only update UI dot — never write to DB for other users
         updateOnlineDot(key, true);
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
@@ -1133,20 +1058,13 @@
       const room = rooms.find(r => r.other_user.id === userId);
       setPartnerStatus(isOnline, lastSeen || room?.other_user.last_seen);
     }
-    // DB writes for offline state are handled by the user's own logout flow,
-    // not by observers — avoids race conditions and permission issues
   }
 
   // ── Mark all messages in a room as read ──
   async function markAsRead(roomId) {
-    // Call the security definer Postgres function
-    await supabase.rpc('mark_messages_read', {
-      room_id: roomId
-    });
-    // Zero the cached unread count and hide the pill immediately
+    await supabase.rpc('mark_messages_read', { room_id: roomId });
     const room = rooms.find(r => r.id === roomId);
     if (room) room.unread_count = 0;
-    // Hide the pill directly in the DOM without a full re-render
     const activeItem = document.querySelector(`.thread-item[data-room-id="${roomId}"]`);
     if (activeItem) {
       const pill = activeItem.querySelector('.unread-pill');
@@ -1159,10 +1077,8 @@
     activeRoom = roomId;
     partnerId  = otherId;
 
-    // Slide to chat screen immediately — before any async calls
     if (window.innerWidth <= 768) $('appRoot').classList.add('chat-open');
 
-    // Instantly hide the unread pill from the UI for a snappy feel
     const activeItem = document.querySelector(`.thread-item[data-room-id="${roomId}"]`);
     if (activeItem) {
       const pill = activeItem.querySelector('.unread-pill');
@@ -1173,7 +1089,6 @@
     $('chatTopbar').style.display = 'flex';
     $('composeArea').style.display = 'flex';
 
-    // Reset partner dot while fetching
     $('partnerDot').classList.remove('live');
     $('partnerSub').textContent = '';
     $('partnerSub').classList.remove('typing-status');
@@ -1188,11 +1103,7 @@
       $('partnerLink').href = `profile.html?user=${otherId}`;
     }
 
-    // Setup broadcast channel for this room
     setupBroadcastChannel(roomId);
-    setupCallChannel(roomId);
-    showCallButtons(true);
-
     renderRooms(filteredRooms);
     await loadMsgs(roomId);
     subMsgs(roomId);
@@ -1204,7 +1115,6 @@
   }
   $('backArrow').addEventListener('click', closeRoom);
 
-  // Delegated click on room list
   $('roomList').addEventListener('click', e => {
     const item = e.target.closest('.thread-item');
     if (!item || !item.dataset.roomId) return;
@@ -1220,20 +1130,18 @@
 
     sentIds.clear();
 
-    // Find unread messages to insert separator
     const del = getDel();
     const unreadIds = new Set(
-      data.filter(m => 
-        m.receiver_id === currentUser.id && 
-        !m.is_read && 
-        !m.is_deleted &&  // Ignores messages deleted for everyone
-        !del.has(m.id)    // Ignores messages deleted locally just for you
+      data.filter(m =>
+        m.receiver_id === currentUser.id &&
+        !m.is_read &&
+        !m.is_deleted &&
+        !del.has(m.id)
       ).map(m => m.id)
     );
 
     renderMsgs(data, unreadIds);
 
-    // Mark as read in the database AFTER we've rendered the unread separator
     if (unreadIds.size > 0) {
       markAsRead(roomId);
     }
@@ -1246,7 +1154,6 @@
     let separatorInserted = false;
 
     msgs.filter(m => !del.has(m.id)).forEach(msg => {
-      // Date separator
       const msgDate = fmtDate(msg.created_at);
       if (msgDate && msgDate !== lastDate) {
         const sep = document.createElement('div');
@@ -1256,7 +1163,6 @@
         lastDate = msgDate;
       }
 
-      // Unread separator — insert before the first unread message
       if (!separatorInserted && unreadIds.has(msg.id)) {
         const unreadCount = unreadIds.size;
         const uSep = document.createElement('div');
@@ -1269,7 +1175,6 @@
       addMsg(msg);
     });
 
-    // Use a slight timeout to ensure the DOM has painted before scrolling
     setTimeout(() => {
       const uSep = $('msgFeed').querySelector('.unread-separator');
       if (uSep) {
@@ -1277,115 +1182,12 @@
       } else {
         $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
       }
-    }, 600); // 600ms gives perfect visibility to the pill layout before dropping down
-  }
-
-  function renderCallLogBubble(msg) {
-    const feed = $('msgFeed');
-    const cl = msg.call_log;
-    const out = msg.sender_id === currentUser.id; // caller = outgoing, receiver = incoming
-    const isMissed   = cl.status === 'missed';
-    const isNoAnswer = cl.status === 'no_answer';
-    const isRinging  = cl.status === 'ringing';
-
-    // Determine content
-    let iconName, iconClass, title, sub, tappable = false;
-    const callLabel = cl.type === 'video' ? 'Video' : 'Voice';
-    const emoji     = cl.type === 'video' ? '📹' : '📞';
-
-    if (out) {
-      iconName  = cl.type === 'video' ? 'videocam' : 'call_made';
-      iconClass = isNoAnswer ? 'missed' : 'outgoing';
-      title     = `${callLabel} call`;
-      sub       = isNoAnswer ? 'No answer' : 'Ringing';
-    } else {
-      iconName  = cl.type === 'video' ? 'videocam_off' : 'call_received';
-      if (isMissed) {
-        iconClass = 'missed'; title = `Missed ${callLabel.toLowerCase()} call`; sub = 'Tap to call back'; tappable = true;
-      } else {
-        iconClass = 'incoming'; title = `${callLabel} call`; sub = 'Ringing';
-      }
-    }
-
-    // Remove existing row for this msg id if re-rendering (UPDATE event)
-    const existing = feed.querySelector(`.msg-row[data-msg-id="${msg.id}"]`);
-    if (existing) existing.remove();
-
-    // Build as a standard msg-row so alignment, swipe-reply, long-press all work
-    const row = document.createElement('div');
-    row.className = `msg-row ${out ? 'out' : 'in'}`;
-    row.dataset.msgId = msg.id;
-    row.dataset.callId = cl.call_id;
-    row.style.position = 'relative';
-
-    const iconSide = out ? 'left' : 'right';
-    const replyIconHtml = `<span class="material-symbols-outlined swipe-reply-icon" style="${iconSide}:-28px">reply</span>`;
-
-    row.innerHTML = `
-      ${replyIconHtml}
-      <div class="bubble call-log-bubble${tappable ? ' tappable' : ''}">
-        <div class="call-log-inner">
-          <div class="call-log-icon ${iconClass}">
-            <span class="material-symbols-outlined">${iconName}</span>
-          </div>
-          <div class="call-log-text">
-            <div class="call-log-title">${title}</div>
-            <div class="call-log-sub">${sub}</div>
-          </div>
-        </div>
-      </div>
-      <div class="msg-foot">
-        <span>${fmtTimeOnly(msg.created_at)}</span>
-        ${out ? '<span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>' : ''}
-      </div>`;
-
-    if (tappable) {
-      row.querySelector('.call-log-bubble').addEventListener('click', () => {
-        startCall(cl.type || 'voice');
-      });
-    }
-
-    // Swipe to reply — uses emoji + label as the reply preview text
-    const replyMsg = {
-      ...msg,
-      message: `${emoji} ${title}`,
-      content: `${emoji} ${title}`
-    };
-    attachSwipe(row, replyMsg);
-
-    // Long press context menu (reply only — no edit/delete for call logs)
-    let clLongTimer;
-    row.addEventListener('touchstart', e => {
-      clLongTimer = setTimeout(() => {
-        // Only allow reply action for call log bubbles
-        ctxMsgId = msg.id;
-        const menu = $('ctxMenu');
-        $('ctxEdit').style.display   = 'none';
-        $('ctxDelAll').style.display = 'none';
-        const delAllDivider = $('ctxDelAll').previousElementSibling;
-        if (delAllDivider?.classList.contains('split')) delAllDivider.style.display = 'none';
-        $('ctxDelMe').style.display  = 'none';
-        menu.style.display = 'block';
-        const tx = e.touches[0];
-        menu.style.left = Math.min(tx.clientX, window.innerWidth - 200) + 'px';
-        menu.style.top  = Math.max(tx.clientY - 120, 10) + 'px';
-      }, 500);
-    }, { passive: true });
-    row.addEventListener('touchend',  () => clearTimeout(clLongTimer));
-    row.addEventListener('touchmove', () => clearTimeout(clLongTimer));
-
-    feed.appendChild(row);
+    }, 600);
   }
 
   function addMsg(msg) {
     const feed = $('msgFeed');
     const out  = msg.sender_id === currentUser.id;
-
-    // ── Call log bubble ──
-    if (msg.msg_type === 'call_log' && msg.call_log) {
-      renderCallLogBubble(msg);
-      return;
-    }
 
     if (msg.is_deleted) {
       const row = document.createElement('div');
@@ -1403,27 +1205,22 @@
     row.dataset.msgId = msg.id;
     row.style.position = 'relative';
 
-    // Reply snippet — uses stored reply_text/reply_sender_id (for both users),
-    // falls back to DOM scrape for old messages sent before those columns existed
     let replyHtml = '';
     if (msg.reply_to) {
       let quotedText = msg.reply_text || null;
       let quotedName = null;
 
       if (msg.reply_sender_id) {
-        // New messages: resolve from stored fields — same result on both screens
         quotedName = msg.reply_sender_id === currentUser.id
           ? (currentUser?.user_metadata?.full_name || 'You')
           : ($('partnerName')?.textContent || 'Them');
       }
 
       if (!quotedText || !quotedName) {
-        // Fallback for old messages: scrape the DOM
         const orig = $('msgFeed').querySelector(`.msg-row[data-msg-id="${msg.reply_to}"]`);
         if (orig) {
           if (!quotedText) {
             const bubble = orig.querySelector('.bubble');
-            // Get last text node inside bubble, skipping reply-snip
             const nodes = [...bubble.childNodes].filter(n => !n.classList?.contains('reply-snip') && n.textContent.trim());
             quotedText = nodes[nodes.length - 1]?.textContent?.trim() || '';
           }
@@ -1450,7 +1247,6 @@
       ? '<span class="edited-label">(edited)</span>'
       : '';
 
-    // Swipe reply icon
     const iconSide = out ? 'left' : 'right';
     const replyIconHtml = `<span class="material-symbols-outlined swipe-reply-icon" style="${iconSide}:-28px">reply</span>`;
 
@@ -1468,7 +1264,6 @@
 
     attachSwipe(row, msg);
 
-    // Reply-snip click: scroll to original message and flash highlight
     const snip = row.querySelector('.reply-snip');
     if (snip) {
       snip.addEventListener('click', e => {
@@ -1478,14 +1273,13 @@
         if (targetRow) {
           targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
           targetRow.classList.remove('reply-highlight');
-          void targetRow.offsetWidth; // force reflow to restart animation
+          void targetRow.offsetWidth;
           targetRow.classList.add('reply-highlight');
           setTimeout(() => targetRow.classList.remove('reply-highlight'), 1200);
         }
       });
     }
 
-    // Long press on ALL messages — ownership enforced inside showCtx()
     let rowLongTimer;
     row.addEventListener('touchstart', e => { rowLongTimer = setTimeout(() => showCtx(e, msg), 500); }, { passive: true });
     row.addEventListener('touchend',   () => clearTimeout(rowLongTimer));
@@ -1494,7 +1288,6 @@
     feed.appendChild(row);
   }
 
-  // ── Swipe to reply ──
   function attachSwipe(el, msg) {
     let sx = 0, dragging = false;
     const icon = el.querySelector('.swipe-reply-icon');
@@ -1508,7 +1301,6 @@
     el.addEventListener('touchmove', e => {
       if (!dragging) return;
       const dx = e.touches[0].clientX - sx;
-      // Only allow rightward swipe for received, leftward not needed — both dirs work
       const progress = Math.max(0, Math.min(dx, THRESHOLD)) / THRESHOLD;
       if (dx > 8) {
         el.style.transform = `translateX(${Math.min(dx, THRESHOLD)}px)`;
@@ -1544,29 +1336,20 @@
     $('replyStrip').classList.remove('open');
   });
 
-  // ── Context menu ──
-  let longTimer;
   function showCtx(e, msg) {
     if (msg.is_deleted) return;
-    // Always read the current ID from the DOM — avoids stale tmp- closure bug
     const domRow = e.target.closest('.msg-row');
     ctxMsgId = domRow ? domRow.dataset.msgId : msg.id;
     const menu = $('ctxMenu');
     const isMine = msg.sender_id === currentUser.id;
     const withinEditWindow = (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60 * 1000;
 
-    // Edit: only my messages, only within 5 minutes
     $('ctxEdit').style.display = (isMine && withinEditWindow) ? 'block' : 'none';
-
-    // Delete for everyone + its divider: only my messages
     $('ctxDelAll').style.display = isMine ? 'block' : 'none';
-    // Hide the divider above ctxDelAll when not mine
     const delAllDivider = $('ctxDelAll').previousElementSibling;
     if (delAllDivider && delAllDivider.classList.contains('split')) {
       delAllDivider.style.display = isMine ? 'block' : 'none';
     }
-
-    // Delete for me: always visible
     $('ctxDelMe').style.display = 'block';
 
     menu.style.display = 'block';
@@ -1610,7 +1393,6 @@
     inp.value = '';
     sending = true;
 
-    // Stop typing broadcast
     clearTimeout(typingTimeout);
     broadcastTyping(false);
 
@@ -1619,7 +1401,6 @@
     row.className = 'msg-row out';
     row.dataset.msgId = tmp;
     row.innerHTML = `<div class="bubble">${esc(txt)}</div><div class="msg-foot"><span style="color:var(--muted)">sending…</span></div>`;
-    // Attach long-press immediately so the optimistic bubble is interactable
     const tmpMsg = { id: tmp, sender_id: currentUser.id, message: txt, created_at: new Date().toISOString(), is_deleted: false };
     let tmpLongTimer;
     row.addEventListener('touchstart', e => { tmpLongTimer = setTimeout(() => showCtx(e, tmpMsg), 500); }, { passive: true });
@@ -1647,11 +1428,9 @@
       foot.innerHTML = `<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
       await supabase.from('chat_rooms').update({ last_message: txt, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
-      // Clear typing indicator and broadcast stop-typing on send
       clearTimeout(typingTimeout);
       broadcastTyping(false);
       $('typingIndicator').innerHTML = '';
-      // Force scroll to bottom after message is confirmed sent
       setTimeout(() => {
         $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
       }, 100);
@@ -1659,7 +1438,6 @@
     sending = false;
   }
 
-  // ── Realtime messages ──
   function subMsgs(roomId) {
     if (messageSub) supabase.removeChannel(messageSub);
     messageSub = supabase.channel(`room:${roomId}`)
@@ -1681,7 +1459,6 @@
       }).subscribe();
   }
 
-  // ── Typing Detection Listener ──
   $('msgInput').addEventListener('input', () => {
     if (!broadcastChannel || !activeRoom) return;
     broadcastTyping(true);
@@ -1689,9 +1466,6 @@
     typingTimeout = setTimeout(() => broadcastTyping(false), 2000);
   });
 
-  // Presence subscription removed — typing handled via Realtime Broadcast only
-
-  // ── New chat (friends overlay) ──
   async function loadFriends() {
     const { data, error } = await supabase
       .from('profiles').select('id,username,full_name,avatar_url').neq('id', currentUser.id).order('username');
@@ -1749,24 +1523,24 @@
   $('friendsOverlay').addEventListener('click', e => { if (e.target.id === 'friendsOverlay') $('friendsOverlay').classList.remove('open'); });
   $('addMoreBtn').addEventListener('click', () => window.location.href = 'find_friends.html');
 
-  // ── Home button — navigate only, logout handled elsewhere ──
   $('homeBtn').addEventListener('click', () => {
     window.location.href = 'index.html';
   });
 
-  // ── Search ──
-  $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
+  // Call button listeners (placeholders)
+  $('voiceCallBtn').addEventListener('click', () => {
+    alert('Voice call feature coming soon!');
+  });
+  $('videoCallBtn').addEventListener('click', () => {
+    alert('Video call feature coming soon!');
+  });
 
-  // ── Send button & Enter key ──
+  $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
   $('sendBtn').addEventListener('click', sendMsg);
   $('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
 
-  // ── Lifecycle ──
-  // Presence is set online at init and offline only on explicit logout.
-  // Heartbeat: refresh rooms every 30s — online status handled by presence channel
   setInterval(() => { loadRooms(); }, 30000);
 
-  // ── Init ──
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = 'user_login.html'; return; }
@@ -1775,7 +1549,6 @@
     await loadRooms();
     subscribeToProfiles();
 
-    // Deep-link to a specific room via ?room=
     const rp = new URLSearchParams(window.location.search).get('room');
     if (rp) {
       const { data: room } = await supabase.from('chat_rooms').select('user_one_id,user_two_id').eq('id', rp).single();
@@ -1789,466 +1562,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
-  // ── Show/hide call buttons when room opens ──
-  function showCallButtons(show) {
-    $('callBtns').style.display = show ? 'flex' : 'none';
-  }
-
-  // ── Helper: is partner currently online? ──
-  function isPartnerOnline() {
-    const room = rooms.find(r => r.other_user.id === partnerId);
-    return room ? !!room.other_user.is_online : false;
-  }
-
-  // ── WebRTC / Call Feature ──
-  const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
-
-  let callChannel = null;
-  let pc = null;
-  let localStream = null;
-  let callState = 'idle'; // idle | outgoing | incoming | active
-  let callType = 'voice';
-  let callTimerInterval = null;
-  let callSeconds = 0;
-  let isMuted = false;
-  let isSpeaker = true;
-  let callPartnerId = null;
-  let noAnswerTimeout = null;
-  let callerMsgId = null;
-  let receiverMsgId = null;
-  let currentCallId = null;
-  let timerStarted = false; // prevents double-start on receiver side
-
-  function getCallPartnerInfo() {
-    const name = $('partnerName').textContent;
-    const pic  = $('partnerPic').src;
-    return { name, pic };
-  }
-
-  // ── Insert caller's own call log row ──
-  async function insertCallerLog(status) {
-    console.log('[CallLog] insertCallerLog', { activeRoom, currentUserId: currentUser?.id, partnerId, callType, status, currentCallId });
-    const { data: row, error } = await supabase.from('messages').insert({
-      room_id: activeRoom,
-      sender_id: currentUser.id,
-      receiver_id: partnerId,
-      msg_type: 'call_log',
-      content: callType === 'video' ? 'Video call' : 'Voice call',
-      call_log: { type: callType, status, call_id: currentCallId }
-    }).select().single();
-    if (error) console.error('[CallLog] insertCallerLog ERROR:', JSON.stringify(error));
-    else console.log('[CallLog] insertCallerLog SUCCESS, id:', row?.id);
-    if (row) callerMsgId = row.id;
-  }
-
-  // ── Insert receiver's own call log row (called on receiver side) ──
-  async function insertReceiverLog(status) {
-    console.log('[CallLog] insertReceiverLog', { activeRoom, currentUserId: currentUser?.id, partnerId, callType, status, currentCallId });
-    const { data: row, error } = await supabase.from('messages').insert({
-      room_id: activeRoom,
-      sender_id: currentUser.id,
-      receiver_id: partnerId,
-      msg_type: 'call_log',
-      content: callType === 'video' ? 'Video call' : 'Voice call',
-      call_log: { type: callType, status, call_id: currentCallId }
-    }).select().single();
-    if (error) console.error('[CallLog] insertReceiverLog ERROR:', JSON.stringify(error));
-    else console.log('[CallLog] insertReceiverLog SUCCESS, id:', row?.id);
-    if (row) receiverMsgId = row.id;
-  }
-
-  // Setup per-room call signaling channel
-  function setupCallChannel(roomId) {
-    if (callChannel) supabase.removeChannel(callChannel);
-    callChannel = supabase.channel(`call:${roomId}`, { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'call-signal' }, ({ payload }) => {
-        if (!payload || payload.to !== currentUser.id) return;
-        handleSignal(payload);
-      })
-      .subscribe();
-  }
-
-  async function sendSignal(data) {
-    if (!callChannel) return;
-    await callChannel.send({
-      type: 'broadcast', event: 'call-signal',
-      payload: { ...data, from: currentUser.id, to: callPartnerId || partnerId }
-    });
-  }
-
-  async function handleSignal(payload) {
-    const { type, sdp, candidate, callType: ct, callId: cid } = payload;
-
-    if (type === 'call-offer') {
-      callPartnerId = payload.from;
-      callType = ct || 'voice';
-      currentCallId = cid || null;
-      callerMsgId = null;
-      receiverMsgId = null;
-      showIncomingCall(callType);
-      window._pendingOffer = payload;
-      return;
-    }
-
-    if (type === 'call-accepted') {
-      clearTimeout(noAnswerTimeout);
-      $('callInfoStatus').textContent = 'Ringing...';
-      noAnswerTimeout = setTimeout(() => {
-        hangup(true, 'no_answer');
-      }, 60000);
-      return;
-    }
-
-    if (type === 'call-answer' && pc) {
-      clearTimeout(noAnswerTimeout);
-      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
-      return;
-    }
-
-    if (type === 'ice-candidate' && pc) {
-      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
-      return;
-    }
-
-    if (type === 'call-decline') {
-      // Receiver declined — update caller's own row to no_answer
-      if (callerMsgId) {
-        await supabase.from('messages').update({
-          call_log: { type: callType, status: 'no_answer', call_id: currentCallId }
-        }).eq('id', callerMsgId);
-      }
-      hangup(false, null);
-      return;
-    }
-
-    if (type === 'call-end') {
-      // Caller ended — update receiver's own row to missed if still ringing
-      if (receiverMsgId) {
-        await supabase.from('messages').update({
-          call_log: { type: callType, status: 'missed', call_id: currentCallId }
-        }).eq('id', receiverMsgId);
-      }
-      hangup(false, null);
-      return;
-    }
-  }
-
-  function showIncomingCall(type) {
-    callState = 'incoming';
-    const { name, pic } = getCallPartnerInfo();
-    $('incomingCallAvatar').src = pic;
-    $('incomingCallName').textContent = name;
-    $('incomingCallType').textContent = `Incoming ${type === 'video' ? 'video' : 'voice'} call...`;
-    if (type === 'video') {
-      $('acceptCallBtn').querySelector('.material-symbols-outlined').textContent = 'videocam';
-    } else {
-      $('acceptCallBtn').querySelector('.material-symbols-outlined').textContent = 'call';
-    }
-    $('incomingCallOverlay').classList.add('visible');
-  }
-
-  function showActiveCallScreen(statusText = 'Calling...') {
-    const { name, pic } = getCallPartnerInfo();
-    $('callInfoAvatar').src = pic;
-    $('callInfoName').textContent = name;
-    $('callInfoStatus').textContent = statusText;
-    $('callTimer').style.display = 'none';
-    if (callType === 'video') {
-      $('videoRemoteWrap').style.display = 'block';
-      $('videoLocalWrap').style.display = 'block';
-    } else {
-      $('videoRemoteWrap').style.display = 'none';
-      $('videoLocalWrap').style.display = 'none';
-    }
-    $('incomingCallOverlay').classList.remove('visible');
-    $('activeCallScreen').classList.add('visible');
-  }
-
-  function startCallTimer() {
-    callSeconds = 0;
-    $('callTimer').style.display = 'block';
-    $('callInfoStatus').textContent = 'Connected';
-    callTimerInterval = setInterval(() => {
-      callSeconds++;
-      const m = Math.floor(callSeconds / 60);
-      const s = String(callSeconds % 60).padStart(2, '0');
-      $('callTimer').textContent = `${m}:${s}`;
-    }, 1000);
-  }
-
-  function stopCallTimer() {
-    clearInterval(callTimerInterval);
-    callTimerInterval = null;
-  }
-
-  async function startCall(type) {
-    if (callState !== 'idle') return;
-    callType = type;
-    callState = 'outgoing';
-    callPartnerId = partnerId;
-    currentCallId = crypto.randomUUID();
-    callerMsgId = null;
-    receiverMsgId = null;
-
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: type === 'video' ? { facingMode: 'user' } : false
-      });
-    } catch (err) {
-      alert('Could not access microphone' + (type === 'video' ? '/camera' : '') + '.\n' + err.message);
-      callState = 'idle';
-      return;
-    }
-
-    if (type === 'video') $('localVideo').srcObject = localStream;
-
-    // Unlock audio context within user gesture — don't use audio.src as it conflicts with srcObject
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      await ctx.resume();
-      ctx.close();
-    } catch {}
-
-    // Pre-create audio element now (within gesture) so it exists when ontrack fires
-    if (!document.getElementById('_callAudio')) {
-      const audio = document.createElement('audio');
-      audio.id = '_callAudio';
-      audio.autoplay = true;
-      audio.setAttribute('playsinline', '');
-      document.body.appendChild(audio);
-    }
-
-    const online = isPartnerOnline();
-    showActiveCallScreen(online ? 'Ringing...' : 'Calling...');
-
-    // Caller inserts only their own row
-    await insertCallerLog('ringing');
-
-    setupPeerConnection();
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    // Send callId so receiver knows which call this belongs to
-    await sendSignal({ type: 'call-offer', sdp: offer.sdp, callType: type, callId: currentCallId });
-
-    noAnswerTimeout = setTimeout(() => {
-      hangup(true, 'no_answer');
-    }, 60000);
-  }
-
-  function setupPeerConnection() {
-    if (pc) { pc.close(); pc = null; }
-    pc = new RTCPeerConnection(ICE_SERVERS);
-
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) sendSignal({ type: 'ice-candidate', candidate });
-    };
-
-    const remoteStream = new MediaStream();
-
-    pc.ontrack = (event) => {
-      remoteStream.addTrack(event.track);
-      attachRemoteStream(remoteStream);
-      if (event.track.kind === 'audio' && !timerStarted) {
-        timerStarted = true;
-        callState = 'active';
-        startCallTimer();
-      }
-    };
-
-    pc.onconnectionstatechange = () => {
-      const state = pc.connectionState;
-      if (state === 'connected') {
-        // Pull remote tracks manually via getReceivers — most reliable on Android Chrome
-        const receiverStream = new MediaStream();
-        pc.getReceivers().forEach(receiver => {
-          if (receiver.track) receiverStream.addTrack(receiver.track);
-        });
-        if (receiverStream.getTracks().length > 0) {
-          attachRemoteStream(receiverStream);
-        }
-        if (!timerStarted) {
-          timerStarted = true;
-          callState = 'active';
-          startCallTimer();
-        }
-      }
-      if (state === 'disconnected' || state === 'failed') {
-        hangup(false, null);
-      }
-    };
-  }
-
-  function attachRemoteStream(stream) {
-    if (callType === 'video') {
-      $('remoteVideo').srcObject = stream;
-      if (localStream) $('localVideo').srcObject = localStream;
-    } else {
-      const audio = document.getElementById('_callAudio');
-      if (audio) {
-        const audioTracks = stream.getAudioTracks();
-        if (audioTracks.length > 0) {
-          audio.removeAttribute('src'); // clear any src before setting srcObject
-          audio.srcObject = stream;
-          audio.play().catch(() => {});
-        }
-      }
-    }
-  }
-
-  async function acceptCall() {
-    const pending = window._pendingOffer;
-    if (!pending) return;
-    window._pendingOffer = null;
-
-    // Unlock audio context within user gesture — don't use audio.src as it conflicts with srcObject
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      await ctx.resume();
-      ctx.close();
-    } catch {}
-
-    // Pre-create audio element now (within gesture) so it exists when ontrack fires
-    if (!document.getElementById('_callAudio')) {
-      const audio = document.createElement('audio');
-      audio.id = '_callAudio';
-      audio.autoplay = true;
-      audio.setAttribute('playsinline', '');
-      document.body.appendChild(audio);
-    }
-
-    // Receiver inserts their own row
-    await insertReceiverLog('ringing');
-
-    // Signal caller that we accepted
-    await sendSignal({ type: 'call-accepted', receiverMsgId });
-
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: callType === 'video' ? { facingMode: 'user' } : false
-      });
-    } catch (err) {
-      alert('Could not access microphone' + (callType === 'video' ? '/camera' : '') + '.\n' + err.message);
-      await sendSignal({ type: 'call-decline' });
-      if (receiverMsgId) {
-        await supabase.from('messages').update({
-          call_log: { type: callType, status: 'missed', call_id: currentCallId }
-        }).eq('id', receiverMsgId);
-      }
-      resetCallUI();
-      return;
-    }
-
-    if (callType === 'video') $('localVideo').srcObject = localStream;
-    showActiveCallScreen('Connecting...');
-    setupPeerConnection();
-    // Set active AFTER setupPeerConnection so ontrack timer check works
-    callState = 'active';
-    // Add tracks BEFORE setRemoteDescription — required for proper SDP negotiation
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: pending.sdp }));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await sendSignal({ type: 'call-answer', sdp: answer.sdp });
-  }
-
-  async function hangup(sendSignalToRemote = true, finalStatus = null) {
-    clearTimeout(noAnswerTimeout);
-    if (sendSignalToRemote) {
-      if (callState === 'incoming') {
-        await sendSignal({ type: 'call-decline' });
-      } else {
-        await sendSignal({ type: 'call-end' });
-      }
-    }
-    // Each side only updates their own row
-    if (finalStatus === 'no_answer' && callerMsgId) {
-      await supabase.from('messages').update({
-        call_log: { type: callType, status: 'no_answer', call_id: currentCallId }
-      }).eq('id', callerMsgId);
-    }
-    if (finalStatus === 'missed' && receiverMsgId) {
-      await supabase.from('messages').update({
-        call_log: { type: callType, status: 'missed', call_id: currentCallId }
-      }).eq('id', receiverMsgId);
-    }
-    resetCallUI();
-  }
-
-  function resetCallUI() {
-    stopCallTimer();
-    clearTimeout(noAnswerTimeout);
-    if (pc) { pc.close(); pc = null; }
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = null;
-    }
-    const audio = document.getElementById('_callAudio');
-    if (audio) { audio.srcObject = null; }
-    $('localVideo').srcObject = null;
-    $('remoteVideo').srcObject = null;
-    $('incomingCallOverlay').classList.remove('visible');
-    $('activeCallScreen').classList.remove('visible');
-    window._pendingOffer = null;
-    callState = 'idle';
-    callPartnerId = null;
-    isMuted = false;
-    isSpeaker = true;
-    timerStarted = false;
-    callerMsgId = null;
-    receiverMsgId = null;
-    currentCallId = null;
-    $('toggleMuteBtn').querySelector('.material-symbols-outlined').textContent = 'mic';
-    $('toggleMuteBtn').classList.remove('toggled');
-    // Restore call buttons if a room is still open
-    if (activeRoom) showCallButtons(true);
-  }
-
-  // ── Call button event listeners ──
-  $('voiceCallBtn').addEventListener('click', () => startCall('voice'));
-  $('videoCallBtn').addEventListener('click', () => startCall('video'));
-  $('acceptCallBtn').addEventListener('click', acceptCall);
-  $('declineCallBtn').addEventListener('click', async () => {
-    // Insert receiver row as missed before hanging up (they never accepted)
-    if (!receiverMsgId && currentCallId) await insertReceiverLog('missed');
-    else if (receiverMsgId) {
-      await supabase.from('messages').update({
-        call_log: { type: callType, status: 'missed', call_id: currentCallId }
-      }).eq('id', receiverMsgId);
-    }
-    hangup(true, null);
-  });
-  $('endCallBtn').addEventListener('click', () => hangup(true, null));
-
-  $('toggleMuteBtn').addEventListener('click', () => {
-    if (!localStream) return;
-    isMuted = !isMuted;
-    // Only toggle local mic tracks — never touch remote stream
-    localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
-    const icon = $('toggleMuteBtn').querySelector('.material-symbols-outlined');
-    icon.textContent = isMuted ? 'mic_off' : 'mic';
-    $('toggleMuteBtn').classList.toggle('toggled', isMuted);
-  });
-
-  $('toggleSpeakerBtn').addEventListener('click', () => {
-    isSpeaker = !isSpeaker;
-    // Mute/unmute the remote audio element
-    const audio = document.getElementById('_callAudio');
-    if (audio) audio.muted = !isSpeaker;
-    // For video, mute remote video audio track directly as fallback
-    if (callType === 'video' && pc) {
-      pc.getReceivers().forEach(r => {
-        if (r.track && r.track.kind === 'audio') r.track.enabled = isSpeaker;
-      });
-    }
-    const icon = $('toggleSpeakerBtn').querySelector('.material-symbols-outlined');
-    icon.textContent = isSpeaker ? 'volume_up' : 'volume_off';
-    $('toggleSpeakerBtn').classList.toggle('toggled', !isSpeaker);
-  });
-
 })();
 </script>
 </body>
