@@ -117,7 +117,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   object-fit:cover;
   border:1px solid var(--border);
   flex-shrink:0;
-  background:var(--panel); /* fallback background */
+  background:var(--panel);
 }
 
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.3px;margin-left:6px;}
@@ -406,11 +406,29 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <button class="bottom-nav-item" data-section="maintenance-section"><span class="material-symbols-outlined">build</span><span class="nav-label">Maintenance</span></button>
 </nav>
 
-<!-- Suspend/Delete dialog -->
+<!-- Suspend/Delete dialog (modified) -->
 <div class="modal" id="memberModal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3 id="memberModalTitle" style="margin-top:0">Suspend user</h3>
     <div id="memberModalContent"></div>
+    <!-- Duration dropdown (only for suspend) -->
+    <div id="suspendDurationRow" style="display:none; margin-bottom: 16px;">
+      <label for="suspendDuration" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Duration</label>
+      <select id="suspendDuration" style="width:100%">
+        <option value="1">1 hour</option>
+        <option value="2">2 hours</option>
+        <option value="4">4 hours</option>
+        <option value="8">8 hours</option>
+        <option value="12">12 hours</option>
+        <option value="24" selected>1 day</option>
+        <option value="48">2 days</option>
+      </select>
+    </div>
+    <!-- Admin note input (only for suspend) -->
+    <div id="suspendNoteRow" style="display:none; margin-bottom: 16px;">
+      <label for="suspendNote" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Admin note (shown to user)</label>
+      <input type="text" id="suspendNote" placeholder="Reason for suspension" style="width:100%" />
+    </div>
     <div class="row end">
       <button class="btn" id="memberModalCancel">Cancel</button>
       <button class="btn btn-primary" id="memberModalConfirm">Confirm</button>
@@ -525,7 +543,6 @@ function updateStarRating(score) {
   }
 }
 
-// ── Gate with session retry ──
 async function gate() {
   $("gate").style.display = "flex";
   for (let attempt = 1; attempt <= 6; attempt++) {
@@ -565,6 +582,7 @@ async function handleLogout() {
 $("logoutBtn").addEventListener("click", handleLogout);
 $("logoutBtnMobile").addEventListener("click", handleLogout);
 
+// ── Existing admin functions (broadcast, logo, etc.) unchanged ──
 async function loadBroadcast() {
   const { data } = await sb.from("settings").select("value").eq("key","broadcast_message").maybeSingle();
   $("broadcastInput").value = (data && data.value) || "";
@@ -611,6 +629,8 @@ $("uploadLogoBtn").addEventListener("click", async () => {
   } catch (e) { toast(e.message); }
   finally { setLoading(btn, false); }
 });
+
+// (Other functions like extractLanguageTitles, fillFormFromJikan, etc. remain exactly the same as before)
 
 function extractLanguageTitles(jikanAnime) {
   const titles = jikanAnime.titles || []; const result = { en:null, jp:null };
@@ -989,6 +1009,7 @@ $("deleteDupBtn").addEventListener("click", async () => {
   finally{setLoading(btn,false);}
 });
 
+// ── Member Management (with new suspend/unsuspend/delete flow) ──
 async function loadMembers() {
   const btn=$("refreshMembers"); setLoading(btn,true,'Loading members…');
   const{data,error}=await sb.from("profiles").select("*").order("created_at",{ascending:false});
@@ -1006,7 +1027,6 @@ async function loadMembers() {
     const badge=document.createElement("span"); badge.className="badge "+(m.is_suspended?"suspended":m.is_online?"online":"offline");
     badge.textContent=m.is_suspended?"Suspended":m.is_online?"Online":"Offline"; nameRow.appendChild(badge);
 
-    // Email + optional last seen timestamp when offline
     const emailDiv=document.createElement("div");
     emailDiv.style.cssText="font-size:11px;color:var(--muted);margin-top:2px";
     emailDiv.textContent=m.email||"";
@@ -1037,7 +1057,10 @@ $("refreshMembers").addEventListener("click", loadMembers);
 function openMemberModal(action,userId,name){
   memberAction=action; selectedUserId=userId;
   $("memberModalTitle").textContent=action==="suspend"?`Suspend ${name}`:action==="unsuspend"?`Unsuspend ${name}`:`Delete ${name}`;
-  $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">${action==="delete"?`Permanently delete <strong>${name}</strong>? This cannot be undone.`:action==="suspend"?`Suspend <strong>${name}</strong>? They won't be able to log in.`:`Restore access for <strong>${name}</strong>?`}</p>`;
+  // Hide/show extra fields depending on action
+  $("suspendDurationRow").style.display = action==="suspend" ? "block" : "none";
+  $("suspendNoteRow").style.display = action==="suspend" ? "block" : "none";
+  $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">${action==="delete"?`Permanently delete <strong>${name}</strong>? This cannot be undone.`:action==="suspend"?`Suspend <strong>${name}</strong> for the chosen duration.`:action==="unsuspend"?`Restore access for <strong>${name}</strong>?`:""}</p>`;
   $("memberModalConfirm").className="btn "+(action==="delete"?"btn-danger":"btn-primary");
   $("memberModalConfirm").textContent=action==="suspend"?"Yes, Suspend":action==="unsuspend"?"Yes, Unsuspend":"Yes, Delete";
   $("memberModal").classList.add("show");
@@ -1045,15 +1068,53 @@ function openMemberModal(action,userId,name){
 $("memberModalCancel").addEventListener("click",()=>$("memberModal").classList.remove("show"));
 $("memberModalConfirm").addEventListener("click", async ()=>{
   const btn=$("memberModalConfirm");
+  // Prepare loading state
   setLoading(btn,true,memberAction==="delete"?"Deleting…":memberAction==="suspend"?"Suspending…":"Unsuspending…");
-  let error;
-  if(memberAction==="delete") ({error}=await sb.from("profiles").delete().eq("id",selectedUserId));
-  else ({error}=await sb.from("profiles").update({is_suspended:memberAction==="suspend"}).eq("id",selectedUserId));
-  setLoading(btn,false); $("memberModal").classList.remove("show");
-  if(error)toast("Action failed: "+error.message);
-  else{toast(memberAction==="delete"?"User deleted ✓":memberAction==="suspend"?"User suspended ✓":"User unsuspended ✓"); await loadMembers();}
+
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    let endpoint, body;
+
+    if (memberAction === "suspend") {
+      const durationHours = parseInt($("suspendDuration").value) || 24;
+      const adminNote = $("suspendNote").value.trim();
+      endpoint = '/api/admin/suspend-user';
+      body = { userId: selectedUserId, durationHours, adminNote };
+    } else if (memberAction === "unsuspend") {
+      endpoint = '/api/admin/unsuspend-user';
+      body = { userId: selectedUserId };
+    } else if (memberAction === "delete") {
+      endpoint = '/api/admin/delete-user';
+      body = { userId: selectedUserId };
+    } else {
+      throw new Error('Unknown action');
+    }
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+
+    toast(memberAction==="delete"?"User deleted ✓":memberAction==="suspend"?"User suspended ✓":"User unsuspended ✓");
+    $("memberModal").classList.remove("show");
+    await loadMembers();  // refresh the list
+  } catch (e) {
+    toast("Action failed: " + e.message);
+  } finally {
+    setLoading(btn, false);
+  }
 });
 
+// ── Action Log ──
 async function loadActionLog(){
   const{data,error}=await sb.from("admin_log").select("*").order("created_at",{ascending:false}).limit(30);
   const log=$("actionLog");
