@@ -71,6 +71,10 @@ export default async function handler(req, res) {
         });
       } catch (emailErr) {
         console.error('Failed to send suspension email:', emailErr);
+        // Return error so admin sees it
+        return res.status(500).json({
+          error: 'Email failed: ' + emailErr.message,
+        });
       }
     }
 
