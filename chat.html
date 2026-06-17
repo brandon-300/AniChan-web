@@ -806,6 +806,19 @@
   // Tracks which users are currently typing (by user id)
   const typingUsers = new Map();
 
+  // ── Call state ──
+  let localStream = null;
+  let peerConnection = null;
+  let currentCallId = null;
+  let currentCallType = null;        // 'audio' | 'video'
+  let callChannel = null;           // Realtime channel for signals
+  let incomingChannel = null;       // Realtime channel for incoming calls
+  let callInitiator = false;        // true if we started the call
+  let callActive = false;
+  let callTimerInterval = null;
+  let callStartTime = null;
+  let ignoreNextIncomingCall = false; // prevent self-ringing after initiating
+
   // ── Helpers ──
   function esc(t) {
     return String(t).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
@@ -1526,10 +1539,314 @@
     window.location.href = 'index.html';
   });
 
-  // Call button listeners (placeholders)
-  $('voiceCallBtn').addEventListener('click', () => { alert('Voice call feature coming soon!'); });
-  $('videoCallBtn').addEventListener('click', () => { alert('Video call feature coming soon!'); });
+  // ═══════════════════════════════════════
+  //  WEBRTC CALL FUNCTIONS
+  // ═══════════════════════════════════════
 
+  async function getMedia(constraints) {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('localVideo').srcObject = localStream;
+    } catch (e) {
+      console.error('getUserMedia error:', e);
+      alert('Could not access microphone/camera. Please check permissions.');
+      throw e;
+    }
+  }
+
+  function createPeerConnection() {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && currentCallId) {
+        supabase.from('call_signals').insert({
+          call_id: currentCallId,
+          sender_id: currentUser.id,
+          signal_type: 'candidate',
+          payload: event.candidate.toJSON()
+        }).then();
+      }
+    };
+
+    pc.ontrack = (event) => {
+      document.getElementById('remoteVideo').srcObject = event.streams[0];
+    };
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    return pc;
+  }
+
+  async function startCall(type) {
+    if (!activeRoom || !partnerId) {
+      alert('Please open a conversation first.');
+      return;
+    }
+    if (callActive) {
+      alert('A call is already in progress.');
+      return;
+    }
+
+    try {
+      const constraints = {
+        audio: true,
+        video: type === 'video'
+      };
+      await getMedia(constraints);
+
+      const { data: call, error } = await supabase
+        .from('calls')
+        .insert({
+          room_id: activeRoom,
+          caller_id: currentUser.id,
+          receiver_id: partnerId,
+          status: 'pending',
+          media_type: type
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      currentCallId = call.id;
+      currentCallType = type;
+      callInitiator = true;
+      callActive = true;
+
+      document.getElementById('callOverlay').classList.add('active');
+      document.getElementById('callTimer').textContent = '00:00';
+      document.getElementById('muteBtn').querySelector('span').textContent = 'mic';
+      document.getElementById('cameraBtn').querySelector('span').textContent = 'videocam';
+
+      peerConnection = createPeerConnection();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      await supabase.from('call_signals').insert({
+        call_id: currentCallId,
+        sender_id: currentUser.id,
+        signal_type: 'offer',
+        payload: peerConnection.localDescription.toJSON()
+      });
+
+      subscribeToCallSignals(currentCallId);
+      startCallTimer();
+
+      ignoreNextIncomingCall = true;
+      setTimeout(() => { ignoreNextIncomingCall = false; }, 2000);
+
+    } catch (e) {
+      console.error('Start call error:', e);
+      cleanupCall();
+    }
+  }
+
+  function subscribeToCallSignals(callId) {
+    if (callChannel) supabase.removeChannel(callChannel);
+    callChannel = supabase.channel(`call-signals-${callId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'call_signals',
+        filter: `call_id=eq.${callId}`
+      }, async (payload) => {
+        const signal = payload.new;
+        if (signal.sender_id === currentUser.id) return;
+
+        if (signal.signal_type === 'hangup') {
+          cleanupCall();
+          return;
+        }
+
+        if (!peerConnection) {
+          if (!localStream) {
+            try { await getMedia({ audio: true, video: currentCallType === 'video' }); } catch { return; }
+          }
+          peerConnection = createPeerConnection();
+        }
+
+        try {
+          if (signal.signal_type === 'offer' && !callInitiator) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal.payload));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            await supabase.from('call_signals').insert({
+              call_id: currentCallId,
+              sender_id: currentUser.id,
+              signal_type: 'answer',
+              payload: peerConnection.localDescription.toJSON()
+            });
+            await supabase.from('calls').update({ status: 'active' }).eq('id', currentCallId);
+            startCallTimer();
+          } else if (signal.signal_type === 'answer' && callInitiator) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signal.payload));
+          } else if (signal.signal_type === 'candidate') {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(signal.payload));
+          }
+        } catch (e) { console.error(e); }
+      })
+      .subscribe();
+  }
+
+  function startCallTimer() {
+    callStartTime = Date.now();
+    clearInterval(callTimerInterval);
+    callTimerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const secs = (elapsed % 60).toString().padStart(2, '0');
+      document.getElementById('callTimer').textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+
+  function acceptCall() {
+    if (!currentCallId || !partnerId) return;
+
+    callInitiator = false;
+    callActive = true;
+
+    document.getElementById('incomingCallPopup').classList.add('hidden');
+    document.getElementById('callOverlay').classList.add('active');
+    document.getElementById('muteBtn').querySelector('span').textContent = 'mic';
+    document.getElementById('cameraBtn').querySelector('span').textContent = 'videocam';
+
+    getMedia({
+      audio: true,
+      video: currentCallType === 'video'
+    }).then(() => {
+      // The offer will be processed via the signal subscription
+    }).catch(() => {
+      declineCall();
+    });
+
+    subscribeToCallSignals(currentCallId);
+  }
+
+  async function declineCall() {
+    if (!currentCallId) return;
+    try {
+      await supabase.from('calls').update({ status: 'rejected' }).eq('id', currentCallId);
+    } catch (e) { console.error(e); }
+    cleanupCall();
+  }
+
+  async function endCall() {
+    if (!currentCallId) return;
+    try {
+      await supabase.from('call_signals').insert({
+        call_id: currentCallId,
+        sender_id: currentUser.id,
+        signal_type: 'hangup',
+        payload: {}
+      });
+      await supabase.from('calls').update({ status: 'ended' }).eq('id', currentCallId);
+    } catch (e) { console.error(e); }
+    cleanupCall();
+  }
+
+  function cleanupCall() {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+    document.getElementById('localVideo').srcObject = null;
+    document.getElementById('remoteVideo').srcObject = null;
+
+    document.getElementById('callOverlay').classList.remove('active');
+    document.getElementById('incomingCallPopup').classList.add('hidden');
+    clearInterval(callTimerInterval);
+    callTimerInterval = null;
+    callStartTime = null;
+
+    if (callChannel) {
+      supabase.removeChannel(callChannel);
+      callChannel = null;
+    }
+
+    currentCallId = null;
+    currentCallType = null;
+    callInitiator = false;
+    callActive = false;
+  }
+
+  function toggleMute() {
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      document.getElementById('muteBtn').querySelector('span').textContent = audioTrack.enabled ? 'mic' : 'mic_off';
+    }
+  }
+
+  function toggleCamera() {
+    if (!localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      document.getElementById('cameraBtn').querySelector('span').textContent = videoTrack.enabled ? 'videocam' : 'videocam_off';
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  INCOMING CALL DETECTION
+  // ═══════════════════════════════════════
+  function subscribeToIncomingCalls() {
+    if (incomingChannel) supabase.removeChannel(incomingChannel);
+    incomingChannel = supabase.channel('incoming-calls')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'calls',
+        filter: `receiver_id=eq.${currentUser.id}`
+      }, (payload) => {
+        if (ignoreNextIncomingCall) return;
+        const call = payload.new;
+        if (call.status === 'pending' && !callActive) {
+          currentCallId = call.id;
+          currentCallType = call.media_type;
+          callInitiator = false;
+          document.getElementById('incomingCallType').textContent = call.media_type === 'video' ? 'Video Call' : 'Voice Call';
+          const callerName = document.getElementById('partnerName')?.textContent || 'User';
+          document.getElementById('incomingCaller').textContent = callerName;
+          document.getElementById('incomingCallPopup').classList.remove('hidden');
+          subscribeToCallSignals(call.id);
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'calls',
+        filter: `receiver_id=eq.${currentUser.id}`
+      }, (payload) => {
+        const call = payload.new;
+        if (call.id === currentCallId) {
+          if (call.status === 'ended' || call.status === 'rejected') {
+            if (!callActive) {
+              cleanupCall();
+            }
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  // ── Call button listeners (replace old placeholders) ──
+  $('voiceCallBtn').addEventListener('click', () => startCall('audio'));
+  $('videoCallBtn').addEventListener('click', () => startCall('video'));
+  $('muteBtn').addEventListener('click', toggleMute);
+  $('cameraBtn').addEventListener('click', toggleCamera);
+  $('endCallBtn').addEventListener('click', endCall);
+  $('acceptCallBtn').addEventListener('click', acceptCall);
+  $('declineCallBtn').addEventListener('click', declineCall);
+
+  // ── Search & Send ──
   $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
   $('sendBtn').addEventListener('click', sendMsg);
   $('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
@@ -1544,6 +1861,9 @@
     await loadRooms();
     subscribeToProfiles();
     startSuspensionCheck();
+
+    // Start listening for incoming calls
+    subscribeToIncomingCalls();
 
     const rp = new URLSearchParams(window.location.search).get('room');
     if (rp) {
