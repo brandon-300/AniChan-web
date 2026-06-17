@@ -111,7 +111,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .chip{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(81,218,211,.12);border:1px solid rgba(81,218,211,.35);color:#9eece9;}
 
 .member-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
-.member-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+.member-avatar{
+  width:40px;height:40px;
+  border-radius:50%;
+  object-fit:cover;
+  border:1px solid var(--border);
+  flex-shrink:0;
+  background:var(--panel); /* fallback background */
+}
 
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.3px;margin-left:6px;}
 .badge.online{background:rgba(46,213,115,.15);color:var(--success)}
@@ -998,8 +1005,23 @@ async function loadMembers() {
     nameRow.textContent=m.display_name||m.username||"Unknown";
     const badge=document.createElement("span"); badge.className="badge "+(m.is_suspended?"suspended":m.is_online?"online":"offline");
     badge.textContent=m.is_suspended?"Suspended":m.is_online?"Online":"Offline"; nameRow.appendChild(badge);
-    const emailDiv=document.createElement("div"); emailDiv.style.cssText="font-size:11px;color:var(--muted);margin-top:2px"; emailDiv.textContent=m.email||"";
-    info.appendChild(nameRow); info.appendChild(emailDiv);
+
+    // Email + optional last seen timestamp when offline
+    const emailDiv=document.createElement("div");
+    emailDiv.style.cssText="font-size:11px;color:var(--muted);margin-top:2px";
+    emailDiv.textContent=m.email||"";
+
+    if (!m.is_online && m.last_seen) {
+      const lastSeenSpan = document.createElement('span');
+      lastSeenSpan.style.cssText = "display:block;font-size:10px;color:var(--muted);margin-top:2px";
+      const date = new Date(m.last_seen);
+      lastSeenSpan.textContent = "Last seen: " + date.toLocaleString();
+      emailDiv.appendChild(lastSeenSpan);
+    }
+
+    info.appendChild(nameRow);
+    info.appendChild(emailDiv);
+
     const acts=document.createElement("div"); acts.style.cssText="display:flex;gap:6px;flex-shrink:0";
     const susBtn=document.createElement("button"); susBtn.className="btn btn-danger";
     susBtn.textContent=m.is_suspended?"Unsuspend":"Suspend";
@@ -1123,9 +1145,7 @@ $("regenerateSitemapBtn").addEventListener("click", async () => {
     if(!ok) return;
     await Promise.all([loadBroadcast(), loadCurrentLogo(), loadAnimeList(), loadMembers(), loadActionLog()]);
 
-    // ═══════════════════════════════════════════
-    //  REALTIME SUBSCRIPTION FOR MEMBER LIST
-    // ═══════════════════════════════════════════
+    // Realtime subscription for profiles → refresh member list
     sb.channel("public-admin-profiles")
       .on(
         "postgres_changes",
