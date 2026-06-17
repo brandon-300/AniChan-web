@@ -127,7 +127,7 @@
   .onboarding-card h2{text-align:center;margin-bottom:8px}
   .onboarding-card p{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
 
-  /* Suspension message (reused for deletion) */
+  /* Suspension / Deletion message area */
   .suspension-msg {
     background: rgba(255,71,87,0.1);
     border: 1px solid var(--danger);
@@ -144,12 +144,33 @@
     color: var(--accent);
     margin-top: 8px;
   }
-  .restored-msg {
-    color: var(--success);
-    font-weight: 600;
-    margin-top: 8px;
-    display: none;
+
+  /* Toast notification */
+  #loginToast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    white-space: nowrap;
   }
+  #loginToast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #loginToast.success { border-color: var(--success); color: var(--success); }
+  #loginToast.error { border-color: var(--danger); color: var(--danger); }
 
   /* Appeal button */
   .appeal-btn {
@@ -236,7 +257,6 @@
           <div class="suspension-msg" id="suspensionMsg">
             <p id="suspensionText"></p>
             <div class="countdown" id="countdownTimer"></div>
-            <p class="restored-msg" id="restoredMsg" style="display:none;">Your suspension has ended. You can now log in.</p>
             <!-- Appeal for deletion -->
             <button class="appeal-btn" id="appealBtn" style="display:none;">Appeal</button>
             <div class="appeal-area" id="appealArea">
@@ -358,6 +378,9 @@
     </div>
   </div>
 
+  <!-- Toast notification -->
+  <div id="loginToast"></div>
+
 <script>
 (() => {
   const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
@@ -422,6 +445,19 @@
     });
   });
 
+  // ── Toast helper ──
+  let toastTimer;
+  function showToast(msg, type = 'success') {
+    const toast = $('loginToast');
+    toast.textContent = msg;
+    toast.className = type;   // 'success' or 'error'
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 4000);
+  }
+
   function clearMessages() {
     $("loginErr").classList.remove("show"); $("signupErr").classList.remove("show"); $("signupSuccess").classList.remove("show");
     signupAge.classList.remove("invalid-age"); ageError.classList.remove("show");
@@ -451,7 +487,6 @@
     $("suspensionMsg").classList.remove("show");
     $("loginSubmit").style.display = "";
     $("loginPassword").style.display = "";
-    $("restoredMsg").style.display = "none";
     $("appealBtn").style.display = "none";
     $("appealArea").style.display = "none";
     if (countdownInterval) clearInterval(countdownInterval);
@@ -472,6 +507,7 @@
     $("suspensionMsg").classList.add("show");
     $("suspensionText").textContent = "Account suspended" + (adminNote ? ": " + adminNote : ".");
     $("appealBtn").style.display = "none";
+    $("countdownTimer").style.display = "block";
 
     function updateCountdown() {
       const now = new Date();
@@ -479,17 +515,13 @@
       if (diff <= 0) {
         clearInterval(countdownInterval);
         clearInterval(unsuspendPollInterval);
-        $("countdownTimer").style.display = "none";
-        $("restoredMsg").style.display = "block";
-        setTimeout(() => {
-          hideStatusMessage();
-          $("loginUsername").value = "";
-          $("loginPassword").value = "";
-        }, 3000);
+        // Restored: show toast and re-enable form
+        hideStatusMessage();
+        showToast("Your suspension has ended. You can now log in.", "success");
+        $("loginUsername").value = "";
+        $("loginPassword").value = "";
         return;
       }
-      $("countdownTimer").style.display = "block";
-      $("restoredMsg").style.display = "none";
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -512,13 +544,10 @@
       if (data && !data.is_suspended) {
         clearInterval(unsuspendPollInterval);
         clearInterval(countdownInterval);
-        $("countdownTimer").style.display = "none";
-        $("restoredMsg").style.display = "block";
-        setTimeout(() => {
-          hideStatusMessage();
-          $("loginUsername").value = "";
-          $("loginPassword").value = "";
-        }, 3000);
+        hideStatusMessage();
+        showToast("Your suspension has been lifted. You can now log in.", "success");
+        $("loginUsername").value = "";
+        $("loginPassword").value = "";
       }
     }, 10000);
   }
@@ -531,7 +560,6 @@
 
     if (diff <= 0) {
       hideStatusMessage();
-      // Account has been permanently deleted by now
       return;
     }
 
@@ -541,8 +569,6 @@
     $("suspensionMsg").classList.add("show");
     $("suspensionText").textContent = "Account scheduled for deletion" + (adminNote ? ": " + adminNote : ".");
     $("countdownTimer").style.display = "block";
-    $("restoredMsg").style.display = "none";
-
     const hoursLeft = Math.max(1, Math.ceil(diff / (1000 * 60 * 60)));
     $("countdownTimer").textContent = `Time remaining: ${hoursLeft} hour(s)`;
 
@@ -562,7 +588,6 @@
       const username = $("loginUsername").value.trim();
       if (!username) return;
 
-      // Fetch user ID
       const { data: profile } = await supabase
         .from("profiles")
         .select("id")
@@ -582,7 +607,8 @@
       });
 
       if (res.ok) {
-        btn.textContent = "Appeal Sent";
+        btn.textContent = "Appeal Sent ✓";
+        showToast("Appeal sent successfully.", "success");
         $("appealMessage").value = "";
         setTimeout(() => {
           $("appealArea").style.display = "none";
@@ -590,6 +616,7 @@
       } else {
         btn.textContent = "Failed";
         btn.disabled = false;
+        showToast("Failed to send appeal.", "error");
       }
     };
 
@@ -604,14 +631,10 @@
         .maybeSingle();
       if (data && !data.is_pending_delete) {
         clearInterval(unsuspendPollInterval);
-        $("suspensionMsg").classList.remove("show");
-        $("restoredMsg").style.display = "block";
-        $("restoredMsg").textContent = "Your account deletion has been cancelled. You can now log in.";
-        setTimeout(() => {
-          hideStatusMessage();
-          $("loginUsername").value = "";
-          $("loginPassword").value = "";
-        }, 3000);
+        hideStatusMessage();
+        showToast("Your account deletion has been cancelled. You can now log in.", "success");
+        $("loginUsername").value = "";
+        $("loginPassword").value = "";
       }
     }, 10000);
   }
@@ -645,7 +668,6 @@
     err.classList.remove("show");
     if (!username || !password) { err.textContent = "Please enter both username and password."; err.classList.add("show"); return; }
 
-    // Pre‑check status
     const blocked = await checkStatus(username);
     if (blocked) return;
 
@@ -656,14 +678,12 @@
       if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
-      // Double‑check status after auth
       const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
         const delAt = new Date(full.deleted_at), now = new Date();
         const permanent = new Date(delAt.getTime() + 24*60*60*1000);
         const diff = permanent - now;
         if (diff <= 0) {
-          // Already permanently deleted by cron
           err.textContent = "Account no longer exists.";
           err.classList.add("show");
           setButtonLoading(btn, false);
@@ -810,7 +830,6 @@
     }
   });
 
-  // Onboarding check – also check status
   async function checkOnboarding() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("onboarding") !== "1") return;
