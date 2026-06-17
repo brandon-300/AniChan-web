@@ -56,12 +56,12 @@ export default async function handler(req, res) {
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
-            user: process.env.ADMIN_EMAIL,       // your Gmail address
+            user: process.env.ADMIN_EMAIL,
             pass: process.env.GMAIL_APP_PASSWORD,
           },
         });
 
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
           subject: 'Your account has been reinstated',
@@ -69,9 +69,15 @@ export default async function handler(req, res) {
                  <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
                  <p>— AniChan Team</p>`,
         });
+
+        console.log('Email sent:', info.messageId);
       } catch (emailErr) {
         console.error('Failed to send email:', emailErr);
-        // Not critical – we can still return success
+        // Return the error so the admin can see it
+        return res.status(500).json({
+          error: 'Email failed: ' + emailErr.message,
+          code: emailErr.code,
+        });
       }
     }
 
