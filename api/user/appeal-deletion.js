@@ -18,7 +18,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing userId or message' });
     }
 
-    // Fetch user details
     const { data: profile } = await supabase
       .from('profiles')
       .select('username, email')
@@ -27,21 +26,17 @@ export default async function handler(req, res) {
 
     if (!profile) return res.status(404).json({ error: 'User not found' });
 
-    // Get admin emails from settings
     const { data: setting } = await supabase
       .from('settings')
       .select('value')
       .eq('key', 'admin_emails')
       .maybeSingle();
 
-    let adminEmails = ['g09649009@gmail.com']; // fallback
+    let adminEmails = ['g09649009@gmail.com'];
     if (setting?.value) {
-      try {
-        adminEmails = JSON.parse(setting.value);
-      } catch (e) {}
+      try { adminEmails = JSON.parse(setting.value); } catch (e) {}
     }
 
-    // Send email to all admins
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
