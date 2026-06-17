@@ -69,8 +69,10 @@
     width:100%;padding:14px;border:none;border-radius:12px;
     background:var(--accent);color:#0a2a28;font-size:15px;font-weight:700;
     cursor:pointer;transition:filter .15s;margin-top:8px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
   }
   .submit-btn:hover{filter:brightness(1.08)}
+  .submit-btn:disabled{opacity:0.7;cursor:not-allowed;filter:none;}
   .err-msg{font-size:12px;color:var(--danger);margin-top:8px;display:none}
   .err-msg.show{display:block}
   .success-msg{font-size:12px;color:var(--accent);margin-top:8px;display:none}
@@ -125,12 +127,20 @@
   .onboarding-card h2{text-align:center;margin-bottom:8px}
   .onboarding-card p{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
 
-  .loading-spinner{
-    display:inline-block;width:20px;height:20px;
-    border:2px solid transparent;border-top-color:#0a2a28;
-    border-radius:50%;animation:spin .7s linear infinite;
-  }
+  /* Button loading spinner */
   @keyframes spin{to{transform:rotate(360deg)}}
+  .btn-spinner{
+    display:inline-block;width:16px;height:16px;
+    border:2px solid rgba(0,0,0,0.2);
+    border-top-color:#0a2a28;
+    border-radius:50%;
+    animation:spin .6s linear infinite;
+    vertical-align:middle;flex-shrink:0;
+  }
+  .onboarding-card .btn-spinner {
+    border:2px solid rgba(0,0,0,0.2);
+    border-top-color:#0a2a28;
+  }
 </style>
 </head>
 <body>
@@ -160,9 +170,11 @@
           </div>
           <div class="forgot-link"><a href="forgot_password.html">Forgot password?</a></div>
           <div class="err-msg" id="loginErr"></div>
-          <button class="submit-btn" id="loginSubmit">Log in</button>
+          <button class="submit-btn" id="loginSubmit">
+            <span id="loginBtnText">Log in</span>
+          </button>
 
-          <!-- Google sign-in button -->
+          <!-- Google sign-in button (no spinner) -->
           <button class="google-btn" id="googleLoginBtn">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
             Continue with Google
@@ -218,7 +230,9 @@
           </div>
           <div class="err-msg" id="signupErr"></div>
           <div class="success-msg" id="signupSuccess"></div>
-          <button class="submit-btn" id="signupSubmit">Sign up</button>
+          <button class="submit-btn" id="signupSubmit">
+            <span id="signupBtnText">Sign up</span>
+          </button>
           <div class="switch-link">
             Already have an account? <button id="switchToLogin">Log in</button>
           </div>
@@ -280,22 +294,19 @@
   const tabLogin = $("tabLogin");
   const tabSignup = $("tabSignup");
 
-  // ── Redirect helper ──
+  // Redirect helper (unchanged)
   function getRedirectUrl() {
     const urlParams = new URLSearchParams(window.location.search);
-    // 1. Check for explicit ?redirect=... (from email login)
     if (urlParams.get('redirect')) return urlParams.get('redirect');
-    // 2. Check sessionStorage (set before Google OAuth)
     const stored = sessionStorage.getItem('login_redirect');
     if (stored) {
       sessionStorage.removeItem('login_redirect');
       return stored;
     }
-    // 3. Default fallback
     return 'index.html';
   }
 
-  // ── DOB dropdowns for SIGNUP ──
+  // DOB dropdowns for SIGNUP (unchanged)
   const dobDay = $("dobDay"), dobMonth = $("dobMonth"), dobYear = $("dobYear");
   const signupAge = $("signupAge"), ageError = $("ageError");
   const currentYear = new Date().getFullYear();
@@ -322,13 +333,13 @@
   }
   dobDay.addEventListener("change", updateAgeField); dobMonth.addEventListener("change", updateAgeField); dobYear.addEventListener("change", updateAgeField);
 
-  // ── Tab switching ──
+  // Tab switching (unchanged)
   function switchToLogin() { slider.style.transform = "translateX(0)"; tabLogin.classList.add("active"); tabSignup.classList.remove("active"); clearMessages(); }
   function switchToSignup() { slider.style.transform = "translateX(-100%)"; tabSignup.classList.add("active"); tabLogin.classList.remove("active"); clearMessages(); }
   tabLogin.addEventListener("click", switchToLogin); tabSignup.addEventListener("click", switchToSignup);
   $("switchToSignup").addEventListener("click", switchToSignup); $("switchToLogin").addEventListener("click", switchToLogin);
 
-  // ── Password reveal ──
+  // Password reveal (unchanged)
   document.querySelectorAll(".reveal").forEach(btn => {
     btn.addEventListener("click", () => {
       const input = document.getElementById(btn.dataset.target);
@@ -346,41 +357,58 @@
   }
   function isValidPassword(pw) { return pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw); }
 
+  // ── Button loading helper ──
+  function setButtonLoading(btn, loading, label) {
+    if (loading) {
+      btn._originalHTML = btn.innerHTML;
+      btn._originalDisabled = btn.disabled;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="btn-spinner"></span> ${label || 'Loading…'}`;
+    } else {
+      btn.innerHTML = btn._originalHTML || btn.innerHTML;
+      btn.disabled = btn._originalDisabled || false;
+      delete btn._originalHTML;
+      delete btn._originalDisabled;
+    }
+  }
+
   // ── Login (email/password) ──
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim(), password = $("loginPassword").value, err = $("loginErr");
     err.classList.remove("show");
     if (!username || !password) { err.textContent = "Please enter both username and password."; err.classList.add("show"); return; }
+    const btn = $("loginSubmit");
+    setButtonLoading(btn, true, 'Logging in…');
     try {
       const { data: profile } = await supabase.from("profiles").select("email, id").eq("username", username).maybeSingle();
-      if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); return; }
+      if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
       const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, is_pending_delete, deleted_at, admin_note").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
         const delAt = new Date(full.deleted_at), now = new Date(), diff = now - delAt;
-        if (diff >= 2*60*60*1000) { await supabase.from("profiles").delete().eq("id", profile.id); err.textContent = "Account doesn't exist. Sign up."; err.classList.add("show"); return; }
+        if (diff >= 2*60*60*1000) { await supabase.from("profiles").delete().eq("id", profile.id); err.textContent = "Account doesn't exist. Sign up."; err.classList.add("show"); setButtonLoading(btn, false); return; }
         const remain = 2*60*60*1000 - diff, h = Math.floor(remain/3600000), m = Math.floor((remain%3600000)/60000);
-        err.textContent = `Account deleted by admin. Note: "${full.admin_note}". Removed in ${h}h ${m}m.`; err.classList.add("show"); return;
+        err.textContent = `Account deleted by admin. Note: "${full.admin_note}". Removed in ${h}h ${m}m.`; err.classList.add("show"); setButtonLoading(btn, false); return;
       }
       if (full?.is_suspended) {
         const until = new Date(full.suspended_until); if (until > new Date()) {
           const rem = until - new Date(), d = Math.floor(rem/(1000*60*60*24)), h = Math.floor((rem%(1000*60*60*24))/(1000*60*60));
-          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); return;
+          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); setButtonLoading(btn, false); return;
         } else { await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id); }
       }
-      // Redirect to original page if set, otherwise home
       window.location.href = getRedirectUrl();
-    } catch(e) { err.textContent = e.message || "Login failed."; err.classList.add("show"); }
+    } catch(e) {
+      err.textContent = e.message || "Login failed."; err.classList.add("show");
+      setButtonLoading(btn, false);
+    }
   });
 
-  // ── Google OAuth ──
+  // ── Google OAuth (unchanged, no spinner) ──
   $("googleLoginBtn").addEventListener("click", async () => {
-    // Save the redirect URL if provided
     const urlParams = new URLSearchParams(window.location.search);
     const redirect = urlParams.get('redirect');
     if (redirect) sessionStorage.setItem('login_redirect', redirect);
-
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -389,7 +417,7 @@
     });
   });
 
-  // ── Signup (email/password) ──
+  // ── Signup ──
   $("signupSubmit").addEventListener("click", async () => {
     const fn = $("signupFirstName").value.trim(), ln = $("signupLastName").value.trim();
     const country = $("signupCountry").value.trim(), username = $("signupUsername").value.trim();
@@ -400,26 +428,31 @@
     if (!fn||!ln||!country||!username||!email||!password||!day||!month||!year) { err.textContent = "All fields are required."; err.classList.add("show"); return; }
     const age = parseInt(signupAge.value,10); if (isNaN(age)||age<14) { err.textContent = "You must be at least 14 years old."; err.classList.add("show"); return; }
     if (!isValidPassword(password)) { err.textContent = "Password must be 8+ chars with letter, number, special."; err.classList.add("show"); return; }
+    const btn = $("signupSubmit");
+    setButtonLoading(btn, true, 'Creating account…');
     const fullName = `${fn} ${ln}`, dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     try {
       const { data: exist } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
-      if (exist) { err.textContent = "Username already taken."; err.classList.add("show"); return; }
+      if (exist) { err.textContent = "Username already taken."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { data: auth, error: authErr } = await supabase.auth.signUp({ email, password, options: { data: { username, full_name: fullName }, emailRedirectTo: window.location.origin+"/index.html" } });
       if (authErr) throw authErr;
       if (!auth.user) throw new Error("Signup failed.");
       const { error: insErr } = await supabase.from("profiles").insert({ id: auth.user.id, username, full_name: fullName, age, dob, country, email });
       if (insErr) throw new Error("Profile creation failed: "+insErr.message);
       success.textContent = "Account created! You can now log in."; success.classList.add("show");
+      // Clear form
       $("signupFirstName").value=$("signupLastName").value=$("signupCountry").value=$("signupUsername").value=$("signupEmail").value=$("signupPassword").value="";
       dobDay.value=dobMonth.value=dobYear.value=""; populateDays(); signupAge.value=""; signupAge.classList.remove("invalid-age"); ageError.classList.remove("show");
-    } catch(e) { err.textContent = e.message || "Registration failed."; err.classList.add("show"); }
+      setButtonLoading(btn, false);
+    } catch(e) {
+      err.textContent = e.message || "Registration failed."; err.classList.add("show");
+      setButtonLoading(btn, false);
+    }
   });
 
-  // ── ONBOARDING MODAL ──
+  // ── ONBOARDING MODAL (unchanged except spinner) ──
   const obDay = $("obDobDay"), obMonth = $("obDobMonth"), obYear = $("obDobYear");
   const obAge = $("obAge");
-
-  // Populate onboarding DOB dropdowns
   for (let i = 1; i <= 12; i++) { const o = document.createElement("option"); o.value = i; o.textContent = monthNames[i-1]; obMonth.appendChild(o); }
   for (let y = currentYear; y >= 1900; y--) { const o = document.createElement("option"); o.value = y; o.textContent = y; obYear.appendChild(o); }
   function populateObDays() {
@@ -450,18 +483,8 @@
     $("onboardingOverlay").classList.remove("hidden");
   }
 
-  function hideOnboardingModal() {
-    $("onboardingOverlay").classList.add("hidden");
-  }
+  function hideOnboardingModal() { $("onboardingOverlay").classList.add("hidden"); }
 
-  function showOnboardingError(msg) {
-    const err = $("obErr");
-    err.textContent = msg;
-    err.classList.add("show");
-    $("onboardingOverlay").classList.remove("hidden");
-  }
-
-  // Onboarding submit
   $("obSubmit").addEventListener("click", async () => {
     const username = $("obUsername").value.trim();
     const country = $("obCountry").value.trim();
@@ -470,76 +493,54 @@
     err.classList.remove("show"); success.classList.remove("show");
 
     if (!username || !country || !day || !month || !year) {
-      err.textContent = "All fields are required.";
-      err.classList.add("show");
+      err.textContent = "All fields are required."; err.classList.add("show");
       return;
     }
     const age = parseInt(obAge.value, 10);
     if (isNaN(age) || age < 14) {
-      err.textContent = "You must be at least 14 years old.";
-      err.classList.add("show");
+      err.textContent = "You must be at least 14 years old."; err.classList.add("show");
       return;
     }
     if (username.length < 3 || username.length > 20) {
-      err.textContent = "Username must be between 3 and 20 characters.";
-      err.classList.add("show");
+      err.textContent = "Username must be between 3 and 20 characters."; err.classList.add("show");
       return;
     }
 
     const btn = $("obSubmit");
-    const btnText = $("obSubmitText");
-    btn.disabled = true;
-    btnText.innerHTML = '<span class="loading-spinner"></span> Saving…';
-
+    setButtonLoading(btn, true, 'Saving…');
     try {
-      // Check uniqueness
       const { data: exist } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
       if (exist) {
-        err.textContent = "Username already taken.";
-        err.classList.add("show");
-        btn.disabled = false;
-        btnText.textContent = "Complete";
+        err.textContent = "Username already taken."; err.classList.add("show");
+        setButtonLoading(btn, false);
         return;
       }
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Session expired. Please log in again.");
-
       const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const { error: updateErr } = await supabase.from("profiles")
         .update({ username, age, dob, country })
         .eq("id", session.user.id);
-
       if (updateErr) throw updateErr;
-
       success.textContent = "Profile complete! Redirecting…";
       success.classList.add("show");
       setTimeout(() => {
         hideOnboardingModal();
-        window.location.href = getRedirectUrl();   // ← redirect to original page
+        window.location.href = getRedirectUrl();
       }, 3000);
     } catch (e) {
-      err.textContent = e.message || "An error occurred.";
-      err.classList.add("show");
-      btn.disabled = false;
-      btnText.textContent = "Complete";
+      err.textContent = e.message || "An error occurred."; err.classList.add("show");
+      setButtonLoading(btn, false);
     }
   });
 
-  // ── Page‑load check for onboarding ──
+  // Onboarding check (unchanged)
   async function checkOnboarding() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("onboarding") !== "1") return;
-
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      // No session – the OAuth redirect hasn't completed yet, or the user landed here manually
-      return;
-    }
-
+    if (!session?.user) return;
     let { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
-
-    // If no profile, create one from Google metadata
     if (!profile) {
       const { error: insertErr } = await supabase.from("profiles").insert({
         id: session.user.id,
@@ -548,21 +549,18 @@
         avatar_url: session.user.user_metadata?.picture || '',
       });
       if (insertErr) {
-        showOnboardingError("Failed to create profile: " + insertErr.message);
+        $("obErr").textContent = "Failed to create profile: " + insertErr.message;
+        $("obErr").classList.add("show");
+        $("onboardingOverlay").classList.remove("hidden");
         return;
       }
-      // Re‑fetch the newly created profile
       const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
       profile = newProfile;
     }
-
-    // If profile is complete, redirect to original page (or home)
     if (profile && profile.username && profile.dob && profile.country) {
-      window.location.href = getRedirectUrl();   // ← redirect to original page
+      window.location.href = getRedirectUrl();
       return;
     }
-
-    // Otherwise show the onboarding modal
     showOnboardingModal();
   }
 
@@ -575,11 +573,7 @@
   });
 
   window.addEventListener("online", () => setTimeout(() => location.reload(), 1000));
-
-  // Kick off the onboarding check after a short delay to allow the session to load
-  window.addEventListener("load", () => {
-    setTimeout(checkOnboarding, 500);
-  });
+  window.addEventListener("load", () => { setTimeout(checkOnboarding, 500); });
 })();
 </script>
 </body>
