@@ -691,7 +691,7 @@
         <div class="partner-name" id="partnerName"></div>
         <div class="partner-sub" id="partnerSub"></div>
       </div>
-      <!-- NEW: Call buttons -->
+      <!-- Call buttons -->
       <div class="call-actions">
         <button id="voiceCallBtn" title="Voice Call">
           <span class="material-symbols-outlined">call</span>
@@ -801,6 +801,7 @@
   let replyTo = null, ctxMsgId = null, sending = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
   const sentIds = new Set();
+  let suspensionCheckInterval = null;   // ← new
 
   // Tracks which users are currently typing (by user id)
   const typingUsers = new Map();
@@ -840,7 +841,6 @@
   }
 
   // ── Typing broadcast via Supabase Realtime Broadcast ──
-  // Uses a per-room broadcast channel (not DB writes)
   let typingTimeout = null;
 
   function setupBroadcastChannel(roomId) {
@@ -863,7 +863,6 @@
   }
 
   function handleTypingBroadcast(userId, isTyping) {
-    // Update right panel header + typing indicator if this is the active partner
     if (userId === partnerId) {
       const sub = $('partnerSub');
       const indicator = $('typingIndicator');
@@ -875,12 +874,10 @@
       } else {
         sub.classList.remove('typing-status');
         indicator.innerHTML = '';
-        // Restore status from cached room data
         const room = rooms.find(r => r.other_user.id === userId);
         if (room) setPartnerStatus(room.other_user.is_online, room.other_user.last_seen);
       }
     }
-    // Update left panel thread preview
     if (isTyping) {
       typingUsers.set(userId, true);
     } else {
@@ -892,7 +889,7 @@
   // ── Partner status helper ──
   function setPartnerStatus(isOnline, lastSeen) {
     const sub = $('partnerSub');
-    if (sub.classList.contains('typing-status')) return; // Don't override while typing
+    if (sub.classList.contains('typing-status')) return;
     if (isOnline) {
       $('partnerDot').classList.add('live');
       sub.textContent = 'online';
@@ -986,32 +983,24 @@
   }
 
   // ── Profile subscription for real-time online dots ──
-  // ── Online status: dual-channel approach ──
-  // Channel 1: postgres_changes on profiles — catches DB writes from ALL pages
-  //            (login page, index, profile, chat). Works regardless of what
-  //            page the other user has open.
-  // Channel 2: Supabase Presence — instant peer-to-peer for users in chat.html
   let presenceChannel = null;
   let profilesChangeSub = null;
 
   function subscribeToProfiles() {
-    // ── Channel 1: DB changes listener (RENAMED channel to avoid collisions) ──
     if (profilesChangeSub) supabase.removeChannel(profilesChangeSub);
-    profilesChangeSub = supabase.channel('profile-status-chan')   // <-- NEW UNIQUE NAME
+    profilesChangeSub = supabase.channel('profile-status-chan')
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'profiles'
       }, payload => {
         const updated = payload.new;
-        // Only care about our conversation partners
         const partnerIds = new Set(rooms.map(r => r.other_user.id));
         if (!partnerIds.has(updated.id)) return;
         updateOnlineDot(updated.id, !!updated.is_online, updated.last_seen);
       })
       .subscribe();
 
-    // ── Channel 2: Presence for instant peer detection inside chat.html ──
     if (presenceChannel) supabase.removeChannel(presenceChannel);
     presenceChannel = supabase.channel('online-users', {
       config: { presence: { key: currentUser.id } }
@@ -1029,7 +1018,7 @@
         updateOnlineDot(key, true);
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
-        // Handled by postgres_changes Channel 1 — fires when is_online changes in DB
+        // Handled by postgres_changes Channel 1
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
@@ -1045,7 +1034,6 @@
   }
 
   function updateOnlineDot(userId, isOnline, lastSeen = null) {
-    // Update cached rooms array
     rooms.forEach(room => {
       if (room.other_user.id === userId) {
         room.other_user.is_online = isOnline;
@@ -1053,7 +1041,6 @@
       }
     });
     renderRooms(filteredRooms);
-    // Update active chat header
     if (userId === partnerId) {
       const room = rooms.find(r => r.other_user.id === userId);
       setPartnerStatus(isOnline, lastSeen || room?.other_user.last_seen);
@@ -1541,6 +1528,32 @@
 
   setInterval(() => { loadRooms(); }, 30000);
 
+  // ═══════════════════════════════════════
+  //  LIVE SUSPENSION CHECK
+  // ═══════════════════════════════════════
+  function startSuspensionCheck() {
+    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
+    suspensionCheckInterval = setInterval(async () => {
+      if (!currentUser) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_suspended, suspended_until, admin_note')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+        clearInterval(suspensionCheckInterval);
+        alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+        await supabase.auth.signOut();
+        window.location.href = 'user_login.html';
+      }
+    }, 30000);
+  }
+
+  // Clean up on page unload
+  window.addEventListener('beforeunload', () => {
+    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
+  });
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = 'user_login.html'; return; }
@@ -1548,6 +1561,7 @@
     await presence('online');
     await loadRooms();
     subscribeToProfiles();
+    startSuspensionCheck();   // ← start checking
 
     const rp = new URLSearchParams(window.location.search).get('room');
     if (rp) {
