@@ -766,9 +766,9 @@
     renderBroadcast();
     loadLibrary();
 
-    // Start cache version polling
+    // Start cache version polling every 10 seconds
     checkCacheVersion();
-    setInterval(checkCacheVersion, 30000);
+    setInterval(checkCacheVersion, 10000);
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
