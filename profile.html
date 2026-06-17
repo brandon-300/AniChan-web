@@ -6,7 +6,6 @@
 <title>AniChan · Profile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
-<!-- Cropper.js CSS -->
 <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
@@ -24,7 +23,7 @@
     min-height:100vh;display:flex;flex-direction:column;
     -webkit-font-smoothing:antialiased;
   }
-  /* Glass header */
+
   header.app{
     background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);padding:12px 16px;
@@ -47,12 +46,12 @@
 
   .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
 
-  /* Glass panel */
   .glass-panel{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:20px;padding:20px;
     box-shadow:0 8px 24px rgba(0,0,0,.4);margin-bottom:20px;
   }
+
   .profile-header{
     display:flex;align-items:center;gap:20px;
   }
@@ -71,23 +70,25 @@
   }
   .pencil-btn:active{transform:scale(0.95)}
   .pencil-btn:disabled{opacity:0.7;cursor:not-allowed;}
+
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
+
+  /* Status line – centered under name */
   .last-seen{
-    color:var(--muted);font-size:12px;margin-top:8px;
+    color:var(--muted);font-size:12px;
+    margin-top:8px;
     display:flex;align-items:center;gap:6px;
-    line-height:1; /* ensures text and dot share the same vertical line */
+    justify-content:center;          /* center dot + text as a group */
   }
 
-  /* Inline status dot – perfectly centered with text */
   .status-dot-inline{
     display:inline-block;
     width:10px;height:10px;
     border-radius:50%;
     background:var(--offline);
     flex-shrink:0;
-    /* align-self:center is already inherited from .last-seen */
   }
   .status-dot-inline.online{background:var(--success)}
 
@@ -124,7 +125,6 @@
   .btn-red:disabled{opacity:0.6;cursor:not-allowed;filter:none;}
   .avatar-upload-input{display:none}
 
-  /* Spinner for buttons */
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
     display:inline-block;width:14px;height:14px;
@@ -148,7 +148,7 @@
     border-top-color:#0a2a28;
   }
 
-  /* ── Crop modal ── */
+  /* Crop modal */
   .crop-modal {
     position: fixed; inset: 0; z-index: 200;
     background: rgba(0,0,0,0.85);
@@ -191,7 +191,7 @@
   }
   .crop-actions button.primary:hover { filter: brightness(1.08); }
 
-  /* ── Toast Notification ── */
+  /* Toast Notification */
   #toast {
     position: fixed;
     bottom: 24px;
@@ -233,7 +233,6 @@
   </header>
 
   <main class="container">
-    <!-- Profile header card -->
     <div class="glass-panel">
       <div class="profile-header">
         <div class="avatar-section" id="avatarSection">
@@ -254,7 +253,6 @@
       </div>
     </div>
 
-    <!-- Editable info card -->
     <div class="glass-panel">
       <div class="field-group">
         <div class="field"><label for="fullNameInput">Full name</label><input id="fullNameInput" type="text" readonly /></div>
@@ -268,8 +266,6 @@
         <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
         <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
       </div>
-
-      <!-- Language selector (own profile only) -->
       <div id="langSelectorContainer" style="display:none;">
         <label style="font-size:12px;color:var(--muted);margin-bottom:6px;display:block;">Language</label>
         <div class="lang-selector">
@@ -319,11 +315,9 @@
   let isEditing = false;
   let cropper = null;
 
-  // Apply translated labels
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
 
-  // ── Toast helper ──
   let toastTimer;
   function showToast(msg, type = 'success') {
     const toast = $('toast');
@@ -331,18 +325,14 @@
     toast.className = type;
     toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 3000);
+    toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 3000);
   }
 
-  // Inactivity auto-logout
   let inactivityTimer;
   const INACTIVITY_LIMIT = 15 * 60 * 1000;
   function resetInactivity() { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(handleLogout, INACTIVITY_LIMIT); }
   function setupInactivity() { ['mousemove','keydown','mousedown','touchstart','scroll'].forEach(evt => document.addEventListener(evt, resetInactivity, { passive:true })); resetInactivity(); }
 
-  // Heartbeat
   let heartbeatInterval;
   function startHeartbeat() {
     heartbeatInterval = setInterval(async () => {
@@ -485,15 +475,12 @@
     } catch(e) { showToast(e.message, 'error'); }
   }
 
-  // ── Crop & upload avatar ──
   function openCropModal(file) {
     if (cropper) { cropper.destroy(); cropper = null; }
-
     const reader = new FileReader();
     reader.onload = (e) => {
       $('cropImage').src = e.target.result;
       $('cropModal').classList.add('active');
-
       cropper = new Cropper($('cropImage'), {
         aspectRatio: 1,
         viewMode: 1,
@@ -515,57 +502,39 @@
 
   async function handleCropConfirm() {
     if (!cropper) return;
-
     const confirmBtn = $('confirmCropBtn');
     setButtonLoading(confirmBtn, true, 'Uploading…');
-
     try {
       const canvas = cropper.getCroppedCanvas({ width: 256, height: 256 });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.9));
-
       const formData = new FormData();
       formData.append('file', blob, 'avatar.webp');
       formData.append('userId', currentUserId);
-
-      const response = await fetch('/api/resize-avatar', {
-        method: 'POST',
-        body: formData
-      });
-
+      const response = await fetch('/api/resize-avatar', { method: 'POST', body: formData });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || 'Upload failed');
       }
-
       const { url } = await response.json();
       if (!url) throw new Error('No URL returned from server');
-
       const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', currentUserId);
       if (updateErr) throw new Error('DB update failed: ' + updateErr.message);
-
       $('avatarImg').src = url;
       showToast(t('avatarUpdated'), 'success');
       closeCropModal();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setButtonLoading(confirmBtn, false);
-    }
+    } catch (err) { showToast(err.message, 'error'); }
+    finally { setButtonLoading(confirmBtn, false); }
   }
 
   $('cancelCropBtn').addEventListener('click', closeCropModal);
   $('confirmCropBtn').addEventListener('click', handleCropConfirm);
-
-  const pencilBtn = $('pencilBtn');
-  pencilBtn.addEventListener('click', () => $('avatarInput').click());
-
+  $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
   $('avatarInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     openCropModal(file);
   });
 
-  // ── Message / start chat ──
   async function startChat() {
     const otherUserId = new URLSearchParams(window.location.search).get('user');
     if (!otherUserId || otherUserId === currentUserId) return;
