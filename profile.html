@@ -75,12 +75,11 @@
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
 
-  /* Status line – centered under name */
   .last-seen{
     color:var(--muted);font-size:12px;
     margin-top:8px;
     display:flex;align-items:center;gap:6px;
-    justify-content:center;          /* center dot + text as a group */
+    justify-content:center;
   }
 
   .status-dot-inline{
@@ -347,9 +346,25 @@
     await supabase.from('profiles').update({ is_online: online, last_seen: new Date().toISOString() }).eq('id', currentUserId);
   }
 
+  // ═══════════════════════════════════════
+  //  FIXED LOGOUT – waits for DB update
+  // ═══════════════════════════════════════
   async function handleLogout() {
-    if (currentUserId) await setOnlineStatus(false);
-    stopHeartbeat(); clearTimeout(inactivityTimer);
+    if (currentUserId) {
+      // Set offline status and wait for it to complete
+      try {
+        await supabase.from('profiles')
+          .update({ is_online: false, last_seen: new Date().toISOString() })
+          .eq('id', currentUserId);
+      } catch (e) {
+        console.error('Failed to set offline status:', e);
+      }
+    }
+
+    stopHeartbeat();
+    clearTimeout(inactivityTimer);
+
+    // Now sign out and redirect
     await supabase.auth.signOut();
     window.location.href = "index.html";
   }
