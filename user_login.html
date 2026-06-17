@@ -127,7 +127,30 @@
   .onboarding-card h2{text-align:center;margin-bottom:8px}
   .onboarding-card p{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
 
-  /* Button loading spinner */
+  /* Suspension message */
+  .suspension-msg {
+    background: rgba(255,71,87,0.1);
+    border: 1px solid var(--danger);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    text-align: center;
+    display: none;
+  }
+  .suspension-msg.show { display: block; }
+  .countdown {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-top: 8px;
+  }
+  .restored-msg {
+    color: var(--success);
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Loading spinner */
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
     display:inline-block;width:16px;height:16px;
@@ -169,12 +192,18 @@
             </div>
           </div>
           <div class="forgot-link"><a href="forgot_password.html">Forgot password?</a></div>
+          <!-- Suspension message area -->
+          <div class="suspension-msg" id="suspensionMsg">
+            <p id="suspensionText"></p>
+            <div class="countdown" id="countdownTimer"></div>
+            <p class="restored-msg" id="restoredMsg" style="display:none;">Your suspension has ended. You can now log in.</p>
+          </div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">
             <span id="loginBtnText">Log in</span>
           </button>
 
-          <!-- Google sign-in button (no spinner) -->
+          <!-- Google sign-in button -->
           <button class="google-btn" id="googleLoginBtn">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
             Continue with Google
@@ -294,19 +323,16 @@
   const tabLogin = $("tabLogin");
   const tabSignup = $("tabSignup");
 
-  // Redirect helper (unchanged)
+  // Redirect helper
   function getRedirectUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('redirect')) return urlParams.get('redirect');
     const stored = sessionStorage.getItem('login_redirect');
-    if (stored) {
-      sessionStorage.removeItem('login_redirect');
-      return stored;
-    }
+    if (stored) { sessionStorage.removeItem('login_redirect'); return stored; }
     return 'index.html';
   }
 
-  // DOB dropdowns for SIGNUP (unchanged)
+  // DOB dropdowns for SIGNUP
   const dobDay = $("dobDay"), dobMonth = $("dobMonth"), dobYear = $("dobYear");
   const signupAge = $("signupAge"), ageError = $("ageError");
   const currentYear = new Date().getFullYear();
@@ -333,13 +359,12 @@
   }
   dobDay.addEventListener("change", updateAgeField); dobMonth.addEventListener("change", updateAgeField); dobYear.addEventListener("change", updateAgeField);
 
-  // Tab switching (unchanged)
+  // Tab switching
   function switchToLogin() { slider.style.transform = "translateX(0)"; tabLogin.classList.add("active"); tabSignup.classList.remove("active"); clearMessages(); }
   function switchToSignup() { slider.style.transform = "translateX(-100%)"; tabSignup.classList.add("active"); tabLogin.classList.remove("active"); clearMessages(); }
   tabLogin.addEventListener("click", switchToLogin); tabSignup.addEventListener("click", switchToSignup);
   $("switchToSignup").addEventListener("click", switchToSignup); $("switchToLogin").addEventListener("click", switchToLogin);
 
-  // Password reveal (unchanged)
   document.querySelectorAll(".reveal").forEach(btn => {
     btn.addEventListener("click", () => {
       const input = document.getElementById(btn.dataset.target);
@@ -354,10 +379,10 @@
   function clearMessages() {
     $("loginErr").classList.remove("show"); $("signupErr").classList.remove("show"); $("signupSuccess").classList.remove("show");
     signupAge.classList.remove("invalid-age"); ageError.classList.remove("show");
+    hideSuspension();
   }
   function isValidPassword(pw) { return pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw); }
 
-  // ── Button loading helper ──
   function setButtonLoading(btn, loading, label) {
     if (loading) {
       btn._originalHTML = btn.innerHTML;
@@ -372,11 +397,85 @@
     }
   }
 
+  // ── Suspension UI logic ──
+  let countdownInterval = null;
+
+  function hideSuspension() {
+    $("suspensionMsg").classList.remove("show");
+    $("loginSubmit").style.display = "";
+    $("loginPassword").style.display = "";
+    if (countdownInterval) clearInterval(countdownInterval);
+  }
+
+  function showSuspension(adminNote, suspendedUntilISO) {
+    const suspendedUntil = new Date(suspendedUntilISO);
+    const now = new Date();
+    if (suspendedUntil <= now) {
+      // Suspension already expired
+      hideSuspension();
+      return;
+    }
+
+    // Hide login form
+    $("loginSubmit").style.display = "none";
+    $("loginPassword").style.display = "none";
+    $("suspensionMsg").classList.add("show");
+    $("suspensionText").textContent = adminNote || "Your account has been suspended.";
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = suspendedUntil - now;
+      if (diff <= 0) {
+        clearInterval(countdownInterval);
+        $("countdownTimer").style.display = "none";
+        $("restoredMsg").style.display = "block";
+        // Restore login form after 3 seconds
+        setTimeout(() => {
+          hideSuspension();
+          $("loginUsername").value = "";
+          $("loginPassword").value = "";
+        }, 3000);
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      $("countdownTimer").textContent = `${days > 0 ? days + 'd ' : ''}${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  // ── Pre‑login suspension check ──
+  async function checkSuspension(username) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("is_suspended, suspended_until, admin_note")
+      .eq("username", username)
+      .maybeSingle();
+    if (error || !data) return false; // user not found or error
+    if (data.is_suspended && data.suspended_until) {
+      showSuspension(data.admin_note, data.suspended_until);
+      return true;
+    }
+    // If suspended but no until (shouldn't happen), clear it
+    if (data.is_suspended) {
+      await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("username", username);
+    }
+    return false;
+  }
+
   // ── Login (email/password) ──
   $("loginSubmit").addEventListener("click", async () => {
     const username = $("loginUsername").value.trim(), password = $("loginPassword").value, err = $("loginErr");
     err.classList.remove("show");
     if (!username || !password) { err.textContent = "Please enter both username and password."; err.classList.add("show"); return; }
+
+    // Pre‑check suspension
+    const suspended = await checkSuspension(username);
+    if (suspended) return;
+
     const btn = $("loginSubmit");
     setButtonLoading(btn, true, 'Logging in…');
     try {
@@ -384,18 +483,26 @@
       if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
-      const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, is_pending_delete, deleted_at, admin_note").eq("id", profile.id).single();
+      // Double‑check suspension after auth (in case it was set after page load)
+      const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
+        // (existing deletion logic unchanged)
         const delAt = new Date(full.deleted_at), now = new Date(), diff = now - delAt;
         if (diff >= 2*60*60*1000) { await supabase.from("profiles").delete().eq("id", profile.id); err.textContent = "Account doesn't exist. Sign up."; err.classList.add("show"); setButtonLoading(btn, false); return; }
         const remain = 2*60*60*1000 - diff, h = Math.floor(remain/3600000), m = Math.floor((remain%3600000)/60000);
         err.textContent = `Account deleted by admin. Note: "${full.admin_note}". Removed in ${h}h ${m}m.`; err.classList.add("show"); setButtonLoading(btn, false); return;
       }
       if (full?.is_suspended) {
-        const until = new Date(full.suspended_until); if (until > new Date()) {
+        const until = new Date(full.suspended_until);
+        if (until > new Date()) {
           const rem = until - new Date(), d = Math.floor(rem/(1000*60*60*24)), h = Math.floor((rem%(1000*60*60*24))/(1000*60*60));
-          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show"); setButtonLoading(btn, false); return;
-        } else { await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id); }
+          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show");
+          showSuspension(full.admin_note, full.suspended_until);
+          setButtonLoading(btn, false);
+          return;
+        } else {
+          await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id);
+        }
       }
       window.location.href = getRedirectUrl();
     } catch(e) {
@@ -404,7 +511,7 @@
     }
   });
 
-  // ── Google OAuth (unchanged, no spinner) ──
+  // ── Google OAuth ──
   $("googleLoginBtn").addEventListener("click", async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const redirect = urlParams.get('redirect');
@@ -440,7 +547,6 @@
       const { error: insErr } = await supabase.from("profiles").insert({ id: auth.user.id, username, full_name: fullName, age, dob, country, email });
       if (insErr) throw new Error("Profile creation failed: "+insErr.message);
       success.textContent = "Account created! You can now log in."; success.classList.add("show");
-      // Clear form
       $("signupFirstName").value=$("signupLastName").value=$("signupCountry").value=$("signupUsername").value=$("signupEmail").value=$("signupPassword").value="";
       dobDay.value=dobMonth.value=dobYear.value=""; populateDays(); signupAge.value=""; signupAge.classList.remove("invalid-age"); ageError.classList.remove("show");
       setButtonLoading(btn, false);
@@ -450,7 +556,7 @@
     }
   });
 
-  // ── ONBOARDING MODAL (unchanged except spinner) ──
+  // ── ONBOARDING MODAL ──
   const obDay = $("obDobDay"), obMonth = $("obDobMonth"), obYear = $("obDobYear");
   const obAge = $("obAge");
   for (let i = 1; i <= 12; i++) { const o = document.createElement("option"); o.value = i; o.textContent = monthNames[i-1]; obMonth.appendChild(o); }
@@ -492,35 +598,20 @@
     const err = $("obErr"), success = $("obSuccess");
     err.classList.remove("show"); success.classList.remove("show");
 
-    if (!username || !country || !day || !month || !year) {
-      err.textContent = "All fields are required."; err.classList.add("show");
-      return;
-    }
+    if (!username || !country || !day || !month || !year) { err.textContent = "All fields are required."; err.classList.add("show"); return; }
     const age = parseInt(obAge.value, 10);
-    if (isNaN(age) || age < 14) {
-      err.textContent = "You must be at least 14 years old."; err.classList.add("show");
-      return;
-    }
-    if (username.length < 3 || username.length > 20) {
-      err.textContent = "Username must be between 3 and 20 characters."; err.classList.add("show");
-      return;
-    }
+    if (isNaN(age) || age < 14) { err.textContent = "You must be at least 14 years old."; err.classList.add("show"); return; }
+    if (username.length < 3 || username.length > 20) { err.textContent = "Username must be between 3 and 20 characters."; err.classList.add("show"); return; }
 
     const btn = $("obSubmit");
     setButtonLoading(btn, true, 'Saving…');
     try {
       const { data: exist } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
-      if (exist) {
-        err.textContent = "Username already taken."; err.classList.add("show");
-        setButtonLoading(btn, false);
-        return;
-      }
+      if (exist) { err.textContent = "Username already taken."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Session expired. Please log in again.");
       const dob = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const { error: updateErr } = await supabase.from("profiles")
-        .update({ username, age, dob, country })
-        .eq("id", session.user.id);
+      const { error: updateErr } = await supabase.from("profiles").update({ username, age, dob, country }).eq("id", session.user.id);
       if (updateErr) throw updateErr;
       success.textContent = "Profile complete! Redirecting…";
       success.classList.add("show");
@@ -534,7 +625,7 @@
     }
   });
 
-  // Onboarding check (unchanged)
+  // Onboarding check – also check suspension
   async function checkOnboarding() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("onboarding") !== "1") return;
@@ -557,6 +648,16 @@
       const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
       profile = newProfile;
     }
+
+    // Check suspension before onboarding
+    if (profile && profile.is_suspended && profile.suspended_until && new Date(profile.suspended_until) > new Date()) {
+      // Show suspension message (use the same UI, but since the login form is hidden, we'll improvise)
+      alert(`Your account is suspended. Reason: ${profile.admin_note || 'N/A'}. Please contact support.`);
+      await supabase.auth.signOut();
+      window.location.href = "index.html";
+      return;
+    }
+
     if (profile && profile.username && profile.dob && profile.country) {
       window.location.href = getRedirectUrl();
       return;
