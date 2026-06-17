@@ -11,7 +11,6 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Verify admin token
     const authHeader = req.headers['authorization'];
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
     const token = authHeader.split(' ')[1];
@@ -20,42 +19,25 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: invalid admin' });
     }
 
-    const { userId } = req.body || {};
+    const { userId, adminNote } = req.body || {};
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' });
     }
 
-    // Delete associated data (order matters to avoid FK violations)
-    // 1. Delete messages
-    await supabase.from('messages').delete().eq('sender_id', userId);
-    await supabase.from('messages').delete().eq('receiver_id', userId);
-    
-    // 2. Delete chat rooms where user is involved
-    await supabase.from('chat_rooms').delete().eq('user_one_id', userId);
-    await supabase.from('chat_rooms').delete().eq('user_two_id', userId);
-    
-    // 3. Delete comments
-    await supabase.from('anime_comments').delete().eq('user_id', userId);
-    
-    // 4. Delete user presence
-    await supabase.from('user_presence').delete().eq('user_id', userId);
-    
-    // 5. Delete profile
-    const { error: profileError } = await supabase.from('profiles').delete().eq('id', userId);
-    if (profileError) throw profileError;
+    // Set pending deletion flag and timestamp
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_pending_delete: true,
+        deleted_at: new Date().toISOString(),
+        admin_note: adminNote || null,
+      })
+      .eq('id', userId);
 
-    // 6. Delete auth user (requires service role)
-    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
-    if (authDeleteError) {
-      console.error('Failed to delete auth user:', authDeleteError);
-      // Auth user deletion is not critical; profile is gone anyway.
-    }
+    if (error) throw error;
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(500).json({
-      error: err.message,
-      stack: err.stack,
-    });
+    return res.status(500).json({ error: err.message });
   }
 }
