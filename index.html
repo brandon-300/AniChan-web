@@ -360,6 +360,27 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  LIVE SUSPENSION CHECK
+  // ═══════════════════════════════════════
+  let suspensionCheckInterval;
+  function startSuspensionCheck() {
+    suspensionCheckInterval = setInterval(async () => {
+      if (!currentSession?.user?.id) return;
+      const { data } = await sb
+        .from('profiles')
+        .select('is_suspended, suspended_until, admin_note')
+        .eq('id', currentSession.user.id)
+        .maybeSingle();
+      if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+        clearInterval(suspensionCheckInterval);
+        alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+        await sb.auth.signOut();
+        window.location.href = 'user_login.html';
+      }
+    }, 30000);
+  }
+
   // ── Basic translations ──
   const latestReleasesText = t('latestReleases') === 'latestReleases' ? 'Latest Releases' : t('latestReleases');
   $("offline").textContent = t("offline");
@@ -699,11 +720,9 @@
       library.sort((a, b) => {
         const diff = statusOrder[a.status] - statusOrder[b.status];
         if (diff !== 0) return diff;
-        // Within the same status group, sort by updated_at descending.
-        // This puts the most recently updated anime first.
         const aDate = a.updated_at ? new Date(a.updated_at) : new Date(0);
         const bDate = b.updated_at ? new Date(b.updated_at) : new Date(0);
-        return bDate - aDate; // newest first
+        return bDate - aDate;
       });
     }
     currentPage = 1;
@@ -724,11 +743,17 @@
     currentSession = session;
     if (session?.user) {
       await sb.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", session.user.id);
+      startSuspensionCheck();
     }
     sb.auth.onAuthStateChange(async (_e, s) => {
       currentSession = s;
       if (s?.user) {
         await sb.from("profiles").update({ is_online: true, last_seen: new Date().toISOString() }).eq("id", s.user.id);
+        // Restart suspension check if new session
+        if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
+        startSuspensionCheck();
+      } else {
+        if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
       }
       renderHeader();
     });
@@ -737,7 +762,6 @@
     renderBroadcast();
     loadLibrary();
 
-    // Start cache version polling
     checkCacheVersion();
     setInterval(checkCacheVersion, 30000);
 
