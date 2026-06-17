@@ -21,32 +21,35 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: invalid admin' });
     }
 
-    const { userId, durationHours, adminNote } = req.body || {};
-    if (!userId || !durationHours) {
-      return res.status(400).json({ error: 'Missing userId or durationHours' });
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
     }
 
-    const suspendedUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        is_suspended: true,
-        suspended_until: suspendedUntil,
-        admin_note: adminNote || null,
-      })
-      .eq('id', userId);
-
-    if (error) throw error;
-
-    // Send suspension email to the user
-    const { data: profile } = await supabase
+    const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('email, username')
       .eq('id', userId)
       .single();
 
-    if (profile?.email) {
+    if (fetchError || !profile) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Clear suspension
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_suspended: false,
+        suspended_until: null,
+        admin_note: null,
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
+
+    // Send email notification to the user
+    if (profile.email) {
       try {
         const transporter = nodemailer.createTransport({
           service: 'gmail',
@@ -56,26 +59,27 @@ export default async function handler(req, res) {
           },
         });
 
-        const hours = durationHours;
-        const durationText = hours >= 24 ? `${hours / 24} day(s)` : `${hours} hour(s)`;
-
         await transporter.sendMail({
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
-          subject: 'Your account has been suspended',
+          subject: 'Your account has been reinstated',
           html: `<p>Hi ${profile.username || 'user'},</p>
-                 <p>Your account on AniChan has been suspended for <strong>${durationText}</strong>.</p>
-                 ${adminNote ? `<p><strong>Reason:</strong> ${adminNote}</p>` : ''}
-                 <p>You will be able to log in again after the suspension period ends.</p>
+                 <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
                  <p>— AniChan Team</p>`,
         });
       } catch (emailErr) {
-        console.error('Failed to send suspension email:', emailErr);
+        console.error('Failed to send unsuspension email:', emailErr);
+        return res.status(500).json({
+          error: 'Email failed: ' + emailErr.message,
+        });
       }
     }
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      error: err.message,
+      stack: err.stack,
+    });
   }
 }
