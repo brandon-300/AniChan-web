@@ -344,7 +344,6 @@
 
   // ═══════════════════════════════════════
   //  CACHE VERSION POLLING
-  //  (forces reload when Purge Cache is used)
   // ═══════════════════════════════════════
   let currentCacheVersion = '0';
 
@@ -700,9 +699,11 @@
       library.sort((a, b) => {
         const diff = statusOrder[a.status] - statusOrder[b.status];
         if (diff !== 0) return diff;
-        const aDate = a.aired_from ? new Date(a.aired_from) : new Date(0);
-        const bDate = b.aired_from ? new Date(b.aired_from) : new Date(0);
-        return bDate - aDate;
+        // Within the same status group, sort by updated_at descending.
+        // This puts the most recently updated anime first.
+        const aDate = a.updated_at ? new Date(a.updated_at) : new Date(0);
+        const bDate = b.updated_at ? new Date(b.updated_at) : new Date(0);
+        return bDate - aDate; // newest first
       });
     }
     currentPage = 1;
