@@ -348,31 +348,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  FIXED LOGOUT – waits for DB update
-  // ═══════════════════════════════════════
-  async function handleLogout() {
-    // Stop suspension check
-    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
-
-    if (currentUserId) {
-      try {
-        await supabase.from('profiles')
-          .update({ is_online: false, last_seen: new Date().toISOString() })
-          .eq('id', currentUserId);
-      } catch (e) {
-        console.error('Failed to set offline status:', e);
-      }
-    }
-
-    stopHeartbeat();
-    clearTimeout(inactivityTimer);
-
-    await supabase.auth.signOut();
-    window.location.href = "index.html";
-  }
-
-  // ═══════════════════════════════════════
-  //  LIVE SUSPENSION CHECK
+  //  LIVE SUSPENSION CHECK (10 seconds)
   // ═══════════════════════════════════════
   function startSuspensionCheck() {
     if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
@@ -389,7 +365,31 @@
         await supabase.auth.signOut();
         window.location.href = 'user_login.html';
       }
-    }, 30000);
+    }, 10000);
+  }
+
+  function stopSuspensionCheck() {
+    if (suspensionCheckInterval) {
+      clearInterval(suspensionCheckInterval);
+      suspensionCheckInterval = null;
+    }
+  }
+
+  async function handleLogout() {
+    stopSuspensionCheck();
+    stopHeartbeat();
+    clearTimeout(inactivityTimer);
+    if (currentUserId) {
+      try {
+        await supabase.from('profiles')
+          .update({ is_online: false, last_seen: new Date().toISOString() })
+          .eq('id', currentUserId);
+      } catch (e) {
+        console.error('Failed to set offline status:', e);
+      }
+    }
+    await supabase.auth.signOut();
+    window.location.href = "index.html";
   }
 
   function renderProfile(profile) {
@@ -608,7 +608,7 @@
     await setOnlineStatus(true);
     setupInactivity();
     startHeartbeat();
-    startSuspensionCheck();   // ← start suspension check
+    startSuspensionCheck();   // <-- start checking for suspension
 
     const profile = await loadProfile();
     if (profile) renderProfile(profile); else renderProfile({});
@@ -633,8 +633,7 @@
       if (!confirm(t('deleteAccountFinal'))) return;
       setButtonLoading(deleteBtn, true, 'Deleting…');
       await supabase.from('profiles').delete().eq('id', currentUserId);
-      stopHeartbeat(); clearTimeout(inactivityTimer);
-      if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
+      stopHeartbeat(); stopSuspensionCheck(); clearTimeout(inactivityTimer);
       await supabase.auth.signOut();
       location.href = "user_login.html";
     });
