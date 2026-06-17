@@ -61,7 +61,6 @@
     width:100%;height:100%;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);background:var(--panel);
   }
-  /* Removed absolute‑positioned online dot from here */
   .pencil-btn{
     position:absolute;bottom:2px;right:2px;
     width:28px;height:28px;border-radius:50%;
@@ -75,25 +74,21 @@
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
-  .last-seen {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  line-height: 1;          /* prevent extra line height from shifting the dot */
-}
+  .last-seen{
+    color:var(--muted);font-size:12px;margin-top:8px;
+    display:flex;align-items:center;gap:6px;
+    line-height:1; /* ensures text and dot share the same vertical line */
+  }
 
-.status-dot-inline {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--offline);
-  flex-shrink: 0;
-  align-self: center;       /* ensures perfect vertical centering in the flex row */
-}
+  /* Inline status dot – perfectly centered with text */
+  .status-dot-inline{
+    display:inline-block;
+    width:10px;height:10px;
+    border-radius:50%;
+    background:var(--offline);
+    flex-shrink:0;
+    /* align-self:center is already inherited from .last-seen */
+  }
   .status-dot-inline.online{background:var(--success)}
 
   .field-group{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
@@ -108,7 +103,6 @@
   .field input:focus,.field select:focus{border-color:var(--accent)}
   .field input[readonly]{opacity:0.8;cursor:default}
 
-  /* Remove old inline messages */
   .err-msg, .success-msg{display:none}
 
   .lang-selector{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
@@ -244,7 +238,6 @@
       <div class="profile-header">
         <div class="avatar-section" id="avatarSection">
           <img class="avatar-img" id="avatarImg" src="" alt="Profile picture" />
-          <!-- The online dot has been moved to the last‑seen line -->
           <button class="pencil-btn" id="pencilBtn" title="Change photo">
             <span class="material-symbols-outlined" style="font-size:16px">edit</span>
           </button>
