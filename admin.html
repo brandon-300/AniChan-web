@@ -253,7 +253,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
-          <!-- Site Logo (enlarged preview) -->
+          <!-- Site Logo (enlarged) -->
           <div class="bento-section glass-panel" id="logo-section">
             <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
             <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
@@ -518,15 +518,31 @@ function updateStarRating(score) {
   }
 }
 
+// ── Gate with session retry ──
 async function gate() {
   $("gate").style.display = "flex";
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $("gateMsg").textContent = "You're not signed in. Redirecting…"; setTimeout(() => location.replace("admin_login.html"), 800); return false; }
-  if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) { $("gateMsg").textContent = "Not authorized for admin access."; return false; }
-  $("gate").style.display = "none";
-  $("app").style.display = "block";
-  initMobileNav();
-  return true;
+  // Try to get session up to 6 times (every 500ms) = 3 seconds total
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+        $("gateMsg").textContent = "Not authorized for admin access.";
+        return false;
+      }
+      $("gate").style.display = "none";
+      $("app").style.display = "block";
+      initMobileNav();
+      return true;
+    }
+    if (attempt < 6) {
+      $("gateMsg").textContent = `Verifying your session… (attempt ${attempt})`;
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+  // All attempts failed
+  $("gateMsg").textContent = "You're not signed in. Redirecting…";
+  setTimeout(() => location.replace("admin_login.html"), 800);
+  return false;
 }
 
 let toastTimer;
@@ -1102,12 +1118,12 @@ $("regenerateSitemapBtn").addEventListener("click", async () => {
 
 (async()=>{
   resetIdleTimer();
-  // Small delay ensures Supabase session is fully restored after a redirect
+  // Start gate after a short delay (the retry logic inside gate will handle session timing)
   setTimeout(async () => {
     const ok = await gate();
     if(!ok) return;
     await Promise.all([loadBroadcast(), loadCurrentLogo(), loadAnimeList(), loadMembers(), loadActionLog()]);
-  }, 300);
+  }, 500);
 })();
 
 })();
