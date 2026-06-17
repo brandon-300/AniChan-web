@@ -18,6 +18,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing userId or message' });
     }
 
+    // Fetch user details
     const { data: profile } = await supabase
       .from('profiles')
       .select('username, email')
@@ -26,6 +27,7 @@ export default async function handler(req, res) {
 
     if (!profile) return res.status(404).json({ error: 'User not found' });
 
+    // Get admin emails from settings
     const { data: setting } = await supabase
       .from('settings')
       .select('value')
@@ -53,6 +55,12 @@ export default async function handler(req, res) {
              <p><strong>Message:</strong> ${message}</p>
              <p>You can cancel the deletion from the <a href="https://ani-chan-web.vercel.app/admin.html">admin panel</a>.</p>`,
     });
+
+    // Record the appeal timestamp
+    await supabase
+      .from('profiles')
+      .update({ last_appeal_at: new Date().toISOString() })
+      .eq('id', userId);
 
     return res.status(200).json({ success: true });
   } catch (err) {
