@@ -18,7 +18,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing userId or message' });
     }
 
-    // Fetch user details
     const { data: profile } = await supabase
       .from('profiles')
       .select('username, email')
@@ -27,7 +26,6 @@ export default async function handler(req, res) {
 
     if (!profile) return res.status(404).json({ error: 'User not found' });
 
-    // Get admin emails from settings
     const { data: setting } = await supabase
       .from('settings')
       .select('value')
@@ -51,9 +49,12 @@ export default async function handler(req, res) {
       from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
       to: adminEmails.join(', '),
       subject: `Deletion Appeal from ${profile.username}`,
-      html: `<p><strong>User:</strong> ${profile.username} (${profile.email})</p>
-             <p><strong>Message:</strong> ${message}</p>
-             <p>You can cancel the deletion from the <a href="https://ani-chan-web.vercel.app/admin.html">admin panel</a>.</p>`,
+      html: `<div style="text-align:center;margin-bottom:16px">
+              <img src="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" alt="AniChan" style="width:60px;height:60px;border-radius:50%" />
+            </div>
+            <p><strong>User:</strong> ${profile.username} (${profile.email})</p>
+            <p><strong>Message:</strong> ${message}</p>
+            <p>You can cancel the deletion from the <a href="https://ani-chan-web.vercel.app/admin.html">admin panel</a>.</p>`,
     });
 
     // Record the appeal timestamp
