@@ -103,6 +103,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .btn-primary:hover:not(:disabled){filter:brightness(1.08)}
 .btn-danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
 .btn-danger:hover:not(:disabled){background:rgba(255,71,87,.12)}
+.btn-warning{background:rgba(255,181,151,.12);border-color:rgba(255,181,151,.35);color:var(--accent2)}
+.btn-warning:hover:not(:disabled){background:rgba(255,181,151,.25)}
 
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .row.end{justify-content:flex-end}
@@ -406,12 +408,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <button class="bottom-nav-item" data-section="maintenance-section"><span class="material-symbols-outlined">build</span><span class="nav-label">Maintenance</span></button>
 </nav>
 
-<!-- Suspend/Delete dialog (modified) -->
+<!-- Suspend/Delete dialog -->
 <div class="modal" id="memberModal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3 id="memberModalTitle" style="margin-top:0">Suspend user</h3>
     <div id="memberModalContent"></div>
-    <!-- Duration dropdown (only for suspend) -->
     <div id="suspendDurationRow" style="display:none; margin-bottom: 16px;">
       <label for="suspendDuration" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Duration</label>
       <select id="suspendDuration" style="width:100%">
@@ -424,7 +425,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
         <option value="48">2 days</option>
       </select>
     </div>
-    <!-- Admin note input (only for suspend) -->
     <div id="suspendNoteRow" style="display:none; margin-bottom: 16px;">
       <label for="suspendNote" style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Admin note (shown to user)</label>
       <input type="text" id="suspendNote" placeholder="Reason for suspension" style="width:100%" />
@@ -629,8 +629,6 @@ $("uploadLogoBtn").addEventListener("click", async () => {
   } catch (e) { toast(e.message); }
   finally { setLoading(btn, false); }
 });
-
-// (Other functions like extractLanguageTitles, fillFormFromJikan, etc. remain exactly the same as before)
 
 function extractLanguageTitles(jikanAnime) {
   const titles = jikanAnime.titles || []; const result = { en:null, jp:null };
@@ -1009,7 +1007,7 @@ $("deleteDupBtn").addEventListener("click", async () => {
   finally{setLoading(btn,false);}
 });
 
-// ── Member Management (with new suspend/unsuspend/delete flow) ──
+// ── Member Management (with new deletion flow) ──
 async function loadMembers() {
   const btn=$("refreshMembers"); setLoading(btn,true,'Loading members…');
   const{data,error}=await sb.from("profiles").select("*").order("created_at",{ascending:false});
@@ -1024,8 +1022,15 @@ async function loadMembers() {
     const info=document.createElement("div"); info.style.flex="1;min-width:0";
     const nameRow=document.createElement("div"); nameRow.style.cssText="font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:4px";
     nameRow.textContent=m.display_name||m.username||"Unknown";
-    const badge=document.createElement("span"); badge.className="badge "+(m.is_suspended?"suspended":m.is_online?"online":"offline");
-    badge.textContent=m.is_suspended?"Suspended":m.is_online?"Online":"Offline"; nameRow.appendChild(badge);
+    const badge=document.createElement("span");
+    if(m.is_pending_delete){
+      badge.className="badge pending";
+      badge.textContent="Pending Deletion";
+    } else {
+      badge.className="badge "+(m.is_suspended?"suspended":m.is_online?"online":"offline");
+      badge.textContent=m.is_suspended?"Suspended":m.is_online?"Online":"Offline";
+    }
+    nameRow.appendChild(badge);
 
     const emailDiv=document.createElement("div");
     emailDiv.style.cssText="font-size:11px;color:var(--muted);margin-top:2px";
@@ -1046,9 +1051,19 @@ async function loadMembers() {
     const susBtn=document.createElement("button"); susBtn.className="btn btn-danger";
     susBtn.textContent=m.is_suspended?"Unsuspend":"Suspend";
     susBtn.addEventListener("click",()=>openMemberModal(m.is_suspended?"unsuspend":"suspend",m.id,m.display_name||m.username||"User"));
-    const delBtn=document.createElement("button"); delBtn.className="btn btn-danger"; delBtn.textContent="Delete";
-    delBtn.addEventListener("click",()=>openMemberModal("delete",m.id,m.display_name||m.username||"User"));
-    acts.appendChild(susBtn); acts.appendChild(delBtn);
+    acts.appendChild(susBtn);
+
+    if(m.is_pending_delete){
+      const cancelDelBtn=document.createElement("button"); cancelDelBtn.className="btn btn-warning";
+      cancelDelBtn.textContent="Cancel Deletion";
+      cancelDelBtn.addEventListener("click",()=>openMemberModal("cancel_delete",m.id,m.display_name||m.username||"User"));
+      acts.appendChild(cancelDelBtn);
+    } else {
+      const delBtn=document.createElement("button"); delBtn.className="btn btn-danger"; delBtn.textContent="Delete";
+      delBtn.addEventListener("click",()=>openMemberModal("delete",m.id,m.display_name||m.username||"User"));
+      acts.appendChild(delBtn);
+    }
+
     item.appendChild(img); item.appendChild(info); item.appendChild(acts); list.appendChild(item);
   }
 }
@@ -1056,20 +1071,48 @@ $("refreshMembers").addEventListener("click", loadMembers);
 
 function openMemberModal(action,userId,name){
   memberAction=action; selectedUserId=userId;
-  $("memberModalTitle").textContent=action==="suspend"?`Suspend ${name}`:action==="unsuspend"?`Unsuspend ${name}`:`Delete ${name}`;
-  // Hide/show extra fields depending on action
-  $("suspendDurationRow").style.display = action==="suspend" ? "block" : "none";
-  $("suspendNoteRow").style.display = action==="suspend" ? "block" : "none";
-  $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">${action==="delete"?`Permanently delete <strong>${name}</strong>? This cannot be undone.`:action==="suspend"?`Suspend <strong>${name}</strong> for the chosen duration.`:action==="unsuspend"?`Restore access for <strong>${name}</strong>?`:""}</p>`;
-  $("memberModalConfirm").className="btn "+(action==="delete"?"btn-danger":"btn-primary");
-  $("memberModalConfirm").textContent=action==="suspend"?"Yes, Suspend":action==="unsuspend"?"Yes, Unsuspend":"Yes, Delete";
+  if(action==="cancel_delete"){
+    $("memberModalTitle").textContent=`Cancel Deletion for ${name}`;
+    $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">Cancel the pending deletion of <strong>${name}</strong>?</p>`;
+    $("suspendDurationRow").style.display = "none";
+    $("suspendNoteRow").style.display = "block";
+    $("suspendNoteRow").querySelector('label').textContent = "Admin note (optional)";
+    $("suspendNote").value = "";
+    $("memberModalConfirm").className="btn btn-primary";
+    $("memberModalConfirm").textContent="Yes, Cancel Deletion";
+  } else if(action==="suspend"){
+    $("memberModalTitle").textContent=`Suspend ${name}`;
+    $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">Suspend <strong>${name}</strong> for the chosen duration.</p>`;
+    $("suspendDurationRow").style.display = "block";
+    $("suspendNoteRow").style.display = "block";
+    $("suspendNoteRow").querySelector('label').textContent = "Admin note (shown to user)";
+    $("suspendNote").value = "";
+    $("memberModalConfirm").className="btn btn-primary";
+    $("memberModalConfirm").textContent="Yes, Suspend";
+  } else if(action==="unsuspend"){
+    $("memberModalTitle").textContent=`Unsuspend ${name}`;
+    $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">Restore access for <strong>${name}</strong>?</p>`;
+    $("suspendDurationRow").style.display = "none";
+    $("suspendNoteRow").style.display = "none";
+    $("memberModalConfirm").className="btn btn-primary";
+    $("memberModalConfirm").textContent="Yes, Unsuspend";
+  } else if(action==="delete"){
+    $("memberModalTitle").textContent=`Delete ${name}`;
+    $("memberModalContent").innerHTML=`<p style="color:var(--muted);font-size:14px">Permanently delete <strong>${name}</strong>? This cannot be undone immediately; the account will be deleted after 24 hours unless cancelled.</p>`;
+    $("suspendDurationRow").style.display = "none";
+    $("suspendNoteRow").style.display = "block";
+    $("suspendNoteRow").querySelector('label').textContent = "Admin note (shown to user)";
+    $("suspendNote").value = "";
+    $("memberModalConfirm").className="btn btn-danger";
+    $("memberModalConfirm").textContent="Yes, Delete";
+  }
   $("memberModal").classList.add("show");
 }
 $("memberModalCancel").addEventListener("click",()=>$("memberModal").classList.remove("show"));
 $("memberModalConfirm").addEventListener("click", async ()=>{
   const btn=$("memberModalConfirm");
-  // Prepare loading state
-  setLoading(btn,true,memberAction==="delete"?"Deleting…":memberAction==="suspend"?"Suspending…":"Unsuspending…");
+  let loadingLabel = memberAction==="delete"?"Deleting…":memberAction==="suspend"?"Suspending…":memberAction==="unsuspend"?"Unsuspending…":"Cancelling…";
+  setLoading(btn,true,loadingLabel);
 
   try {
     const token = (await sb.auth.getSession()).data.session?.access_token;
@@ -1084,8 +1127,13 @@ $("memberModalConfirm").addEventListener("click", async ()=>{
       endpoint = '/api/admin/unsuspend-user';
       body = { userId: selectedUserId };
     } else if (memberAction === "delete") {
+      const adminNote = $("suspendNote").value.trim();
       endpoint = '/api/admin/delete-user';
-      body = { userId: selectedUserId };
+      body = { userId: selectedUserId, adminNote };
+    } else if (memberAction === "cancel_delete") {
+      const adminNote = $("suspendNote").value.trim();
+      endpoint = '/api/admin/cancel-deletion';
+      body = { userId: selectedUserId, adminNote };
     } else {
       throw new Error('Unknown action');
     }
@@ -1104,9 +1152,9 @@ $("memberModalConfirm").addEventListener("click", async ()=>{
       throw new Error(data.error || `HTTP ${res.status}`);
     }
 
-    toast(memberAction==="delete"?"User deleted ✓":memberAction==="suspend"?"User suspended ✓":"User unsuspended ✓");
+    toast(memberAction==="delete"?"Account deletion scheduled ✓":memberAction==="suspend"?"User suspended ✓":memberAction==="unsuspend"?"User unsuspended ✓":"Deletion cancelled ✓");
     $("memberModal").classList.remove("show");
-    await loadMembers();  // refresh the list
+    await loadMembers();
   } catch (e) {
     toast("Action failed: " + e.message);
   } finally {
