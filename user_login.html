@@ -148,6 +148,7 @@
     color: var(--success);
     font-weight: 600;
     margin-top: 8px;
+    display: none;
   }
 
   /* Loading spinner */
@@ -196,7 +197,7 @@
           <div class="suspension-msg" id="suspensionMsg">
             <p id="suspensionText"></p>
             <div class="countdown" id="countdownTimer"></div>
-            <p class="restored-msg" id="restoredMsg" style="display:none;">Your suspension has ended. You can now log in.</p>
+            <p class="restored-msg" id="restoredMsg">Your suspension has ended. You can now log in.</p>
           </div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">
@@ -399,19 +400,21 @@
 
   // ── Suspension UI logic ──
   let countdownInterval = null;
+  let unsuspendPollInterval = null;
 
   function hideSuspension() {
     $("suspensionMsg").classList.remove("show");
     $("loginSubmit").style.display = "";
     $("loginPassword").style.display = "";
+    $("restoredMsg").style.display = "none";
     if (countdownInterval) clearInterval(countdownInterval);
+    if (unsuspendPollInterval) clearInterval(unsuspendPollInterval);
   }
 
   function showSuspension(adminNote, suspendedUntilISO) {
     const suspendedUntil = new Date(suspendedUntilISO);
     const now = new Date();
     if (suspendedUntil <= now) {
-      // Suspension already expired
       hideSuspension();
       return;
     }
@@ -420,16 +423,16 @@
     $("loginSubmit").style.display = "none";
     $("loginPassword").style.display = "none";
     $("suspensionMsg").classList.add("show");
-    $("suspensionText").textContent = adminNote || "Your account has been suspended.";
+    $("suspensionText").textContent = "Account suspended" + (adminNote ? ": " + adminNote : ".");
 
     function updateCountdown() {
       const now = new Date();
       const diff = suspendedUntil - now;
       if (diff <= 0) {
         clearInterval(countdownInterval);
+        clearInterval(unsuspendPollInterval);
         $("countdownTimer").style.display = "none";
         $("restoredMsg").style.display = "block";
-        // Restore login form after 3 seconds
         setTimeout(() => {
           hideSuspension();
           $("loginUsername").value = "";
@@ -437,14 +440,40 @@
         }, 3000);
         return;
       }
+      $("countdownTimer").style.display = "block";
+      $("restoredMsg").style.display = "none";
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
       $("countdownTimer").textContent = `${days > 0 ? days + 'd ' : ''}${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
     }
+
     updateCountdown();
     countdownInterval = setInterval(updateCountdown, 1000);
+
+    // Poll for unsuspension every 10 seconds
+    unsuspendPollInterval = setInterval(async () => {
+      const username = $("loginUsername").value.trim();
+      if (!username) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_suspended")
+        .eq("username", username)
+        .maybeSingle();
+      if (data && !data.is_suspended) {
+        // User was unsuspended
+        clearInterval(unsuspendPollInterval);
+        clearInterval(countdownInterval);
+        $("countdownTimer").style.display = "none";
+        $("restoredMsg").style.display = "block";
+        setTimeout(() => {
+          hideSuspension();
+          $("loginUsername").value = "";
+          $("loginPassword").value = "";
+        }, 3000);
+      }
+    }, 10000);
   }
 
   // ── Pre‑login suspension check ──
@@ -454,12 +483,11 @@
       .select("is_suspended, suspended_until, admin_note")
       .eq("username", username)
       .maybeSingle();
-    if (error || !data) return false; // user not found or error
+    if (error || !data) return false;
     if (data.is_suspended && data.suspended_until) {
       showSuspension(data.admin_note, data.suspended_until);
       return true;
     }
-    // If suspended but no until (shouldn't happen), clear it
     if (data.is_suspended) {
       await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("username", username);
     }
@@ -483,10 +511,9 @@
       if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
-      // Double‑check suspension after auth (in case it was set after page load)
+      // Double‑check suspension after auth
       const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
-        // (existing deletion logic unchanged)
         const delAt = new Date(full.deleted_at), now = new Date(), diff = now - delAt;
         if (diff >= 2*60*60*1000) { await supabase.from("profiles").delete().eq("id", profile.id); err.textContent = "Account doesn't exist. Sign up."; err.classList.add("show"); setButtonLoading(btn, false); return; }
         const remain = 2*60*60*1000 - diff, h = Math.floor(remain/3600000), m = Math.floor((remain%3600000)/60000);
@@ -651,7 +678,6 @@
 
     // Check suspension before onboarding
     if (profile && profile.is_suspended && profile.suspended_until && new Date(profile.suspended_until) > new Date()) {
-      // Show suspension message (use the same UI, but since the login form is hidden, we'll improvise)
       alert(`Your account is suspended. Reason: ${profile.admin_note || 'N/A'}. Please contact support.`);
       await supabase.auth.signOut();
       window.location.href = "index.html";
