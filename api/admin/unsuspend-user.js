@@ -1,16 +1,13 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 export default async function handler(req, res) {
   try {
-    const [{ createClient }] = await Promise.all([
-      import('@supabase/supabase-js'),
-    ]);
+    const { createClient } = await import('@supabase/supabase-js');
 
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    const resend = new Resend(process.env.RESEND_API_KEY);
 
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' });
@@ -30,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing userId' });
     }
 
-    // Fetch user email before clearing suspension (so we can notify them)
+    // Fetch user email before clearing suspension
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('email, username')
@@ -53,17 +50,29 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    // Send email notification to the user
+    // Send email via Gmail SMTP
     if (profile.email) {
-      await resend.emails.send({
-        from: 'AniChan <onboarding@resend.dev>',
-        to: [profile.email],
-        subject: 'Your account has been reinstated',
-        html: `<p>Hi ${profile.username || 'user'},</p><p>Your account on AniChan has been unsuspended. You can now log in again.</p><p>— AniChan Team</p>`,
-      }).catch((emailErr) => {
-        console.error('Failed to send unsuspend email:', emailErr);
-        // Not critical; we can still return success
-      });
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.ADMIN_EMAIL,       // your Gmail address
+            pass: process.env.GMAIL_APP_PASSWORD,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
+          to: profile.email,
+          subject: 'Your account has been reinstated',
+          html: `<p>Hi ${profile.username || 'user'},</p>
+                 <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
+                 <p>— AniChan Team</p>`,
+        });
+      } catch (emailErr) {
+        console.error('Failed to send email:', emailErr);
+        // Not critical – we can still return success
+      }
     }
 
     return res.status(200).json({ success: true });
