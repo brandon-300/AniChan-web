@@ -1665,7 +1665,8 @@
     const { error: upErr } = await supabase.storage.from(VOICE_BUCKET).upload(path, blob, { contentType: mime });
     if (upErr) {
       console.error(upErr);
-      row.querySelector('.bubble').innerHTML = '<span style="color:var(--danger)">Voice note failed to send</span>';
+      const detail = upErr.message || upErr.error || upErr.statusCode || JSON.stringify(upErr);
+      row.querySelector('.bubble').innerHTML = `<span style="color:var(--danger)">Upload failed: ${esc(String(detail))}</span>`;
       sending = false;
       return;
     }
@@ -1681,11 +1682,12 @@
     if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
 
     const { data: ins, error } = await supabase.from('messages').insert(payload).select().single();
-    row.remove();
     if (error) {
       console.error(error);
-      alert('Voice note failed to send.');
+      const detail = error.message || error.details || error.hint || JSON.stringify(error);
+      row.querySelector('.bubble').innerHTML = `<span style="color:var(--danger)">Insert failed: ${esc(String(detail))}</span>`;
     } else if (ins) {
+      row.remove();
       sentIds.add(ins.id);
       addMsg(ins);
       await supabase.from('chat_rooms').update({ last_message: '🎤 Voice message', last_message_time: new Date().toISOString() }).eq('id', activeRoom);
