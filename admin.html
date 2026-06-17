@@ -253,12 +253,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
             </div>
           </div>
 
-          <!-- Site Logo -->
+          <!-- Site Logo (enlarged preview) -->
           <div class="bento-section glass-panel" id="logo-section">
             <h3><span class="material-symbols-outlined">image</span> Site Logo</h3>
             <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Change the logo that appears in the homepage header.</p>
             <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-              <img id="currentLogoPreview" src="" style="width:80px;height:80px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
+              <img id="currentLogoPreview" src="" style="width:150px;height:150px;border-radius:50%;object-fit:cover;background:var(--panel);" alt="Current logo" />
             </div>
             <input type="file" id="logoFileInput" accept="image/*" style="margin-bottom:10px;display:block;width:100%" />
             <button class="btn btn-primary" id="uploadLogoBtn">Upload &amp; Save</button>
@@ -1027,7 +1027,6 @@ async function loadActionLog(){
 //  MAINTENANCE SECTION HANDLERS
 // ═══════════════════════════════════════════
 
-// Purge Cache
 $("purgeCacheBtn").addEventListener("click", async () => {
   if (!confirm("Force ALL users to reload the site? This will bump the cache version.")) return;
   const btn = $("purgeCacheBtn");
@@ -1047,7 +1046,6 @@ $("purgeCacheBtn").addEventListener("click", async () => {
   }
 });
 
-// Send Weekly Report (shows real server error)
 $("sendReportBtn").addEventListener("click", async () => {
   if (!confirm("Send the weekly report email now?")) return;
   const btn = $("sendReportBtn");
@@ -1075,7 +1073,6 @@ $("sendReportBtn").addEventListener("click", async () => {
   }
 });
 
-// Regenerate Sitemap (shows real server error)
 $("regenerateSitemapBtn").addEventListener("click", async () => {
   if (!confirm("Regenerate the sitemap now?")) return;
   const btn = $("regenerateSitemapBtn");
