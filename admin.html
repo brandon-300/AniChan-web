@@ -527,6 +527,7 @@ async function gate() {
     if (session) {
       if ((session.user.email || "").toLowerCase() !== ADMIN_EMAIL) {
         $("gateMsg").textContent = "Not authorized for admin access.";
+        window.isLoggingOut = true; // leaving this page next isn't a "tab close"
         return false;
       }
       $("gate").style.display = "none";
@@ -541,6 +542,7 @@ async function gate() {
   }
   // All attempts failed
   $("gateMsg").textContent = "You're not signed in. Redirecting…";
+  window.isLoggingOut = true; // this redirect is deliberate, not a tab close
   setTimeout(() => location.replace("admin_login.html"), 800);
   return false;
 }
