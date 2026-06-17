@@ -39,7 +39,6 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    // Send suspension email to the user
     const { data: profile } = await supabase
       .from('profiles')
       .select('email, username')
@@ -63,15 +62,17 @@ export default async function handler(req, res) {
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
           subject: 'Your account has been suspended',
-          html: `<p>Hi ${profile.username || 'user'},</p>
-                 <p>Your account on AniChan has been suspended for <strong>${durationText}</strong>.</p>
-                 ${adminNote ? `<p><strong>Reason:</strong> ${adminNote}</p>` : ''}
-                 <p>You will be able to log in again after the suspension period ends.</p>
-                 <p>— AniChan Team</p>`,
+          html: `<div style="text-align:center;margin-bottom:16px">
+                  <img src="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" alt="AniChan" style="width:60px;height:60px;border-radius:50%" />
+                </div>
+                <p>Hi ${profile.username || 'user'},</p>
+                <p>Your account on AniChan has been suspended for <strong>${durationText}</strong>.</p>
+                ${adminNote ? `<p><strong>Reason:</strong> ${adminNote}</p>` : ''}
+                <p>You will be able to log in again after the suspension period ends.</p>
+                <p>— AniChan Team</p>`,
         });
       } catch (emailErr) {
         console.error('Failed to send suspension email:', emailErr);
-        // Return error so admin sees it
         return res.status(500).json({
           error: 'Email failed: ' + emailErr.message,
         });
