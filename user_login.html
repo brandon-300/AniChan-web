@@ -172,7 +172,7 @@
   #loginToast.success { border-color: var(--success); color: var(--success); }
   #loginToast.error { border-color: var(--danger); color: var(--danger); }
 
-  /* Appeal button */
+  /* Appeal section */
   .appeal-btn {
     margin-top: 12px;
     padding: 10px 20px;
@@ -209,6 +209,12 @@
     font-weight: 600;
     border: none;
     cursor: pointer;
+  }
+  .appeal-status {
+    margin-top: 12px;
+    color: var(--accent);
+    font-size: 14px;
+    display: none;
   }
 
   /* Loading spinner */
@@ -263,6 +269,7 @@
               <textarea id="appealMessage" placeholder="Write your appeal..."></textarea>
               <button id="submitAppealBtn">Send Appeal</button>
             </div>
+            <div class="appeal-status" id="appealStatus"></div>
           </div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">
@@ -450,12 +457,10 @@
   function showToast(msg, type = 'success') {
     const toast = $('loginToast');
     toast.textContent = msg;
-    toast.className = type;   // 'success' or 'error'
+    toast.className = type;
     toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 4000);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
   }
 
   function clearMessages() {
@@ -489,6 +494,7 @@
     $("loginPassword").style.display = "";
     $("appealBtn").style.display = "none";
     $("appealArea").style.display = "none";
+    $("appealStatus").style.display = "none";
     if (countdownInterval) clearInterval(countdownInterval);
     if (unsuspendPollInterval) clearInterval(unsuspendPollInterval);
   }
@@ -501,12 +507,13 @@
       return;
     }
 
-    // Hide login form
     $("loginSubmit").style.display = "none";
     $("loginPassword").style.display = "none";
     $("suspensionMsg").classList.add("show");
     $("suspensionText").textContent = "Account suspended" + (adminNote ? ": " + adminNote : ".");
     $("appealBtn").style.display = "none";
+    $("appealArea").style.display = "none";
+    $("appealStatus").style.display = "none";
     $("countdownTimer").style.display = "block";
 
     function updateCountdown() {
@@ -515,7 +522,6 @@
       if (diff <= 0) {
         clearInterval(countdownInterval);
         clearInterval(unsuspendPollInterval);
-        // Restored: show toast and re-enable form
         hideStatusMessage();
         showToast("Your suspension has ended. You can now log in.", "success");
         $("loginUsername").value = "";
@@ -532,7 +538,6 @@
     updateCountdown();
     countdownInterval = setInterval(updateCountdown, 1000);
 
-    // Poll for unsuspension every 10 seconds
     unsuspendPollInterval = setInterval(async () => {
       const username = $("loginUsername").value.trim();
       if (!username) return;
@@ -552,7 +557,7 @@
     }, 10000);
   }
 
-  function showDeletionPending(adminNote, deletedAtISO) {
+  function showDeletionPending(adminNote, deletedAtISO, lastAppealAt) {
     const deletedAt = new Date(deletedAtISO);
     const now = new Date();
     const permanentDeletion = new Date(deletedAt.getTime() + 24 * 60 * 60 * 1000);
@@ -563,7 +568,8 @@
       return;
     }
 
-    // Hide login form
+    const username = $("loginUsername").value.trim();
+
     $("loginSubmit").style.display = "none";
     $("loginPassword").style.display = "none";
     $("suspensionMsg").classList.add("show");
@@ -572,20 +578,54 @@
     const hoursLeft = Math.max(1, Math.ceil(diff / (1000 * 60 * 60)));
     $("countdownTimer").textContent = `Time remaining: ${hoursLeft} hour(s)`;
 
-    // Show appeal button
-    $("appealBtn").style.display = "inline-block";
+    // Determine appeal state from lastAppealAt
+    let appealCooldownRemaining = 0;
+    if (lastAppealAt) {
+      const elapsed = now - new Date(lastAppealAt);
+      const cooldownMs = 10 * 60 * 1000; // 10 minutes
+      appealCooldownRemaining = Math.max(0, cooldownMs - elapsed);
+    }
+
+    // Clear any previous appeal UI
+    $("appealBtn").style.display = "none";
     $("appealArea").style.display = "none";
+    $("appealStatus").style.display = "none";
+
+    if (appealCooldownRemaining > 0) {
+      // Show waiting message with countdown
+      $("appealStatus").style.display = "block";
+      const minutesLeft = Math.ceil(appealCooldownRemaining / 60000);
+      $("appealStatus").textContent = "Your appeal has been received and is now waiting for the admins to respond. The admin would respond in the next minutes. In the case the admin didn't respond you can resend another appeal in " + minutesLeft + " minutes.";
+
+      // Start a timer to update the countdown and eventually show the appeal button again
+      const cooldownInterval = setInterval(() => {
+        const elapsed = Date.now() - new Date(lastAppealAt).getTime();
+        const remaining = Math.max(0, 10 * 60 * 1000 - elapsed);
+        if (remaining <= 0) {
+          clearInterval(cooldownInterval);
+          $("appealStatus").style.display = "none";
+          $("appealBtn").style.display = "inline-block";
+        } else {
+          const mins = Math.ceil(remaining / 60000);
+          $("appealStatus").textContent = "Your appeal has been received and is now waiting for the admins to respond. The admin would respond in the next minutes. In the case the admin didn't respond you can resend another appeal in " + mins + " minutes.";
+        }
+      }, 30000);
+    } else {
+      // Show appeal button
+      $("appealBtn").style.display = "inline-block";
+    }
 
     // Appeal button handler
     $("appealBtn").onclick = () => {
+      $("appealBtn").style.display = "none";
       $("appealArea").style.display = "block";
+      $("appealMessage").value = "";
     };
 
     // Submit appeal
     $("submitAppealBtn").onclick = async () => {
       const message = $("appealMessage").value.trim();
       if (!message) return;
-      const username = $("loginUsername").value.trim();
       if (!username) return;
 
       const { data: profile } = await supabase
@@ -607,12 +647,16 @@
       });
 
       if (res.ok) {
-        btn.textContent = "Appeal Sent ✓";
+        // Sent successfully – the API updates last_appeal_at, so we re-fetch to get the new timestamp
+        const { data: updated } = await supabase
+          .from("profiles")
+          .select("last_appeal_at")
+          .eq("id", profile.id)
+          .single();
+
+        // Re-render with the new last_appeal_at
+        showDeletionPending(adminNote, deletedAtISO, updated?.last_appeal_at || new Date().toISOString());
         showToast("Appeal sent successfully.", "success");
-        $("appealMessage").value = "";
-        setTimeout(() => {
-          $("appealArea").style.display = "none";
-        }, 2000);
       } else {
         btn.textContent = "Failed";
         btn.disabled = false;
@@ -620,9 +664,8 @@
       }
     };
 
-    // Poll for deletion cancellation every 10 seconds
+    // Poll for deletion cancellation
     unsuspendPollInterval = setInterval(async () => {
-      const username = $("loginUsername").value.trim();
       if (!username) return;
       const { data } = await supabase
         .from("profiles")
@@ -643,13 +686,13 @@
   async function checkStatus(username) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at")
+      .select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at, last_appeal_at")
       .eq("username", username)
       .maybeSingle();
     if (error || !data) return false;
 
     if (data.is_pending_delete && data.deleted_at) {
-      showDeletionPending(data.admin_note, data.deleted_at);
+      showDeletionPending(data.admin_note, data.deleted_at, data.last_appeal_at);
       return true;
     }
     if (data.is_suspended && data.suspended_until) {
@@ -678,7 +721,7 @@
       if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
-      const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at").eq("id", profile.id).single();
+      const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at, last_appeal_at").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
         const delAt = new Date(full.deleted_at), now = new Date();
         const permanent = new Date(delAt.getTime() + 24*60*60*1000);
@@ -692,7 +735,7 @@
         const hours = Math.ceil(diff / (1000*60*60));
         err.textContent = `Account scheduled for deletion. Note: "${full.admin_note}". Time left: ${hours} hour(s).`;
         err.classList.add("show");
-        showDeletionPending(full.admin_note, full.deleted_at);
+        showDeletionPending(full.admin_note, full.deleted_at, full.last_appeal_at);
         setButtonLoading(btn, false);
         return;
       }
