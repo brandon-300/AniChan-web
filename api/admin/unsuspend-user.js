@@ -22,9 +22,7 @@ export default async function handler(req, res) {
     }
 
     const { userId } = req.body || {};
-    if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' });
-    }
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
@@ -36,7 +34,6 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Clear suspension
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -48,7 +45,6 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    // Send email notification to the user
     if (profile.email) {
       try {
         const transporter = nodemailer.createTransport({
@@ -63,9 +59,12 @@ export default async function handler(req, res) {
           from: `"AniChan" <${process.env.ADMIN_EMAIL}>`,
           to: profile.email,
           subject: 'Your account has been reinstated',
-          html: `<p>Hi ${profile.username || 'user'},</p>
-                 <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
-                 <p>— AniChan Team</p>`,
+          html: `<div style="text-align:center;margin-bottom:16px">
+                  <img src="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" alt="AniChan" style="width:60px;height:60px;border-radius:50%" />
+                </div>
+                <p>Hi ${profile.username || 'user'},</p>
+                <p>Your account on AniChan has been unsuspended. You can now log in again.</p>
+                <p>— AniChan Team</p>`,
         });
       } catch (emailErr) {
         console.error('Failed to send unsuspension email:', emailErr);
@@ -77,9 +76,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(500).json({
-      error: err.message,
-      stack: err.stack,
-    });
+    return res.status(500).json({ error: err.message });
   }
 }
