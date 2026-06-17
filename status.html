@@ -330,6 +330,32 @@
   if (!status) { alert('No status specified'); history.back(); return; }
   $('pageTitle').textContent = `Status: ${STATUS_LABELS[status] || status}`;
 
+  // ═══════════════════════════════════════════
+  //  LIVE SUSPENSION + DELETION CHECK (10 sec)
+  // ═══════════════════════════════════════════
+  setInterval(async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) return;
+    const { data } = await sb
+      .from('profiles')
+      .select('is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+      alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+      await sb.auth.signOut();
+      window.location.href = 'user_login.html';
+      return;
+    }
+
+    if (data?.is_pending_delete && data.deleted_at) {
+      alert(`Your account has been scheduled for deletion.\n\n${data.admin_note || ''}`);
+      await sb.auth.signOut();
+      window.location.href = 'user_login.html';
+    }
+  }, 10000);
+
   // ── Hamburger menu ──
   (function renderHamburger() {
     const container = $("headerActions");
