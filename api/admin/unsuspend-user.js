@@ -1,0 +1,76 @@
+import { Resend } from 'resend';
+
+export default async function handler(req, res) {
+  try {
+    const [{ createClient }] = await Promise.all([
+      import('@supabase/supabase-js'),
+    ]);
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Verify admin token
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user || user.email !== process.env.ADMIN_EMAIL) {
+      return res.status(403).json({ error: 'Forbidden: invalid admin' });
+    }
+
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    // Fetch user email before clearing suspension (so we can notify them)
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('email, username')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError || !profile) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Clear suspension
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_suspended: false,
+        suspended_until: null,
+        admin_note: null,
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
+
+    // Send email notification to the user
+    if (profile.email) {
+      await resend.emails.send({
+        from: 'AniChan <onboarding@resend.dev>',
+        to: [profile.email],
+        subject: 'Your account has been reinstated',
+        html: `<p>Hi ${profile.username || 'user'},</p><p>Your account on AniChan has been unsuspended. You can now log in again.</p><p>— AniChan Team</p>`,
+      }).catch((emailErr) => {
+        console.error('Failed to send unsuspend email:', emailErr);
+        // Not critical; we can still return success
+      });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    return res.status(500).json({
+      error: err.message,
+      stack: err.stack,
+    });
+  }
+}
