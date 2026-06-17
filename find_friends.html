@@ -109,6 +109,24 @@
 
   let currentUserId = null;
 
+  // ═══════════════════════════════════════════
+  //  LIVE SUSPENSION CHECK (every 10 seconds)
+  // ═══════════════════════════════════════════
+  setInterval(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_suspended, suspended_until, admin_note')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+      alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+      await supabase.auth.signOut();
+      window.location.href = 'user_login.html';
+    }
+  }, 10000);
+
   $("backBtn").addEventListener("click", () => {
     window.location.href = "index.html";
   });
