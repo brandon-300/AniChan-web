@@ -127,7 +127,7 @@
   .onboarding-card h2{text-align:center;margin-bottom:8px}
   .onboarding-card p{text-align:center;color:var(--muted);font-size:14px;margin-bottom:20px}
 
-  /* Suspension message */
+  /* Suspension message (reused for deletion) */
   .suspension-msg {
     background: rgba(255,71,87,0.1);
     border: 1px solid var(--danger);
@@ -149,6 +149,45 @@
     font-weight: 600;
     margin-top: 8px;
     display: none;
+  }
+
+  /* Appeal button */
+  .appeal-btn {
+    margin-top: 12px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: var(--accent2);
+    color: #000;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .appeal-btn:hover { filter: brightness(1.1); }
+  .appeal-area {
+    margin-top: 12px;
+    display: none;
+  }
+  .appeal-area textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+    resize: vertical;
+    min-height: 80px;
+  }
+  .appeal-area button {
+    margin-top: 8px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #0a2a28;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
   }
 
   /* Loading spinner */
@@ -193,11 +232,17 @@
             </div>
           </div>
           <div class="forgot-link"><a href="forgot_password.html">Forgot password?</a></div>
-          <!-- Suspension message area -->
+          <!-- Suspension / Deletion message area -->
           <div class="suspension-msg" id="suspensionMsg">
             <p id="suspensionText"></p>
             <div class="countdown" id="countdownTimer"></div>
-            <p class="restored-msg" id="restoredMsg">Your suspension has ended. You can now log in.</p>
+            <p class="restored-msg" id="restoredMsg" style="display:none;">Your suspension has ended. You can now log in.</p>
+            <!-- Appeal for deletion -->
+            <button class="appeal-btn" id="appealBtn" style="display:none;">Appeal</button>
+            <div class="appeal-area" id="appealArea">
+              <textarea id="appealMessage" placeholder="Write your appeal..."></textarea>
+              <button id="submitAppealBtn">Send Appeal</button>
+            </div>
           </div>
           <div class="err-msg" id="loginErr"></div>
           <button class="submit-btn" id="loginSubmit">
@@ -380,7 +425,7 @@
   function clearMessages() {
     $("loginErr").classList.remove("show"); $("signupErr").classList.remove("show"); $("signupSuccess").classList.remove("show");
     signupAge.classList.remove("invalid-age"); ageError.classList.remove("show");
-    hideSuspension();
+    hideStatusMessage();
   }
   function isValidPassword(pw) { return pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw); }
 
@@ -398,15 +443,17 @@
     }
   }
 
-  // ── Suspension UI logic ──
+  // ── Suspension / Deletion UI logic ──
   let countdownInterval = null;
   let unsuspendPollInterval = null;
 
-  function hideSuspension() {
+  function hideStatusMessage() {
     $("suspensionMsg").classList.remove("show");
     $("loginSubmit").style.display = "";
     $("loginPassword").style.display = "";
     $("restoredMsg").style.display = "none";
+    $("appealBtn").style.display = "none";
+    $("appealArea").style.display = "none";
     if (countdownInterval) clearInterval(countdownInterval);
     if (unsuspendPollInterval) clearInterval(unsuspendPollInterval);
   }
@@ -415,7 +462,7 @@
     const suspendedUntil = new Date(suspendedUntilISO);
     const now = new Date();
     if (suspendedUntil <= now) {
-      hideSuspension();
+      hideStatusMessage();
       return;
     }
 
@@ -424,6 +471,7 @@
     $("loginPassword").style.display = "none";
     $("suspensionMsg").classList.add("show");
     $("suspensionText").textContent = "Account suspended" + (adminNote ? ": " + adminNote : ".");
+    $("appealBtn").style.display = "none";
 
     function updateCountdown() {
       const now = new Date();
@@ -434,7 +482,7 @@
         $("countdownTimer").style.display = "none";
         $("restoredMsg").style.display = "block";
         setTimeout(() => {
-          hideSuspension();
+          hideStatusMessage();
           $("loginUsername").value = "";
           $("loginPassword").value = "";
         }, 3000);
@@ -462,13 +510,12 @@
         .eq("username", username)
         .maybeSingle();
       if (data && !data.is_suspended) {
-        // User was unsuspended
         clearInterval(unsuspendPollInterval);
         clearInterval(countdownInterval);
         $("countdownTimer").style.display = "none";
         $("restoredMsg").style.display = "block";
         setTimeout(() => {
-          hideSuspension();
+          hideStatusMessage();
           $("loginUsername").value = "";
           $("loginPassword").value = "";
         }, 3000);
@@ -476,14 +523,112 @@
     }, 10000);
   }
 
-  // ── Pre‑login suspension check ──
-  async function checkSuspension(username) {
+  function showDeletionPending(adminNote, deletedAtISO) {
+    const deletedAt = new Date(deletedAtISO);
+    const now = new Date();
+    const permanentDeletion = new Date(deletedAt.getTime() + 24 * 60 * 60 * 1000);
+    const diff = permanentDeletion - now;
+
+    if (diff <= 0) {
+      hideStatusMessage();
+      // Account has been permanently deleted by now
+      return;
+    }
+
+    // Hide login form
+    $("loginSubmit").style.display = "none";
+    $("loginPassword").style.display = "none";
+    $("suspensionMsg").classList.add("show");
+    $("suspensionText").textContent = "Account scheduled for deletion" + (adminNote ? ": " + adminNote : ".");
+    $("countdownTimer").style.display = "block";
+    $("restoredMsg").style.display = "none";
+
+    const hoursLeft = Math.max(1, Math.ceil(diff / (1000 * 60 * 60)));
+    $("countdownTimer").textContent = `Time remaining: ${hoursLeft} hour(s)`;
+
+    // Show appeal button
+    $("appealBtn").style.display = "inline-block";
+    $("appealArea").style.display = "none";
+
+    // Appeal button handler
+    $("appealBtn").onclick = () => {
+      $("appealArea").style.display = "block";
+    };
+
+    // Submit appeal
+    $("submitAppealBtn").onclick = async () => {
+      const message = $("appealMessage").value.trim();
+      if (!message) return;
+      const username = $("loginUsername").value.trim();
+      if (!username) return;
+
+      // Fetch user ID
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (!profile) return;
+
+      const btn = $("submitAppealBtn");
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+
+      const res = await fetch('/api/user/appeal-deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, message })
+      });
+
+      if (res.ok) {
+        btn.textContent = "Appeal Sent";
+        $("appealMessage").value = "";
+        setTimeout(() => {
+          $("appealArea").style.display = "none";
+        }, 2000);
+      } else {
+        btn.textContent = "Failed";
+        btn.disabled = false;
+      }
+    };
+
+    // Poll for deletion cancellation every 10 seconds
+    unsuspendPollInterval = setInterval(async () => {
+      const username = $("loginUsername").value.trim();
+      if (!username) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_pending_delete")
+        .eq("username", username)
+        .maybeSingle();
+      if (data && !data.is_pending_delete) {
+        clearInterval(unsuspendPollInterval);
+        $("suspensionMsg").classList.remove("show");
+        $("restoredMsg").style.display = "block";
+        $("restoredMsg").textContent = "Your account deletion has been cancelled. You can now log in.";
+        setTimeout(() => {
+          hideStatusMessage();
+          $("loginUsername").value = "";
+          $("loginPassword").value = "";
+        }, 3000);
+      }
+    }, 10000);
+  }
+
+  // ── Pre‑login status check ──
+  async function checkStatus(username) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("is_suspended, suspended_until, admin_note")
+      .select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at")
       .eq("username", username)
       .maybeSingle();
     if (error || !data) return false;
+
+    if (data.is_pending_delete && data.deleted_at) {
+      showDeletionPending(data.admin_note, data.deleted_at);
+      return true;
+    }
     if (data.is_suspended && data.suspended_until) {
       showSuspension(data.admin_note, data.suspended_until);
       return true;
@@ -500,9 +645,9 @@
     err.classList.remove("show");
     if (!username || !password) { err.textContent = "Please enter both username and password."; err.classList.add("show"); return; }
 
-    // Pre‑check suspension
-    const suspended = await checkSuspension(username);
-    if (suspended) return;
+    // Pre‑check status
+    const blocked = await checkStatus(username);
+    if (blocked) return;
 
     const btn = $("loginSubmit");
     setButtonLoading(btn, true, 'Logging in…');
@@ -511,19 +656,32 @@
       if (!profile) { err.textContent = "Username does not exist."; err.classList.add("show"); setButtonLoading(btn, false); return; }
       const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile.email, password });
       if (authErr) throw authErr;
-      // Double‑check suspension after auth
+      // Double‑check status after auth
       const { data: full } = await supabase.from("profiles").select("is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at").eq("id", profile.id).single();
       if (full?.is_pending_delete) {
-        const delAt = new Date(full.deleted_at), now = new Date(), diff = now - delAt;
-        if (diff >= 2*60*60*1000) { await supabase.from("profiles").delete().eq("id", profile.id); err.textContent = "Account doesn't exist. Sign up."; err.classList.add("show"); setButtonLoading(btn, false); return; }
-        const remain = 2*60*60*1000 - diff, h = Math.floor(remain/3600000), m = Math.floor((remain%3600000)/60000);
-        err.textContent = `Account deleted by admin. Note: "${full.admin_note}". Removed in ${h}h ${m}m.`; err.classList.add("show"); setButtonLoading(btn, false); return;
+        const delAt = new Date(full.deleted_at), now = new Date();
+        const permanent = new Date(delAt.getTime() + 24*60*60*1000);
+        const diff = permanent - now;
+        if (diff <= 0) {
+          // Already permanently deleted by cron
+          err.textContent = "Account no longer exists.";
+          err.classList.add("show");
+          setButtonLoading(btn, false);
+          return;
+        }
+        const hours = Math.ceil(diff / (1000*60*60));
+        err.textContent = `Account scheduled for deletion. Note: "${full.admin_note}". Time left: ${hours} hour(s).`;
+        err.classList.add("show");
+        showDeletionPending(full.admin_note, full.deleted_at);
+        setButtonLoading(btn, false);
+        return;
       }
       if (full?.is_suspended) {
         const until = new Date(full.suspended_until);
         if (until > new Date()) {
           const rem = until - new Date(), d = Math.floor(rem/(1000*60*60*24)), h = Math.floor((rem%(1000*60*60*24))/(1000*60*60));
-          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`; err.classList.add("show");
+          err.textContent = `Account suspended. Note: "${full.admin_note}". Remaining: ${d}d ${h}h.`;
+          err.classList.add("show");
           showSuspension(full.admin_note, full.suspended_until);
           setButtonLoading(btn, false);
           return;
@@ -652,7 +810,7 @@
     }
   });
 
-  // Onboarding check – also check suspension
+  // Onboarding check – also check status
   async function checkOnboarding() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("onboarding") !== "1") return;
@@ -676,9 +834,14 @@
       profile = newProfile;
     }
 
-    // Check suspension before onboarding
     if (profile && profile.is_suspended && profile.suspended_until && new Date(profile.suspended_until) > new Date()) {
       alert(`Your account is suspended. Reason: ${profile.admin_note || 'N/A'}. Please contact support.`);
+      await supabase.auth.signOut();
+      window.location.href = "index.html";
+      return;
+    }
+    if (profile && profile.is_pending_delete && profile.deleted_at) {
+      alert(`Your account is scheduled for deletion. Reason: ${profile.admin_note || 'N/A'}.`);
       await supabase.auth.signOut();
       window.location.href = "index.html";
       return;
