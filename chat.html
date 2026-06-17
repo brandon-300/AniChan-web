@@ -801,7 +801,7 @@
   let replyTo = null, ctxMsgId = null, sending = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
   const sentIds = new Set();
-  let suspensionCheckInterval = null;   // ← new
+  let suspensionCheckInterval = null;
 
   // Tracks which users are currently typing (by user id)
   const typingUsers = new Map();
@@ -838,6 +838,34 @@
     await supabase.from('user_presence').upsert({ user_id: currentUser.id, status, last_active: new Date().toISOString() });
     const isOnline = status === 'online';
     await supabase.from('profiles').update({ is_online: isOnline, last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+  }
+
+  // ═══════════════════════════════════════
+  //  LIVE SUSPENSION CHECK (10 seconds)
+  // ═══════════════════════════════════════
+  function startSuspensionCheck() {
+    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
+    suspensionCheckInterval = setInterval(async () => {
+      if (!currentUser) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_suspended, suspended_until, admin_note')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+        clearInterval(suspensionCheckInterval);
+        alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+        await supabase.auth.signOut();
+        window.location.href = 'user_login.html';
+      }
+    }, 10000);
+  }
+
+  function stopSuspensionCheck() {
+    if (suspensionCheckInterval) {
+      clearInterval(suspensionCheckInterval);
+      suspensionCheckInterval = null;
+    }
   }
 
   // ── Typing broadcast via Supabase Realtime Broadcast ──
@@ -886,7 +914,6 @@
     renderRooms(filteredRooms);
   }
 
-  // ── Partner status helper ──
   function setPartnerStatus(isOnline, lastSeen) {
     const sub = $('partnerSub');
     if (sub.classList.contains('typing-status')) return;
@@ -899,7 +926,6 @@
     }
   }
 
-  // ── Rooms ──
   function filterRooms(q) {
     const t = q.trim().toLowerCase();
     filteredRooms = t
@@ -982,7 +1008,7 @@
     filterRooms($('searchInput').value);
   }
 
-  // ── Profile subscription for real-time online dots ──
+  // ── Profile subscription (renamed channel) ──
   let presenceChannel = null;
   let profilesChangeSub = null;
 
@@ -1014,12 +1040,8 @@
           }
         });
       })
-      .on('presence', { event: 'join' }, ({ key }) => {
-        updateOnlineDot(key, true);
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        // Handled by postgres_changes Channel 1
-      })
+      .on('presence', { event: 'join' }, ({ key }) => updateOnlineDot(key, true))
+      .on('presence', { event: 'leave' }, () => {})
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
           await supabase.from('profiles')
@@ -1047,7 +1069,6 @@
     }
   }
 
-  // ── Mark all messages in a room as read ──
   async function markAsRead(roomId) {
     await supabase.rpc('mark_messages_read', { room_id: roomId });
     const room = rooms.find(r => r.id === roomId);
@@ -1059,7 +1080,6 @@
     }
   }
 
-  // ── Open room ──
   async function openRoom(roomId, otherId) {
     activeRoom = roomId;
     partnerId  = otherId;
@@ -1108,7 +1128,6 @@
     openRoom(item.dataset.roomId, item.dataset.otherId);
   });
 
-  // ── Messages ──
   async function loadMsgs(roomId) {
     const { data, error } = await supabase
       .from('messages').select('*')
@@ -1280,11 +1299,7 @@
     const icon = el.querySelector('.swipe-reply-icon');
     const THRESHOLD = 72;
 
-    el.addEventListener('touchstart', e => {
-      sx = e.touches[0].clientX;
-      dragging = true;
-    }, { passive: true });
-
+    el.addEventListener('touchstart', e => { sx = e.touches[0].clientX; dragging = true; }, { passive: true });
     el.addEventListener('touchmove', e => {
       if (!dragging) return;
       const dx = e.touches[0].clientX - sx;
@@ -1294,7 +1309,6 @@
         if (icon) icon.style.opacity = String(progress);
       }
     }, { passive: true });
-
     el.addEventListener('touchend', e => {
       if (!dragging) return;
       dragging = false;
@@ -1373,7 +1387,6 @@
   });
   $('ctxCancel').addEventListener('click', () => { $('ctxMenu').style.display = 'none'; });
 
-  // ── Send ──
   async function sendMsg() {
     const inp = $('msgInput'), txt = inp.value.trim();
     if (!txt || !activeRoom || !partnerId || sending) return;
@@ -1418,9 +1431,7 @@
       clearTimeout(typingTimeout);
       broadcastTyping(false);
       $('typingIndicator').innerHTML = '';
-      setTimeout(() => {
-        $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
-      }, 100);
+      setTimeout(() => { $('msgFeed').scrollTop = $('msgFeed').scrollHeight; }, 100);
     }
     sending = false;
   }
@@ -1511,48 +1522,19 @@
   $('addMoreBtn').addEventListener('click', () => window.location.href = 'find_friends.html');
 
   $('homeBtn').addEventListener('click', () => {
+    stopSuspensionCheck();
     window.location.href = 'index.html';
   });
 
   // Call button listeners (placeholders)
-  $('voiceCallBtn').addEventListener('click', () => {
-    alert('Voice call feature coming soon!');
-  });
-  $('videoCallBtn').addEventListener('click', () => {
-    alert('Video call feature coming soon!');
-  });
+  $('voiceCallBtn').addEventListener('click', () => { alert('Voice call feature coming soon!'); });
+  $('videoCallBtn').addEventListener('click', () => { alert('Video call feature coming soon!'); });
 
   $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
   $('sendBtn').addEventListener('click', sendMsg);
   $('msgInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
 
   setInterval(() => { loadRooms(); }, 30000);
-
-  // ═══════════════════════════════════════
-  //  LIVE SUSPENSION CHECK
-  // ═══════════════════════════════════════
-  function startSuspensionCheck() {
-    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
-    suspensionCheckInterval = setInterval(async () => {
-      if (!currentUser) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_suspended, suspended_until, admin_note')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-      if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
-        clearInterval(suspensionCheckInterval);
-        alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
-        await supabase.auth.signOut();
-        window.location.href = 'user_login.html';
-      }
-    }, 30000);
-  }
-
-  // Clean up on page unload
-  window.addEventListener('beforeunload', () => {
-    if (suspensionCheckInterval) clearInterval(suspensionCheckInterval);
-  });
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1561,7 +1543,7 @@
     await presence('online');
     await loadRooms();
     subscribeToProfiles();
-    startSuspensionCheck();   // ← start checking
+    startSuspensionCheck();
 
     const rp = new URLSearchParams(window.location.search).get('room');
     if (rp) {
