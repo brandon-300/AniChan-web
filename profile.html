@@ -75,16 +75,25 @@
   .user-info{flex:1}
   .user-info h2{font-size:24px;margin-bottom:4px;font-weight:700}
   .user-info .username{color:var(--muted);font-size:14px}
-  .last-seen{color:var(--muted);font-size:12px;margin-top:8px;display:flex;align-items:center;gap:6px}
+  .last-seen {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;          /* prevent extra line height from shifting the dot */
+}
 
-  /* Inline status dot */
-  .status-dot-inline{
-    display:inline-block;
-    width:10px;height:10px;
-    border-radius:50%;
-    background:var(--offline);
-    flex-shrink:0;
-  }
+.status-dot-inline {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--offline);
+  flex-shrink: 0;
+  align-self: center;       /* ensures perfect vertical centering in the flex row */
+}
   .status-dot-inline.online{background:var(--success)}
 
   .field-group{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
