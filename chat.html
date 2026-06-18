@@ -2187,6 +2187,7 @@
     currentUser = session.user;
     await presence('online');
     setupCallChannel();
+    setInterval(() => { if (currentUser) presence('online'); }, 25000);
     await loadRooms();
     subscribeToProfiles();
     startSuspensionCheck();
