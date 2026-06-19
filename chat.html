@@ -529,25 +529,65 @@
     -webkit-user-select: none; user-select: none; touch-action: none;
   }
   .mic-circle:active { transform: scale(0.94); }
-  .mic-circle.recording { background: var(--danger); box-shadow: 0 2px 16px rgba(255,71,87,0.5); }
+  .mic-circle.recording {
+    background: var(--danger);
+    animation: micPulse 1.4s ease-out infinite;
+  }
+  @keyframes micPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,71,87,0.55); }
+    70%  { box-shadow: 0 0 0 14px rgba(255,71,87,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); }
+  }
   .mic-circle .material-symbols-outlined { font-size: 20px; }
 
+  /* WhatsApp-style recording bar */
   .recording-bar {
-    flex: 1; display: none; align-items: center; gap: 10px;
-    padding: 0 6px; min-width: 0;
+    flex: 1; display: none; align-items: center;
+    padding: 0 4px 0 6px; min-width: 0; gap: 0; overflow: hidden;
   }
   .recording-bar.active { display: flex; }
+
+  .rec-trash {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; opacity: 0; transition: opacity .2s, color .2s, transform .2s;
+    color: var(--muted);
+  }
+  .rec-trash.visible { opacity: 1; }
+  .rec-trash.armed { color: var(--danger); transform: scale(1.2); }
+  .rec-trash .material-symbols-outlined { font-size: 20px; }
+
+  .rec-slide-area {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    gap: 5px; overflow: hidden; min-width: 0;
+  }
+  .rec-arrows { display: flex; gap: 1px; }
+  .rec-arrows span {
+    font-size: 14px; color: var(--muted); opacity: 0;
+    animation: arrowWave 1.4s ease-in-out infinite;
+  }
+  .rec-arrows span:nth-child(1) { animation-delay: 0s; }
+  .rec-arrows span:nth-child(2) { animation-delay: 0.22s; }
+  .rec-arrows span:nth-child(3) { animation-delay: 0.44s; }
+  @keyframes arrowWave { 0%,100%{ opacity: .15; } 50%{ opacity: .9; } }
+  .rec-slide-label {
+    font-size: 13px; color: var(--muted); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; transition: color .15s;
+  }
+  .rec-slide-label.armed { color: var(--danger); font-weight: 600; }
+
+  .rec-status {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 6px;
+  }
   .rec-dot {
-    width: 10px; height: 10px; border-radius: 50%; background: var(--danger);
+    width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
     animation: recPulse 1s infinite; flex-shrink: 0;
   }
-  @keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-  .rec-timer { font-size: 14px; color: var(--text); flex-shrink: 0; min-width: 38px; }
-  .rec-cancel-hint {
-    flex: 1; text-align: center; font-size: 13px; color: var(--muted);
-    transition: color .15s;
+  @keyframes recPulse { 0%,100%{ opacity: 1; } 50%{ opacity: .15; } }
+  .rec-timer {
+    font-size: 14px; color: var(--text); flex-shrink: 0;
+    min-width: 36px; font-variant-numeric: tabular-nums;
   }
-  .rec-cancel-hint.armed { color: var(--danger); font-weight: 600; }
 
   /* Voice note bubble */
   .voice-bubble { display: flex; align-items: center; gap: 10px; min-width: 190px; padding: 4px 0; }
@@ -662,30 +702,101 @@
     padding: 4px 16px; border-radius: 20px;
   }
 
+  /* ── Incoming call — native-style full screen ── */
   .incoming-call-popup {
     position: fixed; inset: 0; z-index: 300;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
-    display: none; align-items: center; justify-content: center;
+    background: linear-gradient(170deg, #061a19 0%, #0b2726 40%, #071c1b 100%);
+    display: none; flex-direction: column; align-items: center;
+    justify-content: space-between; padding: 64px 28px 56px;
   }
   .incoming-call-popup.hidden { display: none; }
   .incoming-call-popup:not(.hidden) { display: flex; }
 
-  .incoming-call-content {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 20px; padding: 24px;
-    text-align: center; color: var(--text);
-    min-width: 280px;
+  .incoming-call-header {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    animation: incomingSlideDown .4s ease both;
   }
-  .incoming-call-content p { margin-bottom: 16px; font-size: 16px; }
-  .incoming-call-content button {
-    margin: 0 8px; padding: 10px 20px;
-    border-radius: 12px; border: 1px solid var(--border);
-    background: var(--panel); color: var(--text);
-    font-weight: 600; cursor: pointer; transition: background 0.15s;
+  @keyframes incomingSlideDown {
+    from { opacity: 0; transform: translateY(-18px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  .incoming-call-content button:hover { background: var(--card); }
-  #acceptCallBtn { background: var(--success); color: #fff; border-color: transparent; }
-  #declineCallBtn { background: var(--danger); color: #fff; border-color: transparent; }
+  .incoming-app-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 3px;
+    color: var(--accent); text-transform: uppercase; opacity: .65;
+  }
+  .incoming-call-label { font-size: 16px; color: rgba(255,255,255,.5); font-weight: 400; }
+
+  .incoming-call-center {
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    animation: incomingFadeUp .5s ease .1s both;
+  }
+  @keyframes incomingFadeUp {
+    from { opacity: 0; transform: translateY(22px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .incoming-avatar-ring {
+    width: 150px; height: 150px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .incoming-avatar-ring::before,
+  .incoming-avatar-ring::after {
+    content: ''; position: absolute; border-radius: 50%; opacity: 0;
+    border: 1.5px solid rgba(81,218,211,.45);
+    animation: inRingPulse 2.4s ease-out infinite;
+  }
+  .incoming-avatar-ring::before { inset: -14px; }
+  .incoming-avatar-ring::after  { inset: -28px; animation-delay: .8s; }
+  .incoming-ring-3 {
+    position: absolute; inset: -42px; border-radius: 50%;
+    border: 1px solid rgba(81,218,211,.2); opacity: 0;
+    animation: inRingPulse 2.4s ease-out infinite; animation-delay: 1.6s;
+  }
+  @keyframes inRingPulse {
+    0%   { opacity: .75; transform: scale(.88); }
+    100% { opacity: 0;   transform: scale(1.12); }
+  }
+  .incoming-caller-pic {
+    width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--accent);
+    box-shadow: 0 0 0 6px rgba(81,218,211,.12), 0 8px 40px rgba(0,0,0,.55);
+    position: relative; z-index: 1;
+  }
+  .incoming-caller-name {
+    font-size: 28px; font-weight: 700; color: #fff;
+    text-align: center; line-height: 1.15;
+  }
+  .incoming-call-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 14px; color: rgba(255,255,255,.45);
+  }
+  .incoming-call-badge .material-symbols-outlined { font-size: 17px; color: var(--accent); opacity: .8; }
+
+  /* Bottom buttons */
+  .incoming-call-buttons {
+    display: flex; width: 100%; justify-content: space-around; align-items: flex-end;
+    animation: incomingFadeUp .55s ease .18s both;
+  }
+  .incoming-btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .incoming-action-btn {
+    width: 72px; height: 72px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #fff;
+    transition: transform .12s, filter .12s;
+    box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  }
+  .incoming-action-btn:active { transform: scale(.88); }
+  .incoming-action-btn .material-symbols-outlined { font-size: 30px; }
+  .incoming-action-btn.accept {
+    background: #2dd36f;
+    animation: acceptGlow 1.6s ease-in-out infinite;
+  }
+  @keyframes acceptGlow {
+    0%,100% { box-shadow: 0 8px 28px rgba(45,211,111,.3); }
+    50%      { box-shadow: 0 8px 36px rgba(45,211,111,.72); }
+  }
+  .incoming-action-btn.decline { background: var(--danger); }
+  .incoming-action-btn.decline .material-symbols-outlined { transform: rotate(135deg); display: block; }
+  .incoming-btn-label { font-size: 13px; color: rgba(255,255,255,.45); letter-spacing: .5px; }
 
   /* Call info (voice calls / pre-connect avatar) */
   .call-info {
@@ -702,11 +813,8 @@
 
   .call-controls button.off { background: var(--danger); color: #fff; }
 
-  .incoming-caller-pic {
-    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
-    border: 2px solid var(--accent); margin-bottom: 14px;
-  }
   .call-overlay.voice-mode .call-videos { display: none; }
+
 
   /* Responsive */
   @media (max-width: 768px) {
@@ -794,9 +902,19 @@
 
     <div class="compose-area" id="composeArea" style="display:none;">
       <div class="recording-bar" id="recordingBar">
-        <span class="rec-dot"></span>
-        <span class="rec-timer" id="recTimer">0:00</span>
-        <span class="rec-cancel-hint" id="recCancelHint">‹ Slide to cancel</span>
+        <div class="rec-trash" id="recTrash">
+          <span class="material-symbols-outlined">delete</span>
+        </div>
+        <div class="rec-slide-area">
+          <div class="rec-arrows">
+            <span>‹</span><span>‹</span><span>‹</span>
+          </div>
+          <span class="rec-slide-label" id="recCancelHint">Slide to cancel</span>
+        </div>
+        <div class="rec-status">
+          <span class="rec-dot"></span>
+          <span class="rec-timer" id="recTimer">0:00</span>
+        </div>
       </div>
       <input type="text" id="msgInput" placeholder="Type a message..." autocomplete="off" />
       <button class="mic-circle" id="micBtn" title="Hold to record a voice note">
@@ -848,6 +966,9 @@
     <button id="muteBtn" title="Mute">
       <span class="material-symbols-outlined">mic</span>
     </button>
+    <button id="speakerBtn" title="Audio output">
+      <span class="material-symbols-outlined">volume_up</span>
+    </button>
     <button id="cameraBtn" title="Camera">
       <span class="material-symbols-outlined">videocam</span>
     </button>
@@ -857,13 +978,36 @@
   </div>
 </div>
 
-<!-- Incoming call popup -->
+<!-- Incoming call popup — native-style full screen -->
 <div id="incomingCallPopup" class="incoming-call-popup hidden">
-  <div class="incoming-call-content">
-    <img class="incoming-caller-pic" id="incomingCallerPic" src="" alt="" />
-    <p>Incoming <span id="incomingCallType"></span> from <span id="incomingCaller"></span></p>
-    <button id="acceptCallBtn">Accept</button>
-    <button id="declineCallBtn">Decline</button>
+  <div class="incoming-call-header">
+    <div class="incoming-app-label">AniChan</div>
+    <div class="incoming-call-label" id="incomingCallType">Incoming call</div>
+  </div>
+  <div class="incoming-call-center">
+    <div class="incoming-avatar-ring">
+      <div class="incoming-ring-3"></div>
+      <img class="incoming-caller-pic" id="incomingCallerPic" src="" alt="" />
+    </div>
+    <div class="incoming-caller-name" id="incomingCaller"></div>
+    <div class="incoming-call-badge">
+      <span class="material-symbols-outlined" id="incomingCallTypeIcon">call</span>
+      <span id="incomingCallTypeText">Voice call</span>
+    </div>
+  </div>
+  <div class="incoming-call-buttons">
+    <div class="incoming-btn-wrap">
+      <button id="declineCallBtn" class="incoming-action-btn decline">
+        <span class="material-symbols-outlined">call_end</span>
+      </button>
+      <span class="incoming-btn-label">Decline</span>
+    </div>
+    <div class="incoming-btn-wrap">
+      <button id="acceptCallBtn" class="incoming-action-btn accept">
+        <span class="material-symbols-outlined" id="acceptCallIcon">call</span>
+      </button>
+      <span class="incoming-btn-label">Accept</span>
+    </div>
   </div>
 </div>
 
@@ -920,6 +1064,7 @@
   let queuedIce = [];
   let callTimerInterval = null, callStartTime = 0;
   let micMuted = false, camOff = false;
+  let currentOutputIndex = 0;
   let ringAudioCtx = null, ringInterval = null;
 
   // Tracks which users are currently typing (by user id)
@@ -1656,6 +1801,8 @@
     $('msgInput').style.display = 'none';
     $('recTimer').textContent = '0:00';
     $('recCancelHint').classList.remove('armed');
+    $('recCancelHint').textContent = 'Slide to cancel';
+    $('recTrash').classList.remove('visible', 'armed');
     recordTimerInterval = setInterval(() => {
       $('recTimer').textContent = fmtRecTime(Date.now() - recordStartTime);
     }, 200);
@@ -1664,7 +1811,15 @@
   function updateSlideCancel(clientX) {
     if (!isRecordingActive()) return;
     const dx = recStartX - clientX;
-    $('recCancelHint').classList.toggle('armed', dx > REC_CANCEL_THRESHOLD);
+    const trash = $('recTrash');
+    const hint  = $('recCancelHint');
+    // Show trash icon once user slides more than 12px
+    trash.classList.toggle('visible', dx > 12);
+    // Arm (red) when past cancel threshold
+    const armed = dx > REC_CANCEL_THRESHOLD;
+    trash.classList.toggle('armed', armed);
+    hint.classList.toggle('armed', armed);
+    hint.textContent = armed ? 'Release to cancel' : 'Slide to cancel';
   }
 
   function stopRecording(e) {
@@ -1994,7 +2149,10 @@
     const avatar = callerProfile?.avatar_url || DEFAULT_AVATAR;
     pendingOffer.fromName = name;
     pendingOffer.fromAvatar = avatar;
-    $('incomingCallType').textContent = payload.callType === 'video' ? 'video call' : 'voice call';
+    $('incomingCallType').textContent     = payload.callType === 'video' ? 'Incoming video call' : 'Incoming voice call';
+    $('incomingCallTypeIcon').textContent  = payload.callType === 'video' ? 'videocam' : 'call';
+    $('incomingCallTypeText').textContent  = payload.callType === 'video' ? 'Video call' : 'Voice call';
+    $('acceptCallIcon').textContent        = payload.callType === 'video' ? 'videocam' : 'call';
     $('incomingCaller').textContent = name;
     $('incomingCallerPic').src = avatar;
     $('incomingCallerPic').onerror = () => { $('incomingCallerPic').src = DEFAULT_AVATAR; };
@@ -2127,8 +2285,11 @@
     queuedIce = [];
     activeCall = null;
     micMuted = false; camOff = false;
+    currentOutputIndex = 0;
     $('muteBtn').querySelector('.material-symbols-outlined').textContent = 'mic';
     $('cameraBtn').querySelector('.material-symbols-outlined').textContent = 'videocam';
+    $('speakerBtn').querySelector('.material-symbols-outlined').textContent = 'volume_up';
+    $('speakerBtn').title = 'Audio output';
     $('muteBtn').classList.remove('off');
     $('cameraBtn').classList.remove('off');
   }
@@ -2173,6 +2334,57 @@
     localStream.getVideoTracks().forEach(t => { t.enabled = !camOff; });
     $('cameraBtn').querySelector('.material-symbols-outlined').textContent = camOff ? 'videocam_off' : 'videocam';
     $('cameraBtn').classList.toggle('off', camOff);
+  });
+
+  // Speaker / audio output toggle.
+  // setSinkId works on desktop Chrome and some Android builds. On unsupported browsers
+  // the button still shows a brief toast rather than a blocking alert.
+  function showCallToast(msg) {
+    let t = document.getElementById('callToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'callToast';
+      Object.assign(t.style, {
+        position:'fixed', bottom:'110px', left:'50%', transform:'translateX(-50%)',
+        background:'rgba(255,255,255,0.12)', backdropFilter:'blur(8px)',
+        color:'#fff', padding:'8px 18px', borderRadius:'20px',
+        fontSize:'13px', zIndex:'9999', pointerEvents:'none',
+        transition:'opacity .3s', opacity:'0'
+      });
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._to);
+    t._to = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+  }
+
+  $('speakerBtn').addEventListener('click', async () => {
+    if (!('setSinkId' in HTMLMediaElement.prototype)) {
+      showCallToast('Audio output switching not supported on this browser');
+      return;
+    }
+    let devices;
+    try { devices = await navigator.mediaDevices.enumerateDevices(); }
+    catch (err) { showCallToast('Could not enumerate audio devices'); return; }
+    const outputs = devices.filter(d => d.kind === 'audiooutput');
+    if (outputs.length <= 1) {
+      showCallToast('No alternate audio output detected');
+      return;
+    }
+    currentOutputIndex = (currentOutputIndex + 1) % outputs.length;
+    const device = outputs[currentOutputIndex];
+    try {
+      await $('remoteVideo').setSinkId(device.deviceId);
+      const label = (device.label || '').toLowerCase();
+      const isBt = label.includes('bluetooth') || label.includes('headset') || label.includes('earphone');
+      const icon = isBt ? 'headset' : 'volume_up';
+      $('speakerBtn').querySelector('.material-symbols-outlined').textContent = icon;
+      showCallToast(device.label || 'Output switched');
+    } catch (err) {
+      console.error('setSinkId failed', err);
+      showCallToast('Could not switch audio output');
+    }
   });
 
   $('searchInput').addEventListener('input', () => filterRooms($('searchInput').value));
