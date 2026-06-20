@@ -23,16 +23,34 @@ const urlsToCache = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+    caches.match(event.request).then(response => response || fetch(event.request))
+  );
+});
+
+// ── Push Notifications ──
+self.addEventListener('push', event => {
+  const data = event.data?.json() || {};
+  const { title, body, icon, url } = data;
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: icon || 'https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/icon-512.png',
+      badge: icon || 'https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/icon-512.png',
+      data: { url }
     })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.openWindow(url)
   );
 });
