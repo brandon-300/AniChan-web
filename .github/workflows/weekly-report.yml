@@ -1,0 +1,16 @@
+name: Send Weekly Report
+
+on:
+  schedule:
+    # Every Sunday at 07:00 UTC (8:00 AM Nigerian time)
+    - cron: '0 7 * * 0'
+  workflow_dispatch:  # allows manual run from GitHub Actions tab
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly report
+        run: |
+          curl -X POST https://ani-chan-web.vercel.app/api/admin/weekly-report \
+            -H "x-cron-token: ${{ secrets.CRON_SECRET }}"
