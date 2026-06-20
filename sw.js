@@ -42,6 +42,8 @@ self.addEventListener('push', event => {
       body,
       icon: icon || 'https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/icon-512.png',
       badge: icon || 'https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/icon-512.png',
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
       data: { url }
     })
   );
