@@ -20,24 +20,38 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden: invalid admin' });
   }
 
-  // Fetch all anime
-  const { data: anime, error } = await supabase
-    .from('anime')
-    .select('*')
-    .order('title');
+  // Fetch ALL anime in batches
+  const allAnime = [];
+  let from = 0;
+  const batchSize = 1000;
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  while (true) {
+    const { data: batch, error } = await supabase
+      .from('anime')
+      .select('*')
+      .order('title')
+      .range(from, from + batchSize - 1);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!batch || batch.length === 0) break;
+
+    allAnime.push(...batch);
+    from += batchSize;
+
+    // Safety: stop if we get fewer rows than the batch size (last page)
+    if (batch.length < batchSize) break;
   }
 
-  // Define CSV columns (customise order as needed)
+  // Define CSV columns (same as before)
   const columns = [
     'id', 'title', 'title_en', 'title_jp', 'type', 'status',
     'ep_total', 'score', 'year', 'genres', 'studio', 'duration',
     'release_type', 'aired_from', 'aired_to', 'image_url', 'updated_at'
   ];
 
-  // Build CSV
   const escapeCSV = (val) => {
     if (val == null) return '';
     const str = Array.isArray(val) ? val.join(', ') : String(val);
@@ -45,7 +59,7 @@ export default async function handler(req, res) {
   };
 
   const header = columns.map(escapeCSV).join(',');
-  const rows = anime.map(a => columns.map(col => escapeCSV(a[col])).join(','));
+  const rows = allAnime.map(a => columns.map(col => escapeCSV(a[col])).join(','));
   const csv = [header, ...rows].join('\n');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
