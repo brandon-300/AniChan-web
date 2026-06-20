@@ -15,12 +15,25 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    // Auth: either a valid admin JWT, or the cron token
     const authHeader = req.headers['authorization'];
-    if (!authHeader) return res.status(401).json({ error: 'Unauthorized: no token' });
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user || user.email !== process.env.ADMIN_EMAIL) {
-      return res.status(403).json({ error: 'Forbidden: invalid admin' });
+    const cronToken = req.headers['x-cron-token'];
+
+    let isAdmin = false;
+
+    if (cronToken && cronToken === process.env.CRON_SECRET) {
+      // Allowed via cron
+      isAdmin = true;
+    } else if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (!authError && user && user.email === process.env.ADMIN_EMAIL) {
+        isAdmin = true;
+      }
+    }
+
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
