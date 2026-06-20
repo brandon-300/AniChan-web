@@ -778,6 +778,9 @@
       }
     });
 
+    // ═══════════════════════════════════════
+    //  REAL‑TIME SUBSCRIPTION FOR ANIME UPDATES
+    // ═══════════════════════════════════════
     sb.channel("public-anichan")
       .on("postgres_changes", { event:"*", schema:"public", table:"anime" }, () => loadLibrary())
       .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, () => { renderBroadcast(); loadSiteLogo(); })
