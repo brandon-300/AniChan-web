@@ -172,6 +172,14 @@
     color: var(--accent);
     font-style: italic;
   }
+  .thread-preview.recording-preview {
+    color: var(--danger);
+    font-style: italic;
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .thread-preview.recording-preview .material-symbols-outlined {
+    font-size: 13px; animation: recPulse 1s infinite;
+  }
   .unread-pill {
     background: var(--accent); color: #0a0a0a;
     font-size: 11px; font-weight: 700;
@@ -285,6 +293,7 @@
   .partner-name { font-weight: 600; font-size: 15px; }
   .partner-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
   .partner-sub.typing-status { color: var(--accent); font-style: italic; }
+  .partner-sub.recording-status { color: var(--danger); font-style: italic; }
 
   /* Message feed */
   .msg-feed {
@@ -475,6 +484,13 @@
   @keyframes typingBlink {
     0%, 100% { opacity: .2; }
     20% { opacity: 1; }
+  }
+  .typing-indicator-container.recording-indicator { color: var(--danger); }
+  .rec-indicator-icon { font-size: 15px; vertical-align: -3px; }
+  .rec-indicator-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--danger); display: inline-block;
+    animation: recPulse 1s infinite; margin-left: 2px;
   }
 
   /* Compose area */
@@ -1029,6 +1045,7 @@
   let messageSub = null, presenceSub = null, profilesSub = null;
   let broadcastChannel = null;
   let replyTo = null, ctxMsgId = null, sending = false;
+  let isVideoNoteMode = false;
   const DELETED_KEY = 'anichan_deleted_msgs';
   const sentIds = new Set();
   let suspensionCheckInterval = null;
@@ -1136,55 +1153,65 @@
     }
   }
 
-  // ── Typing broadcast via Supabase Realtime Broadcast ──
+  // ── Activity broadcast via Supabase Realtime Broadcast (typing / recording) ──
   let typingTimeout = null;
 
   function setupBroadcastChannel(roomId) {
     if (broadcastChannel) supabase.removeChannel(broadcastChannel);
     broadcastChannel = supabase.channel(`typing:${roomId}`, { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+      .on('broadcast', { event: 'activity' }, ({ payload }) => {
         if (!payload || payload.user_id === currentUser.id) return;
-        handleTypingBroadcast(payload.user_id, payload.is_typing);
+        handleActivityBroadcast(payload.user_id, payload.activity);
       })
       .subscribe();
   }
 
-  function broadcastTyping(isTyping) {
+  // activity: 'typing' | 'recording' | null (null clears it)
+  function broadcastActivity(activity) {
     if (!broadcastChannel || !currentUser) return;
     broadcastChannel.send({
       type: 'broadcast',
-      event: 'typing',
-      payload: { user_id: currentUser.id, is_typing: isTyping }
+      event: 'activity',
+      payload: { user_id: currentUser.id, activity }
     });
   }
+  function broadcastTyping(isTyping)       { broadcastActivity(isTyping ? 'typing' : null); }
+  function broadcastRecording(isRecording) { broadcastActivity(isRecording ? 'recording' : null); }
 
-  function handleTypingBroadcast(userId, isTyping) {
+  function handleActivityBroadcast(userId, activity) {
     if (userId === partnerId) {
       const sub = $('partnerSub');
       const indicator = $('typingIndicator');
-      if (isTyping) {
+      const partnerName = $('partnerName')?.textContent || 'Someone';
+
+      if (activity === 'typing') {
         sub.textContent = 'typing...';
         sub.classList.add('typing-status');
-        const partnerName = $('partnerName')?.textContent || 'Someone';
+        sub.classList.remove('recording-status');
+        indicator.classList.remove('recording-indicator');
         indicator.innerHTML = `${partnerName} is typing <div class="typing-dots"><span></span><span></span><span></span></div>`;
-      } else {
+      } else if (activity === 'recording') {
+        sub.textContent = 'recording audio...';
+        sub.classList.add('recording-status');
         sub.classList.remove('typing-status');
+        indicator.classList.add('recording-indicator');
+        indicator.innerHTML = `<span class="material-symbols-outlined rec-indicator-icon">mic</span>${partnerName} is recording audio<span class="rec-indicator-dot"></span>`;
+      } else {
+        sub.classList.remove('typing-status', 'recording-status');
+        indicator.classList.remove('recording-indicator');
         indicator.innerHTML = '';
         const room = rooms.find(r => r.other_user.id === userId);
         if (room) setPartnerStatus(room.other_user.is_online, room.other_user.last_seen);
       }
     }
-    if (isTyping) {
-      typingUsers.set(userId, true);
-    } else {
-      typingUsers.delete(userId);
-    }
+    if (activity) typingUsers.set(userId, activity);
+    else typingUsers.delete(userId);
     renderRooms(filteredRooms);
   }
 
   function setPartnerStatus(isOnline, lastSeen) {
     const sub = $('partnerSub');
-    if (sub.classList.contains('typing-status')) return;
+    if (sub.classList.contains('typing-status') || sub.classList.contains('recording-status')) return;
     if (isOnline) {
       $('partnerDot').classList.add('live');
       sub.textContent = 'online';
@@ -1211,14 +1238,16 @@
     }
     data.forEach(room => {
       const o = room.other_user;
-      const isTyping = typingUsers.has(o.id);
       const d = document.createElement('div');
       d.className = 'thread-item' + (activeRoom === room.id ? ' active' : '');
       d.dataset.roomId  = room.id;
       d.dataset.otherId = o.id;
 
-      const previewHtml = isTyping
+      const activity = typingUsers.get(o.id);
+      const previewHtml = activity === 'typing'
         ? `<p class="thread-preview typing-preview">typing...</p>`
+        : activity === 'recording'
+        ? `<p class="thread-preview recording-preview"><span class="material-symbols-outlined">mic</span>recording audio...</p>`
         : `<p class="thread-preview">${esc(room.last_message || '')}</p>`;
 
       const unreadHtml = room.unread_count
@@ -1366,7 +1395,7 @@
 
     $('partnerDot').classList.remove('live');
     $('partnerSub').textContent = '';
-    $('partnerSub').classList.remove('typing-status');
+    $('partnerSub').classList.remove('typing-status', 'recording-status');
 
     const { data: p } = await supabase
       .from('profiles').select('username,full_name,avatar_url,is_online,last_seen')
@@ -1795,6 +1824,7 @@
     mediaRecorder.addEventListener('dataavailable', ev => { if (ev.data.size > 0) audioChunks.push(ev.data); });
     mediaRecorder.addEventListener('stop', onRecordingStop);
     mediaRecorder.start();
+    broadcastRecording(true);
 
     $('micBtn').classList.add('recording');
     $('recordingBar').classList.add('active');
@@ -1837,6 +1867,7 @@
     $('recordingBar').classList.remove('active');
     $('msgInput').style.display = '';
     if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
+    broadcastRecording(false);
   }
 
   async function onRecordingStop() {
