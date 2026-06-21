@@ -643,7 +643,8 @@
   .video-note-play .material-symbols-outlined { font-size: 46px; filter: drop-shadow(0 1px 5px rgba(0,0,0,.6)); }
   .video-note-bubble.playing .video-note-play { opacity: 0; }
   .video-note-time {
-    position: absolute; bottom: 10px; right: 14px; font-size: 11px; color: #fff;
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #fff;
     background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 10px;
     font-variant-numeric: tabular-nums; pointer-events: none;
   }
@@ -1907,8 +1908,21 @@
     reactionsSub = supabase.channel(`reactions:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${roomId}` }, payload => {
         const messageId = payload.new?.message_id || payload.old?.message_id;
-        if (messageId) refreshReactionCache(messageId);
+        if (messageId) {
+          refreshReactionCache(messageId);
+        } else {
+          // Old row didn't include message_id (e.g. replica identity not set to FULL yet) —
+          // fall back to a full room refresh so removals still sync without a page reload.
+          refreshAllReactionsForRoom(roomId);
+        }
       }).subscribe();
+  }
+
+  async function refreshAllReactionsForRoom(roomId) {
+    await loadReactionsForRoom(roomId);
+    $('msgFeed').querySelectorAll('.msg-row[data-msg-id]').forEach(row => {
+      refreshReactionRow(row.dataset.msgId);
+    });
   }
 
   function showCtx(e, msg) {
