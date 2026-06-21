@@ -2314,14 +2314,14 @@
   function subMsgs(roomId) {
     if (messageSub) supabase.removeChannel(messageSub);
     messageSub = supabase.channel(`room:${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, async payload => {
         if (payload.eventType === 'INSERT') {
           const nm = payload.new;
           if (!sentIds.has(nm.id) && !document.querySelector(`.msg-row[data-msg-id="${nm.id}"]`)) {
             addMsg(nm);
             $('msgFeed').scrollTop = $('msgFeed').scrollHeight;
             if (nm.receiver_id === currentUser.id) {
-              supabase.from('messages').update({ is_read: true }).eq('id', nm.id).then();
+              await markAsRead(roomId);
             }
             loadRooms();
           }
