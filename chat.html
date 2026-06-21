@@ -2015,13 +2015,13 @@
     if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
 
     const { data: ins, error } = await supabase.from('messages').insert(payload).select().single();
-    const foot = row.querySelector('.msg-foot');
     if (error) {
+      const foot = row.querySelector('.msg-foot');
       foot.innerHTML = '<span style="color:var(--danger)">not sent</span>';
     } else if (ins) {
+      row.remove();
       sentIds.add(ins.id);
-      row.dataset.msgId = ins.id;
-      foot.innerHTML = `<span>${fmtTimeOnly(ins.created_at)}</span> <span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>`;
+      addMsg(ins);
       await supabase.from('chat_rooms').update({ last_message: txt, last_message_time: new Date().toISOString() }).eq('id', activeRoom);
       loadRooms();
       clearTimeout(typingTimeout);
