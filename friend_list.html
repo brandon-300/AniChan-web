@@ -43,8 +43,6 @@
   .btn.primary:hover{filter:brightness(1.08)}
   .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
   .btn.danger:hover{background:rgba(255,71,87,.12)}
-  .btn.success{background:var(--success);border-color:transparent;color:#fff;font-weight:700}
-  .btn.success:hover{filter:brightness(1.1)}
   .btn:disabled{opacity:0.7;cursor:not-allowed;filter:none}
 
   .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
@@ -70,8 +68,9 @@
   .list-item{
     display:flex;align-items:flex-start;gap:14px;padding:16px 0;
     border-bottom:1px solid var(--border);
+    margin-bottom:12px;
   }
-  .list-item:last-child{border-bottom:none}
+  .list-item:last-child{border-bottom:none;margin-bottom:0}
   .avatar-link{flex-shrink:0}
   .avatar-img{
     width:44px;height:44px;border-radius:50%;object-fit:cover;
@@ -83,7 +82,7 @@
     line-height:1.3;
   }
   .info .name:hover{color:var(--accent)}
-  .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
 
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
 
@@ -207,6 +206,7 @@
         .in("id", Array.from(friendIds))
         .order("full_name, username");
 
+      // Fetch blocked users to avoid showing Block button if already blocked
       const { data: blockedRows } = await supabase
         .from("blocked_users")
         .select("blocked_user_id")
@@ -274,7 +274,7 @@
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
 
-      // Info column – name only, then actions
+      // Info
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
 
@@ -285,22 +285,25 @@
 
       infoDiv.appendChild(nameLink);
 
-      // Actions below name
+      // Actions
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "actions";
 
+      // Message button
       const msgBtn = document.createElement("button");
       msgBtn.className = "btn primary message-btn";
       msgBtn.dataset.userid = user.id;
       msgBtn.textContent = "💬 Message";
       actionsDiv.appendChild(msgBtn);
 
+      // Unfriend button
       const unfriendBtn = document.createElement("button");
       unfriendBtn.className = "btn danger unfriend-btn";
       unfriendBtn.dataset.userid = user.id;
       unfriendBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend`;
       actionsDiv.appendChild(unfriendBtn);
 
+      // Block button (only if not already blocked)
       if (!blockedIds.has(user.id)) {
         const blockBtn = document.createElement("button");
         blockBtn.className = "btn danger block-btn";
@@ -309,8 +312,7 @@
         actionsDiv.appendChild(blockBtn);
       }
 
-      infoDiv.appendChild(actionsDiv); // actions under the name
-
+      infoDiv.appendChild(actionsDiv);
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
 
@@ -407,7 +409,6 @@
       `;
 
       infoDiv.appendChild(actionsDiv);
-
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
 
@@ -489,7 +490,6 @@
       `;
 
       infoDiv.appendChild(actionsDiv);
-
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
 
