@@ -641,10 +641,10 @@
     background: rgba(0,0,0,0.25); color: #fff; transition: opacity .15s; pointer-events: none;
   }
   .video-note-play .material-symbols-outlined { font-size: 46px; filter: drop-shadow(0 1px 5px rgba(0,0,0,.6)); }
-  .video-note-bubble.playing .video-note-play { opacity: 0; }
+  .video-note-bubble.playing .video-note-play { background: rgba(0,0,0,0.05); }
   .video-note-time {
-    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    font-size: 11px; color: #fff;
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #fff; white-space: nowrap;
     background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 10px;
     font-variant-numeric: tabular-nums; pointer-events: none;
   }
@@ -1480,6 +1480,8 @@
     $('emptyState').style.display = 'none';
     $('chatTopbar').style.display = 'flex';
     $('composeArea').style.display = 'flex';
+    $('msgInput').value = '';
+    syncSendMicBtn();
 
     $('partnerDot').classList.remove('live');
     $('partnerSub').textContent = '';
@@ -1752,6 +1754,7 @@
     if (!el) return;
     const video = el.querySelector('video');
     const timeLabel = el.querySelector('.video-note-time');
+    const playIcon = el.querySelector('.video-note-play .material-symbols-outlined');
 
     video.addEventListener('loadedmetadata', () => {
       if (isFinite(video.duration)) timeLabel.textContent = fmtRecTime(video.duration * 1000);
@@ -1764,10 +1767,15 @@
       if (currentlyPlayingAudio) currentlyPlayingAudio.pause();
       currentlyPlayingVideo = video;
       el.classList.add('playing');
+      playIcon.textContent = 'pause';
     });
-    video.addEventListener('pause', () => { el.classList.remove('playing'); });
+    video.addEventListener('pause', () => {
+      el.classList.remove('playing');
+      playIcon.textContent = 'play_arrow';
+    });
     video.addEventListener('ended', () => {
       el.classList.remove('playing');
+      playIcon.textContent = 'play_arrow';
       if (isFinite(video.duration)) timeLabel.textContent = fmtRecTime(video.duration * 1000);
     });
 
@@ -1983,10 +1991,17 @@
   });
   $('ctxCancel').addEventListener('click', () => { $('ctxMenu').style.display = 'none'; });
 
+  function syncSendMicBtn() {
+    const hasText = $('msgInput').value.trim().length > 0;
+    $('micBtn').style.display  = hasText ? 'none' : 'flex';
+    $('sendBtn').style.display = hasText ? 'flex' : 'none';
+  }
+
   async function sendMsg() {
     const inp = $('msgInput'), txt = inp.value.trim();
     if (!txt || !activeRoom || !partnerId || sending) return;
     inp.value = '';
+    syncSendMicBtn();
     sending = true;
 
     clearTimeout(typingTimeout);
@@ -2182,6 +2197,7 @@
     $('micBtn').classList.remove('recording');
     $('recordingBar').classList.remove('active');
     $('msgInput').style.display = '';
+    syncSendMicBtn();
     $('videoRecPreview').classList.remove('active');
     $('videoRecPreviewEl').srcObject = null;
     if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
@@ -2326,23 +2342,31 @@
             loadRooms();
           }
         } else if (payload.eventType === 'UPDATE') {
-          loadMsgs(roomId);
-          loadRooms();
+          const o = payload.old, n = payload.new;
+          // If only is_read changed (read receipt) — just update the tick, no full reload
+          const isReadReceiptOnly = o && n && o.message === n.message && o.is_deleted === n.is_deleted && o.is_edited === n.is_edited && o.is_read !== n.is_read;
+          if (isReadReceiptOnly) {
+            const row = $('msgFeed').querySelector(`.msg-row[data-msg-id="${n.id}"]`);
+            if (row) {
+              const tick = row.querySelector('.tick-icon');
+              if (tick && n.is_read) tick.style.color = 'var(--accent)';
+            }
+          } else {
+            // Actual edit or delete — do a full reload
+            loadMsgs(roomId);
+            loadRooms();
+          }
         }
       }).subscribe();
   }
 
   $('msgInput').addEventListener('input', () => {
-    if (!broadcastChannel || !activeRoom) return;
-    broadcastTyping(true);
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => broadcastTyping(false), 2000);
-  });
-
-  $('msgInput').addEventListener('input', () => {
-    const hasText = $('msgInput').value.trim().length > 0;
-    $('micBtn').style.display = hasText ? 'none' : 'flex';
-    $('sendBtn').style.display = hasText ? 'flex' : 'none';
+    if (broadcastChannel && activeRoom) {
+      broadcastTyping(true);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => broadcastTyping(false), 2000);
+    }
+    syncSendMicBtn();
   });
 
   async function loadFriends() {
