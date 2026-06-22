@@ -1111,6 +1111,8 @@
 
   // ── State ──
   let currentUser = null, activeRoom = null, partnerId = null;
+  let myProfile = null; // current user's profiles row — source of truth for display name
+  const myDisplayName = () => myProfile?.full_name || myProfile?.username || currentUser?.email || 'You';
   let rooms = [], filteredRooms = [];
   let messageSub = null, presenceSub = null, profilesSub = null;
   let broadcastChannel = null;
@@ -1607,7 +1609,7 @@
 
       if (msg.reply_sender_id) {
         quotedName = msg.reply_sender_id === currentUser.id
-          ? (currentUser?.user_metadata?.full_name || 'You')
+          ? (myDisplayName())
           : ($('partnerName')?.textContent || 'Them');
       }
 
@@ -1621,7 +1623,7 @@
           }
           if (!quotedName) {
             quotedName = orig.classList.contains('out')
-              ? (currentUser?.user_metadata?.full_name || 'You')
+              ? (myDisplayName())
               : ($('partnerName')?.textContent || 'Them');
           }
         }
@@ -1814,7 +1816,7 @@
     if (msg.is_deleted) return;
     const out = msg.sender_id === currentUser.id;
     const senderName = out
-      ? (currentUser?.user_metadata?.full_name || 'You')
+      ? (myDisplayName())
       : ($('partnerName')?.textContent || 'Them');
     const previewText = msg.msg_type === 'voice' ? '🎤 Voice message'
       : msg.msg_type === 'video_note' ? '📹 Video message'
@@ -2250,7 +2252,7 @@
       room_id: activeRoom, sender_id: currentUser.id, receiver_id: partnerId,
       message: pub.publicUrl, msg_type: 'voice',
       reply_to: replyTo?.id || null,
-      reply_text: replyTo ? '🎤 Voice message' : null,
+      reply_text: replyTo?.content || null,
       reply_sender_id: replyTo?.sender || null
     };
     if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
@@ -2300,7 +2302,7 @@
       room_id: activeRoom, sender_id: currentUser.id, receiver_id: partnerId,
       message: pub.publicUrl, msg_type: 'video_note',
       reply_to: replyTo?.id || null,
-      reply_text: replyTo ? '📹 Video message' : null,
+      reply_text: replyTo?.content || null,
       reply_sender_id: replyTo?.sender || null
     };
     if (replyTo) { replyTo = null; $('replyStrip').classList.remove('open'); }
@@ -2553,7 +2555,7 @@
           await pc.setLocalDescription(offer);
           sendSignal({
             type: 'call-offer', callId, from: currentUser.id, to: partnerId,
-            fromName: currentUser?.user_metadata?.full_name || currentUser?.email || 'Someone',
+            fromName: myDisplayName(),
             fromAvatar: '', callType, sdp: offer
           });
         }
@@ -2820,6 +2822,8 @@
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = 'user_login.html'; return; }
     currentUser = session.user;
+    const { data: mp } = await supabase.from('profiles').select('id,username,full_name,avatar_url').eq('id', currentUser.id).single();
+    myProfile = mp;
     await presence('online');
     setupCallChannel();
     setInterval(() => { if (currentUser) presence('online'); }, 25000);
