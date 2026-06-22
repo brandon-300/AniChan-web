@@ -77,14 +77,15 @@
     width:44px;height:44px;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);background:var(--panel);
   }
-  .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .right-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+  .info{display:flex;flex-direction:column;gap:4px}
   .info .name{
     font-size:15px;font-weight:600;color:var(--text);text-decoration:none;
     line-height:1.3;
   }
   .info .name:hover{color:var(--accent)}
   .info .username{font-size:13px;color:var(--muted)}
-  .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .actions{display:flex;gap:6px;flex-wrap:wrap}
 
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
 
@@ -259,6 +260,7 @@
       const div = document.createElement("div");
       div.className = "list-item";
 
+      // Avatar
       const avatarLink = document.createElement("a");
       avatarLink.className = "avatar-link";
       avatarLink.href = `profile.html?user=${user.id}`;
@@ -267,6 +269,10 @@
       avatarImg.src = user.avatar_url || DEFAULT_AVATAR;
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
+
+      // Right column (info + actions)
+      const rightCol = document.createElement("div");
+      rightCol.className = "right-col";
 
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
@@ -292,10 +298,11 @@
         </button>
       `;
 
-      div.appendChild(avatarLink);
-      div.appendChild(infoDiv);
-      div.appendChild(actionsDiv);
+      rightCol.appendChild(infoDiv);
+      rightCol.appendChild(actionsDiv);
 
+      div.appendChild(avatarLink);
+      div.appendChild(rightCol);
       container.appendChild(div);
     });
 
@@ -313,7 +320,7 @@
         if (confirm(`Are you sure you want to unfriend ${userName}?`)) {
           setButtonLoading(btn, true, 'Unfriending…');
           await unfriendUser(otherId);
-          // loadList() will be called after success, resetting the button
+          // loadList() will be called after unfriend, which resets the button
         }
       });
     });
@@ -349,6 +356,9 @@
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
 
+      const rightCol = document.createElement("div");
+      rightCol.className = "right-col";
+
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
 
@@ -370,10 +380,11 @@
         <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
       `;
 
-      div.appendChild(avatarLink);
-      div.appendChild(infoDiv);
-      div.appendChild(actionsDiv);
+      rightCol.appendChild(infoDiv);
+      rightCol.appendChild(actionsDiv);
 
+      div.appendChild(avatarLink);
+      div.appendChild(rightCol);
       container.appendChild(div);
     });
 
@@ -433,6 +444,9 @@
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
 
+      const rightCol = document.createElement("div");
+      rightCol.className = "right-col";
+
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
 
@@ -456,10 +470,11 @@
         </button>
       `;
 
-      div.appendChild(avatarLink);
-      div.appendChild(infoDiv);
-      div.appendChild(actionsDiv);
+      rightCol.appendChild(infoDiv);
+      rightCol.appendChild(actionsDiv);
 
+      div.appendChild(avatarLink);
+      div.appendChild(rightCol);
       container.appendChild(div);
     });
 
