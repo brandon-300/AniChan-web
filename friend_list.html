@@ -36,8 +36,17 @@
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     cursor:pointer;transition:all .15s;text-decoration:none;
     display:inline-flex;align-items:center;gap:6px;
+    white-space:nowrap;flex-shrink:0;
   }
   .btn:hover{border-color:var(--accent);background:var(--card)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+  .btn.danger:hover{background:rgba(255,71,87,.12)}
+  .btn.success{background:var(--success);border-color:transparent;color:#fff;font-weight:700}
+  .btn.success:hover{filter:brightness(1.1)}
+  .btn:disabled{opacity:0.7;cursor:not-allowed;filter:none}
+
   .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
 
   .glass-panel{
@@ -59,7 +68,7 @@
   }
 
   .list-item{
-    display:flex;align-items:center;gap:14px;padding:12px 0;
+    display:flex;align-items:center;gap:12px;padding:12px 0;
     border-bottom:1px solid var(--border);
   }
   .list-item:last-child{border-bottom:none}
@@ -68,14 +77,14 @@
     width:44px;height:44px;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);background:var(--panel);
   }
-  .info{flex:1;min-width:0}
+  .info{flex:1;min-width:0;overflow:hidden}
   .info .name{
     font-size:15px;font-weight:600;color:var(--text);text-decoration:none;
-    transition:color .15s;
+    display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .info .name:hover{color:var(--accent)}
-  .info .username{font-size:13px;color:var(--muted);margin-top:2px}
-  .actions{display:flex;gap:8px;flex-shrink:0}
+  .info .username{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .actions{display:flex;gap:6px;flex-shrink:0}
 
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
 
@@ -87,10 +96,6 @@
     border-radius:50%;animation:spin .6s linear infinite;
     vertical-align:middle;flex-shrink:0;
   }
-  .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
-  .btn.primary:hover{filter:brightness(1.08)}
-  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
-  .btn.danger:hover{background:rgba(255,71,87,.12)}
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
@@ -127,6 +132,18 @@
 
   let currentUserId = null;
   let currentTab = 'friends';
+
+  function setButtonLoading(btn, loading, label) {
+    if (loading) {
+      btn._origHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="btn-spinner"></span> ${label || ''}`;
+    } else {
+      btn.innerHTML = btn._origHTML || btn.innerHTML;
+      btn.disabled = false;
+      delete btn._origHTML;
+    }
+  }
 
   // Suspension check
   setInterval(async () => {
@@ -272,18 +289,15 @@
         const otherId = e.currentTarget.dataset.userid;
         const userName = btn.closest('.list-item').querySelector('.name').textContent;
         if (confirm(`Are you sure you want to unfriend ${userName}?`)) {
-          await unfriendUser(otherId, btn);
+          setButtonLoading(btn, true, 'Unfriending…');
+          await unfriendUser(otherId);
+          // button state will be reset by loadList() after successful unfriend
         }
       });
     });
   }
 
-  async function unfriendUser(friendId, button) {
-    const origHTML = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = `<span class="btn-spinner"></span>`;
-
-    // Delete both directions of friendship (to be safe)
+  async function unfriendUser(friendId) {
     const { error } = await supabase
       .from("friends")
       .delete()
@@ -291,8 +305,6 @@
 
     if (error) {
       alert("Failed to unfriend: " + error.message);
-      button.innerHTML = origHTML;
-      button.disabled = false;
     } else {
       loadList();
     }
@@ -324,12 +336,14 @@
     document.querySelectorAll(".accept-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const senderId = e.currentTarget.dataset.senderid;
+        setButtonLoading(e.currentTarget, true, 'Accepting…');
         await respondToRequest(senderId, 'accepted');
       });
     });
     document.querySelectorAll(".decline-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const senderId = e.currentTarget.dataset.senderid;
+        setButtonLoading(e.currentTarget, true, 'Declining…');
         await respondToRequest(senderId, 'declined');
       });
     });
@@ -343,13 +357,16 @@
       .eq("receiver_id", currentUserId)
       .eq("status", "pending");
 
-    if (updateErr) { alert("Failed to update request."); return; }
+    if (updateErr) { alert("Failed to update request."); loadList(); return; }
 
     if (status === 'accepted') {
       const { error: friendErr } = await supabase
         .from("friends")
-        .insert({ user_id: currentUserId, friend_id: senderId });
-      if (friendErr) { alert("Could not add friend: " + friendErr.message); return; }
+        .upsert(
+          { user_id: currentUserId, friend_id: senderId },
+          { onConflict: 'user_id, friend_id', ignoreDuplicates: true }
+        );
+      if (friendErr) { alert("Could not add friend: " + friendErr.message); }
     }
 
     loadList();
@@ -382,10 +399,7 @@
     document.querySelectorAll(".unblock-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const unblockId = e.currentTarget.dataset.userid;
-        const button = e.currentTarget;
-        button.disabled = true;
-        button.innerHTML = `<span class="btn-spinner"></span> Unblocking…`;
-
+        setButtonLoading(e.currentTarget, true, 'Unblocking…');
         const { error } = await supabase
           .from("blocked_users")
           .delete()
@@ -394,8 +408,7 @@
 
         if (error) {
           alert("Failed to unblock: " + error.message);
-          button.disabled = false;
-          button.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock`;
+          setButtonLoading(e.currentTarget, false);
         } else {
           loadList();
         }
