@@ -124,8 +124,8 @@
 
   let currentUserId = null;
   let friendsSet = new Set();
-  let sentRequests = new Set();         // IDs we already sent a pending request to
-  let incomingRequests = new Map();     // senderId -> true
+  let sentRequests = new Set();
+  let incomingRequests = new Map();
 
   function setButtonLoading(btn, loading, label) {
     if (loading) {
@@ -169,7 +169,6 @@
     if (!session) { window.location.href = "user_login.html"; return; }
     currentUserId = session.user.id;
 
-    // Fetch all users except self, newest first
     const { data: users, error } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
@@ -265,18 +264,25 @@
         actionsDiv.innerHTML = `<button class="btn primary add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`;
       }
 
-      card.innerHTML = `
-        <a class="member-avatar-link" href="profile.html?user=${user.id}">
-          <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        </a>
-      `;
+      // Append avatar as first element
+      const avatarLink = document.createElement("a");
+      avatarLink.className = "member-avatar-link";
+      avatarLink.href = `profile.html?user=${user.id}`;
+      const avatarImg = document.createElement("img");
+      avatarImg.className = "member-avatar";
+      avatarImg.src = user.avatar_url || DEFAULT_AVATAR;
+      avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
+      avatarLink.appendChild(avatarImg);
+
+      // Append children in order
+      card.appendChild(avatarLink);
       card.appendChild(infoDiv);
       card.appendChild(actionsDiv);
 
       container.appendChild(card);
     });
 
-    // Add listeners
+    // Attach listeners (same as before)
     document.querySelectorAll(".add-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
