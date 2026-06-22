@@ -138,11 +138,10 @@
   );
 
   let currentUserId = null;
-  let friendsSet = new Set(); // contains IDs of users we are friends with (either direction)
+  let friendsSet = new Set();
+  let sentRequests = new Set();   // IDs we already sent a pending request to
 
-  // ═══════════════════════════════════════════
-  //  LIVE SUSPENSION + DELETION CHECK (10 sec)
-  // ═══════════════════════════════════════════
+  // Suspension + deletion check
   setInterval(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
@@ -151,14 +150,12 @@
       .select('is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at')
       .eq('id', session.user.id)
       .maybeSingle();
-
     if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
       alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
       await supabase.auth.signOut();
       window.location.href = 'user_login.html';
       return;
     }
-
     if (data?.is_pending_delete && data.deleted_at) {
       alert(`Your account has been scheduled for deletion.\n\n${data.admin_note || ''}`);
       await supabase.auth.signOut();
@@ -166,19 +163,15 @@
     }
   }, 10000);
 
-  $("backBtn").addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
-  $("friendsBtn").addEventListener("click", () => {
-    window.location.href = "friend_list.html";
-  });
+  $("backBtn").addEventListener("click", () => { window.location.href = "index.html"; });
+  $("friendsBtn").addEventListener("click", () => { window.location.href = "friend_list.html"; });
 
   async function loadMembers() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = "user_login.html"; return; }
     currentUserId = session.user.id;
 
-    // 1. Fetch all users except self, newest first
+    // Fetch all users except self, newest first
     const { data: users, error } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url, is_online")
@@ -190,12 +183,11 @@
       return;
     }
 
-    // 2. Fetch blocked IDs (both directions) so we can hide them
+    // Blocked users
     const { data: blockedRows } = await supabase
       .from("blocked_users")
       .select("user_id, blocked_user_id")
       .or(`user_id.eq.${currentUserId},blocked_user_id.eq.${currentUserId}`);
-
     const blockedIds = new Set();
     if (blockedRows) {
       for (const row of blockedRows) {
@@ -204,12 +196,11 @@
       }
     }
 
-    // 3. Fetch all friendships involving the current user
+    // Friends (accepted)
     const { data: friendsData } = await supabase
       .from("friends")
       .select("user_id, friend_id")
       .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
-
     friendsSet.clear();
     if (friendsData) {
       for (const row of friendsData) {
@@ -218,7 +209,17 @@
       }
     }
 
-    // 4. Filter and render
+    // Pending outgoing requests
+    const { data: sentData } = await supabase
+      .from("friend_requests")
+      .select("receiver_id")
+      .eq("sender_id", currentUserId)
+      .eq("status", "pending");
+    sentRequests.clear();
+    if (sentData) {
+      sentData.forEach(r => sentRequests.add(r.receiver_id));
+    }
+
     const filteredUsers = users.filter(u => !blockedIds.has(u.id));
 
     const container = $("membersList");
@@ -230,8 +231,19 @@
     container.innerHTML = "";
     filteredUsers.forEach(user => {
       const isFriend = friendsSet.has(user.id);
+      const requestSent = sentRequests.has(user.id);
       const card = document.createElement("div");
       card.className = "member-card";
+
+      let buttonHtml = '';
+      if (isFriend) {
+        buttonHtml = `<button class="message-btn" data-userid="${user.id}">💬 Message</button>`;
+      } else if (requestSent) {
+        buttonHtml = `<button class="add-btn" disabled>Request Sent</button>`;
+      } else {
+        buttonHtml = `<button class="add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`;
+      }
+
       card.innerHTML = `
         <a class="member-avatar-link" href="profile.html?user=${user.id}">
           <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
@@ -244,19 +256,16 @@
             ${user.is_online ? 'Online' : 'Offline'}
           </span>
         </div>
-        ${isFriend
-          ? `<button class="message-btn" data-userid="${user.id}">💬 Message</button>`
-          : `<button class="add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`
-        }
+        ${buttonHtml}
       `;
       container.appendChild(card);
     });
 
-    // Attach listeners
-    document.querySelectorAll(".add-btn").forEach(btn => {
+    // Add listeners
+    document.querySelectorAll(".add-btn:not([disabled])").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
-        await addFriend(otherId);
+        await sendRequest(otherId);
       });
     });
 
@@ -268,23 +277,23 @@
     });
   }
 
-  async function addFriend(otherUserId) {
+  async function sendRequest(otherUserId) {
     if (!currentUserId || !otherUserId) return;
     const btn = document.querySelector(`.add-btn[data-userid="${otherUserId}"]`);
     if (!btn) return;
     btn.disabled = true;
-    btn.innerHTML = `<span class="btn-spinner"></span> Adding…`;
+    btn.innerHTML = `<span class="btn-spinner"></span> Sending…`;
 
     const { error } = await supabase
-      .from("friends")
-      .insert({ user_id: currentUserId, friend_id: otherUserId });
+      .from("friend_requests")
+      .insert({ sender_id: currentUserId, receiver_id: otherUserId, status: "pending" });
 
     if (error) {
-      alert("Could not add friend: " + error.message);
+      alert("Could not send request: " + error.message);
       btn.disabled = false;
       btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add`;
     } else {
-      // Refresh the list so the button changes to Message
+      // Refresh to show "Request Sent"
       loadMembers();
     }
   }
