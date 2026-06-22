@@ -37,12 +37,16 @@
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     cursor:pointer;transition:all .15s;text-decoration:none;
     display:inline-flex;align-items:center;gap:6px;
+    white-space:nowrap;flex-shrink:0;
   }
   .btn:hover{border-color:var(--accent);background:var(--card)}
   .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
   .btn.primary:hover{filter:brightness(1.08)}
   .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
   .btn.danger:hover{background:rgba(255,71,87,.12)}
+  .btn.success{background:var(--success);border-color:transparent;color:#fff;font-weight:700}
+  .btn.success:hover{filter:brightness(1.1)}
+  .btn:disabled{opacity:0.7;cursor:not-allowed;filter:none}
 
   .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
 
@@ -58,45 +62,23 @@
   .glass-panel h2 .material-symbols-outlined{font-size:22px;color:var(--accent)}
 
   .member-card{
-    display:flex;align-items:center;gap:16px;padding:16px;
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
     background:var(--card);border:1px solid var(--border);border-radius:16px;
-    margin-bottom:12px;transition:border-color .15s;
+    margin-bottom:10px;transition:border-color .15s;
   }
   .member-card:hover{border-color:var(--accent)}
   .member-avatar-link{flex-shrink:0}
   .member-avatar{
-    width:48px;height:48px;border-radius:50%;object-fit:cover;
+    width:44px;height:44px;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);transition:border-color .15s;
   }
   .member-avatar:hover{border-color:var(--accent)}
-  .member-info{flex:1;min-width:0}
-  .member-info strong{display:block;font-size:16px;margin-bottom:4px}
+  .member-info{flex:1;min-width:0;overflow:hidden}
+  .member-info strong{display:block;font-size:15px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .member-info strong a{color:var(--text);text-decoration:none;transition:color .15s}
   .member-info strong a:hover{color:var(--accent)}
-  .member-info span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .status-dot{
-    width:8px;height:8px;border-radius:50%;
-    display:inline-block;
-  }
-  .status-dot.online{background:var(--success)}
-  .status-dot.offline{background:var(--offline)}
-  .add-btn{
-    padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;
-    border:none;background:var(--accent);color:#0a2a28;
-    cursor:pointer;transition:filter .15s;flex-shrink:0;
-  }
-  .add-btn:hover{filter:brightness(1.08)}
-  .add-btn:disabled{opacity:0.7;cursor:not-allowed;filter:none}
-  .message-btn{
-    padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;
-    border:1px solid var(--border);background:var(--panel);color:var(--text);
-    cursor:pointer;transition:all .15s;flex-shrink:0;
-  }
-  .message-btn:hover{border-color:var(--accent);background:var(--card)}
+  .member-info span{font-size:12px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  .empty-state{text-align:center;padding:40px;color:var(--muted)}
-
-  @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
     display:inline-block;width:14px;height:14px;
     border:2px solid rgba(255,255,255,0.3);
@@ -104,7 +86,9 @@
     border-radius:50%;animation:spin .6s linear infinite;
     vertical-align:middle;flex-shrink:0;
   }
+  @keyframes spin{to{transform:rotate(360deg)}}
 
+  .empty-state{text-align:center;padding:40px;color:var(--muted)}
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
 </head>
@@ -139,7 +123,20 @@
 
   let currentUserId = null;
   let friendsSet = new Set();
-  let sentRequests = new Set();   // IDs we already sent a pending request to
+  let sentRequests = new Set();
+  let incomingRequests = new Map(); // senderId -> requestId (or just presence)
+
+  function setButtonLoading(btn, loading, label) {
+    if (loading) {
+      btn._origHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="btn-spinner"></span> ${label || ''}`;
+    } else {
+      btn.innerHTML = btn._origHTML || btn.innerHTML;
+      btn.disabled = false;
+      delete btn._origHTML;
+    }
+  }
 
   // Suspension + deletion check
   setInterval(async () => {
@@ -174,7 +171,7 @@
     // Fetch all users except self, newest first
     const { data: users, error } = await supabase
       .from("profiles")
-      .select("id, username, full_name, avatar_url, is_online")
+      .select("id, username, full_name, avatar_url")
       .neq("id", currentUserId)
       .order("created_at", { ascending: false });
 
@@ -216,9 +213,16 @@
       .eq("sender_id", currentUserId)
       .eq("status", "pending");
     sentRequests.clear();
-    if (sentData) {
-      sentData.forEach(r => sentRequests.add(r.receiver_id));
-    }
+    if (sentData) sentData.forEach(r => sentRequests.add(r.receiver_id));
+
+    // Pending incoming requests
+    const { data: incomingData } = await supabase
+      .from("friend_requests")
+      .select("sender_id")
+      .eq("receiver_id", currentUserId)
+      .eq("status", "pending");
+    incomingRequests.clear();
+    if (incomingData) incomingData.forEach(r => incomingRequests.set(r.sender_id, true));
 
     const filteredUsers = users.filter(u => !blockedIds.has(u.id));
 
@@ -232,16 +236,23 @@
     filteredUsers.forEach(user => {
       const isFriend = friendsSet.has(user.id);
       const requestSent = sentRequests.has(user.id);
+      const hasIncoming = incomingRequests.has(user.id);
+
       const card = document.createElement("div");
       card.className = "member-card";
 
       let buttonHtml = '';
       if (isFriend) {
-        buttonHtml = `<button class="message-btn" data-userid="${user.id}">💬 Message</button>`;
+        buttonHtml = `<button class="btn message-btn" data-userid="${user.id}">💬 Message</button>`;
+      } else if (hasIncoming) {
+        buttonHtml = `
+          <button class="btn primary accept-btn" data-senderid="${user.id}" style="margin-right:6px">Accept</button>
+          <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
+        `;
       } else if (requestSent) {
-        buttonHtml = `<button class="add-btn" disabled>Request Sent</button>`;
+        buttonHtml = `<button class="btn" disabled>Request Sent</button>`;
       } else {
-        buttonHtml = `<button class="add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`;
+        buttonHtml = `<button class="btn primary add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`;
       }
 
       card.innerHTML = `
@@ -250,11 +261,7 @@
         </a>
         <div class="member-info">
           <strong><a href="profile.html?user=${user.id}">${user.full_name || user.username}</a></strong>
-          <span>
-            @${user.username}
-            <span class="status-dot ${user.is_online ? 'online' : 'offline'}"></span>
-            ${user.is_online ? 'Online' : 'Offline'}
-          </span>
+          <span>@${user.username}</span>
         </div>
         ${buttonHtml}
       `;
@@ -262,9 +269,10 @@
     });
 
     // Add listeners
-    document.querySelectorAll(".add-btn:not([disabled])").forEach(btn => {
+    document.querySelectorAll(".add-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
+        setButtonLoading(e.currentTarget, true, 'Sending…');
         await sendRequest(otherId);
       });
     });
@@ -275,27 +283,63 @@
         await startChat(otherId);
       });
     });
+
+    document.querySelectorAll(".accept-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const senderId = e.currentTarget.dataset.senderid;
+        setButtonLoading(e.currentTarget, true, 'Accepting…');
+        await respondToRequest(senderId, 'accepted');
+      });
+    });
+
+    document.querySelectorAll(".decline-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const senderId = e.currentTarget.dataset.senderid;
+        setButtonLoading(e.currentTarget, true, 'Declining…');
+        await respondToRequest(senderId, 'declined');
+      });
+    });
   }
 
   async function sendRequest(otherUserId) {
     if (!currentUserId || !otherUserId) return;
-    const btn = document.querySelector(`.add-btn[data-userid="${otherUserId}"]`);
-    if (!btn) return;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="btn-spinner"></span> Sending…`;
 
     const { error } = await supabase
       .from("friend_requests")
-      .insert({ sender_id: currentUserId, receiver_id: otherUserId, status: "pending" });
+      .upsert(
+        { sender_id: currentUserId, receiver_id: otherUserId, status: "pending" },
+        { onConflict: 'sender_id, receiver_id' }
+      );
 
     if (error) {
       alert("Could not send request: " + error.message);
-      btn.disabled = false;
-      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add`;
-    } else {
-      // Refresh to show "Request Sent"
-      loadMembers();
     }
+    loadMembers(); // Refresh UI
+  }
+
+  async function respondToRequest(senderId, status) {
+    // Update request status
+    const { error: updateErr } = await supabase
+      .from("friend_requests")
+      .update({ status })
+      .eq("sender_id", senderId)
+      .eq("receiver_id", currentUserId)
+      .eq("status", "pending");
+
+    if (updateErr) { alert("Failed to update request."); loadMembers(); return; }
+
+    if (status === 'accepted') {
+      // Insert friendship (upsert to avoid duplicate)
+      const { error: friendErr } = await supabase
+        .from("friends")
+        .upsert(
+          { user_id: currentUserId, friend_id: senderId },
+          { onConflict: 'user_id, friend_id', ignoreDuplicates: true }
+        );
+      if (friendErr) { alert("Could not add friend: " + friendErr.message); }
+    }
+
+    loadMembers();
   }
 
   async function startChat(otherUserId) {
