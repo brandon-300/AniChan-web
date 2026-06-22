@@ -62,7 +62,7 @@
   .glass-panel h2 .material-symbols-outlined{font-size:22px;color:var(--accent)}
 
   .member-card{
-    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;padding:14px;
     background:var(--card);border:1px solid var(--border);border-radius:16px;
     margin-bottom:10px;transition:border-color .15s;
   }
@@ -74,10 +74,10 @@
   }
   .member-avatar:hover{border-color:var(--accent)}
   .member-info{flex:1;min-width:0;overflow:hidden}
-  .member-info strong{display:block;font-size:15px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-info strong{display:block;font-size:15px;margin-bottom:4px;word-break:break-word}
   .member-info strong a{color:var(--text);text-decoration:none;transition:color .15s}
   .member-info strong a:hover{color:var(--accent)}
-  .member-info span{font-size:12px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member-info span{font-size:12px;color:var(--muted);display:block;word-break:break-word}
 
   .btn-spinner{
     display:inline-block;width:14px;height:14px;
@@ -123,8 +123,8 @@
 
   let currentUserId = null;
   let friendsSet = new Set();
-  let sentRequests = new Set();
-  let incomingRequests = new Map(); // senderId -> requestId (or just presence)
+  let sentRequests = new Set();         // IDs we already sent a pending request to
+  let incomingRequests = new Map();     // senderId -> true
 
   function setButtonLoading(btn, loading, label) {
     if (loading) {
@@ -250,7 +250,7 @@
           <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
         `;
       } else if (requestSent) {
-        buttonHtml = `<button class="btn" disabled>Request Sent</button>`;
+        buttonHtml = `<button class="btn danger cancel-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">close</span> Cancel</button>`;
       } else {
         buttonHtml = `<button class="btn primary add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`;
       }
@@ -274,6 +274,14 @@
         const otherId = e.currentTarget.dataset.userid;
         setButtonLoading(e.currentTarget, true, 'Sending…');
         await sendRequest(otherId);
+      });
+    });
+
+    document.querySelectorAll(".cancel-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const otherId = e.currentTarget.dataset.userid;
+        setButtonLoading(e.currentTarget, true, 'Cancelling…');
+        await cancelRequest(otherId);
       });
     });
 
@@ -302,23 +310,32 @@
   }
 
   async function sendRequest(otherUserId) {
-    if (!currentUserId || !otherUserId) return;
-
     const { error } = await supabase
       .from("friend_requests")
       .upsert(
         { sender_id: currentUserId, receiver_id: otherUserId, status: "pending" },
         { onConflict: 'sender_id, receiver_id' }
       );
-
     if (error) {
       alert("Could not send request: " + error.message);
     }
-    loadMembers(); // Refresh UI
+    loadMembers();
+  }
+
+  async function cancelRequest(otherUserId) {
+    const { error } = await supabase
+      .from("friend_requests")
+      .delete()
+      .eq("sender_id", currentUserId)
+      .eq("receiver_id", otherUserId)
+      .eq("status", "pending");
+    if (error) {
+      alert("Could not cancel request: " + error.message);
+    }
+    loadMembers();
   }
 
   async function respondToRequest(senderId, status) {
-    // Update request status
     const { error: updateErr } = await supabase
       .from("friend_requests")
       .update({ status })
@@ -329,7 +346,6 @@
     if (updateErr) { alert("Failed to update request."); loadMembers(); return; }
 
     if (status === 'accepted') {
-      // Insert friendship (upsert to avoid duplicate)
       const { error: friendErr } = await supabase
         .from("friends")
         .upsert(
