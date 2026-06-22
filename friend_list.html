@@ -170,7 +170,6 @@
     const container = $("listContainer");
 
     if (currentTab === 'friends') {
-      // Friends from the friends table (accepted)
       const { data: rows } = await supabase
         .from("friends")
         .select("user_id, friend_id")
@@ -195,7 +194,6 @@
 
       renderFriends(profiles || []);
     } else if (currentTab === 'requests') {
-      // Incoming pending requests
       const { data: requests } = await supabase
         .from("friend_requests")
         .select("sender_id")
@@ -254,16 +252,50 @@
         </div>
         <div class="actions">
           <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
+          <button class="btn danger unfriend-btn" data-userid="${user.id}">
+            <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
+          </button>
         </div>
       `;
       container.appendChild(div);
     });
+
     document.querySelectorAll(".message-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
         await startChat(otherId);
       });
     });
+
+    document.querySelectorAll(".unfriend-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const otherId = e.currentTarget.dataset.userid;
+        const userName = btn.closest('.list-item').querySelector('.name').textContent;
+        if (confirm(`Are you sure you want to unfriend ${userName}?`)) {
+          await unfriendUser(otherId, btn);
+        }
+      });
+    });
+  }
+
+  async function unfriendUser(friendId, button) {
+    const origHTML = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `<span class="btn-spinner"></span>`;
+
+    // Delete both directions of friendship (to be safe)
+    const { error } = await supabase
+      .from("friends")
+      .delete()
+      .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`);
+
+    if (error) {
+      alert("Failed to unfriend: " + error.message);
+      button.innerHTML = origHTML;
+      button.disabled = false;
+    } else {
+      loadList();
+    }
   }
 
   function renderRequests(users) {
@@ -304,7 +336,6 @@
   }
 
   async function respondToRequest(senderId, status) {
-    // Update request
     const { error: updateErr } = await supabase
       .from("friend_requests")
       .update({ status })
@@ -315,14 +346,13 @@
     if (updateErr) { alert("Failed to update request."); return; }
 
     if (status === 'accepted') {
-      // Insert into friends table
       const { error: friendErr } = await supabase
         .from("friends")
         .insert({ user_id: currentUserId, friend_id: senderId });
       if (friendErr) { alert("Could not add friend: " + friendErr.message); return; }
     }
 
-    loadList(); // Refresh UI
+    loadList();
   }
 
   function renderBlocked(users) {
