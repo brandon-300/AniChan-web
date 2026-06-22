@@ -136,7 +136,7 @@
   .btn-red:disabled{opacity:0.6;cursor:not-allowed;filter:none;}
   .avatar-upload-input{display:none}
 
-  /* Block button – bold, bottom placement */
+  /* Block / Unfriend buttons – bold, bottom placement */
   .btn.block-btn {
     background:var(--danger);border:none;color:#fff;font-weight:700;
     padding:12px 24px;border-radius:12px;font-size:14px;
@@ -152,6 +152,13 @@
     display:inline-flex;align-items:center;gap:6px;
   }
   .btn.unblock-btn:hover{background:var(--card);border-color:var(--accent)}
+  .btn.unfriend-btn {
+    background:transparent;border:1px solid rgba(255,71,87,.25);color:var(--danger);font-weight:700;
+    padding:12px 24px;border-radius:12px;font-size:14px;
+    cursor:pointer;transition:all .15s;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn.unfriend-btn:hover{background:rgba(255,71,87,0.1)}
 
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
@@ -368,6 +375,7 @@
   let suspensionCheckInterval = null;
   let isBlockedByMe = false;
   let isBlockedByThem = false;
+  let isFriend = false;
 
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
@@ -454,6 +462,17 @@
     $('statComments').textContent = commentCount || 0;
   }
 
+  // ── Friendship check ──
+  async function checkFriendship(viewUserId) {
+    if (!currentUserId || currentUserId === viewUserId) return;
+    const { data } = await supabase
+      .from("friends")
+      .select("user_id, friend_id")
+      .or(`and(user_id.eq.${currentUserId},friend_id.eq.${viewUserId}),and(user_id.eq.${viewUserId},friend_id.eq.${currentUserId})`)
+      .maybeSingle();
+    isFriend = !!data;
+  }
+
   // ── Block state check ──
   async function checkBlockStatus(viewUserId) {
     if (!currentUserId || currentUserId === viewUserId) return;
@@ -478,8 +497,6 @@
     if (isOwner) return;
     const bottom = $('bottomActions');
     if (!bottom) return;
-
-    // Remove any existing block button
     const existing = bottom.querySelector('#blockUnblockBtn');
     if (existing) existing.remove();
 
@@ -491,6 +508,51 @@
       : '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
     blockBtn.addEventListener('click', toggleBlock);
     bottom.insertBefore(blockBtn, bottom.firstChild);
+  }
+
+  function renderUnfriendButton() {
+    if (isOwner || !isFriend) return;
+    const bottom = $('bottomActions');
+    if (!bottom) return;
+    const existing = bottom.querySelector('#unfriendBtn');
+    if (existing) existing.remove();
+
+    const unfriendBtn = document.createElement('button');
+    unfriendBtn.id = 'unfriendBtn';
+    unfriendBtn.className = 'btn unfriend-btn';
+    unfriendBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend';
+    unfriendBtn.addEventListener('click', () => {
+      const viewUserId = new URLSearchParams(window.location.search).get('user');
+      if (!viewUserId) return;
+      const friendName = $('displayFullName').textContent || 'this user';
+      if (confirm(`Are you sure you want to unfriend ${friendName}?`)) {
+        unfriendUser(viewUserId);
+      }
+    });
+    bottom.insertBefore(unfriendBtn, bottom.firstChild);
+  }
+
+  async function unfriendUser(friendId) {
+    const btn = $('unfriendBtn');
+    if (!btn) return;
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span> Unfriending…`;
+
+    const { error } = await supabase
+      .from("friends")
+      .delete()
+      .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`);
+
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      btn.innerHTML = origHTML;
+      btn.disabled = false;
+    } else {
+      isFriend = false;
+      btn.remove();
+      showToast('Unfriended');
+    }
   }
 
   function setButtonLoading(btn, loading, label) {
@@ -753,6 +815,7 @@
     if (viewUserId && viewUserId !== currentUserId) {
       isOwner = false;
       await checkBlockStatus(viewUserId);
+      await checkFriendship(viewUserId);
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', viewUserId).single();
       if (!profile) { alert('User not found'); history.back(); return; }
       renderProfile(profile);
@@ -760,7 +823,8 @@
       $('bioEditField').style.display = 'none';
       $('bottomActions').innerHTML = '';
       updateHeaderButtons();
-      renderBlockButton();  // Block button appears at bottom
+      renderBlockButton();
+      renderUnfriendButton();
       return;
     }
 
