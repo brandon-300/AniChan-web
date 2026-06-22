@@ -75,11 +75,10 @@
   }
   .info .name:hover{color:var(--accent)}
   .info .username{font-size:13px;color:var(--muted);margin-top:2px}
-  .actions{flex-shrink:0}
+  .actions{display:flex;gap:8px;flex-shrink:0}
 
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
 
-  /* Spinner for unblock button */
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
     display:inline-block;width:14px;height:14px;
@@ -88,10 +87,10 @@
     border-radius:50%;animation:spin .6s linear infinite;
     vertical-align:middle;flex-shrink:0;
   }
-  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
-  .btn.danger:hover{background:rgba(255,71,87,.12)}
   .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
   .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+  .btn.danger:hover{background:rgba(255,71,87,.12)}
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
@@ -106,7 +105,8 @@
     <div class="glass-panel">
       <div class="tabs">
         <div class="tab active" id="tabFriends">Friends</div>
-        <div class="tab" id="tabBlocked">Blocked Users</div>
+        <div class="tab" id="tabRequests">Requests</div>
+        <div class="tab" id="tabBlocked">Blocked</div>
       </div>
       <div id="listContainer"></div>
     </div>
@@ -126,9 +126,9 @@
   );
 
   let currentUserId = null;
-  let currentTab = 'friends'; // 'friends' or 'blocked'
+  let currentTab = 'friends';
 
-  // Suspension check (same as other pages)
+  // Suspension check
   setInterval(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
@@ -149,70 +149,73 @@
     }
   }, 10000);
 
-  $("backBtn").addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
+  $("backBtn").addEventListener("click", () => { window.location.href = "index.html"; });
 
   // Tab switching
-  $("tabFriends").addEventListener("click", () => {
-    $("tabFriends").classList.add("active");
-    $("tabBlocked").classList.remove("active");
-    currentTab = 'friends';
+  $("tabFriends").addEventListener("click", () => switchTab('friends'));
+  $("tabRequests").addEventListener("click", () => switchTab('requests'));
+  $("tabBlocked").addEventListener("click", () => switchTab('blocked'));
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    $('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
     loadList();
-  });
-  $("tabBlocked").addEventListener("click", () => {
-    $("tabBlocked").classList.add("active");
-    $("tabFriends").classList.remove("active");
-    currentTab = 'blocked';
-    loadList();
-  });
+  }
 
   async function loadList() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = "user_login.html"; return; }
     currentUserId = session.user.id;
-
     const container = $("listContainer");
 
     if (currentTab === 'friends') {
-      // Get all chat room partners
-      const { data: rooms } = await supabase
-        .from("chat_rooms")
-        .select("user_one_id, user_two_id")
-        .or(`user_one_id.eq.${currentUserId},user_two_id.eq.${currentUserId}`);
+      // Friends from the friends table (accepted)
+      const { data: rows } = await supabase
+        .from("friends")
+        .select("user_id, friend_id")
+        .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
 
-      if (!rooms || rooms.length === 0) {
-        container.innerHTML = '<div class="empty-state">No conversations yet.</div>';
+      if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="empty-state">No friends yet.</div>';
         return;
       }
 
-      // Collect unique partner IDs
-      const partnerIds = new Set();
-      rooms.forEach(r => {
-        if (r.user_one_id !== currentUserId) partnerIds.add(r.user_one_id);
-        if (r.user_two_id !== currentUserId) partnerIds.add(r.user_two_id);
+      const friendIds = new Set();
+      rows.forEach(r => {
+        if (r.user_id === currentUserId) friendIds.add(r.friend_id);
+        else friendIds.add(r.user_id);
       });
 
-      if (partnerIds.size === 0) {
-        container.innerHTML = '<div class="empty-state">No conversations yet.</div>';
-        return;
-      }
-
-      // Fetch profiles of these partners
-      const { data: profiles, error } = await supabase
+      const { data: profiles } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url")
-        .in("id", Array.from(partnerIds))
+        .in("id", Array.from(friendIds))
         .order("full_name, username");
 
-      if (error) {
-        container.innerHTML = '<div class="empty-state">Failed to load friends.</div>';
+      renderFriends(profiles || []);
+    } else if (currentTab === 'requests') {
+      // Incoming pending requests
+      const { data: requests } = await supabase
+        .from("friend_requests")
+        .select("sender_id")
+        .eq("receiver_id", currentUserId)
+        .eq("status", "pending");
+
+      if (!requests || requests.length === 0) {
+        container.innerHTML = '<div class="empty-state">No pending requests.</div>';
         return;
       }
 
-      renderFriends(profiles);
-    } else {
-      // Blocked users tab
+      const senderIds = requests.map(r => r.sender_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", senderIds)
+        .order("username");
+
+      renderRequests(profiles || []);
+    } else if (currentTab === 'blocked') {
       const { data: blocked } = await supabase
         .from("blocked_users")
         .select("blocked_user_id")
@@ -224,28 +227,19 @@
       }
 
       const blockedIds = blocked.map(b => b.blocked_user_id);
-      const { data: profiles, error } = await supabase
+      const { data: profiles } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url")
         .in("id", blockedIds)
         .order("username");
 
-      if (error) {
-        container.innerHTML = '<div class="empty-state">Failed to load blocked users.</div>';
-        return;
-      }
-
-      renderBlocked(profiles);
+      renderBlocked(profiles || []);
     }
   }
 
   function renderFriends(users) {
     const container = $("listContainer");
-    if (!users || users.length === 0) {
-      container.innerHTML = '<div class="empty-state">No friends yet.</div>';
-      return;
-    }
-
+    if (!users.length) { container.innerHTML = '<div class="empty-state">No friends yet.</div>'; return; }
     container.innerHTML = "";
     users.forEach(user => {
       const div = document.createElement("div");
@@ -264,22 +258,76 @@
       `;
       container.appendChild(div);
     });
-
     document.querySelectorAll(".message-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
-        const otherUserId = e.currentTarget.dataset.userid;
-        await startChat(otherUserId);
+        const otherId = e.currentTarget.dataset.userid;
+        await startChat(otherId);
       });
     });
   }
 
-  function renderBlocked(users) {
+  function renderRequests(users) {
     const container = $("listContainer");
-    if (!users || users.length === 0) {
-      container.innerHTML = '<div class="empty-state">No blocked users.</div>';
-      return;
+    if (!users.length) { container.innerHTML = '<div class="empty-state">No pending requests.</div>'; return; }
+    container.innerHTML = "";
+    users.forEach(user => {
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.innerHTML = `
+        <a class="avatar-link" href="profile.html?user=${user.id}">
+          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        </a>
+        <div class="info">
+          <div class="name">${user.full_name || user.username}</div>
+          <div class="username">@${user.username}</div>
+        </div>
+        <div class="actions">
+          <button class="btn primary accept-btn" data-senderid="${user.id}">Accept</button>
+          <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.querySelectorAll(".accept-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const senderId = e.currentTarget.dataset.senderid;
+        await respondToRequest(senderId, 'accepted');
+      });
+    });
+    document.querySelectorAll(".decline-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const senderId = e.currentTarget.dataset.senderid;
+        await respondToRequest(senderId, 'declined');
+      });
+    });
+  }
+
+  async function respondToRequest(senderId, status) {
+    // Update request
+    const { error: updateErr } = await supabase
+      .from("friend_requests")
+      .update({ status })
+      .eq("sender_id", senderId)
+      .eq("receiver_id", currentUserId)
+      .eq("status", "pending");
+
+    if (updateErr) { alert("Failed to update request."); return; }
+
+    if (status === 'accepted') {
+      // Insert into friends table
+      const { error: friendErr } = await supabase
+        .from("friends")
+        .insert({ user_id: currentUserId, friend_id: senderId });
+      if (friendErr) { alert("Could not add friend: " + friendErr.message); return; }
     }
 
+    loadList(); // Refresh UI
+  }
+
+  function renderBlocked(users) {
+    const container = $("listContainer");
+    if (!users.length) { container.innerHTML = '<div class="empty-state">No blocked users.</div>'; return; }
     container.innerHTML = "";
     users.forEach(user => {
       const div = document.createElement("div");
@@ -305,8 +353,6 @@
       btn.addEventListener("click", async (e) => {
         const unblockId = e.currentTarget.dataset.userid;
         const button = e.currentTarget;
-        // Show spinner
-        const origHTML = button.innerHTML;
         button.disabled = true;
         button.innerHTML = `<span class="btn-spinner"></span> Unblocking…`;
 
@@ -318,10 +364,9 @@
 
         if (error) {
           alert("Failed to unblock: " + error.message);
-          button.innerHTML = origHTML;
           button.disabled = false;
+          button.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock`;
         } else {
-          // Reload the blocked list
           loadList();
         }
       });
@@ -344,15 +389,11 @@
         .insert({ user_one_id: currentUserId, user_two_id: otherUserId })
         .select("id")
         .single();
-      if (error) {
-        alert("Could not start chat.");
-        return;
-      }
+      if (error) { alert("Could not start chat."); return; }
       window.location.href = "chat.html?room=" + newRoom.id;
     }
   }
 
-  // Initial load
   document.addEventListener("DOMContentLoaded", async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { window.location.href = "user_login.html"; return; }
