@@ -23,7 +23,7 @@
     min-height:100vh;display:flex;flex-direction:column;
     -webkit-font-smoothing:antialiased;
   }
-  /* Glass header */
+
   header.app{
     background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);padding:12px 16px;
@@ -31,15 +31,21 @@
   }
   .brand{font-weight:800;font-size:20px;letter-spacing:.3px}
   .brand span{color:var(--accent)}
+  .header-actions{display:flex;gap:8px}
   .btn{
     padding:9px 16px;border-radius:12px;font-size:13px;font-weight:600;
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     cursor:pointer;transition:all .15s;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;
   }
   .btn:hover{border-color:var(--accent);background:var(--card)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+  .btn.danger:hover{background:rgba(255,71,87,.12)}
+
   .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
 
-  /* Glass panel */
   .glass-panel{
     background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:20px;padding:20px;
@@ -74,13 +80,30 @@
   }
   .status-dot.online{background:var(--success)}
   .status-dot.offline{background:var(--offline)}
-  .message-btn{
+  .add-btn{
     padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;
     border:none;background:var(--accent);color:#0a2a28;
     cursor:pointer;transition:filter .15s;flex-shrink:0;
   }
-  .message-btn:hover{filter:brightness(1.08)}
+  .add-btn:hover{filter:brightness(1.08)}
+  .add-btn:disabled{opacity:0.7;cursor:not-allowed;filter:none}
+  .message-btn{
+    padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:all .15s;flex-shrink:0;
+  }
+  .message-btn:hover{border-color:var(--accent);background:var(--card)}
+
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
+
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .btn-spinner{
+    display:inline-block;width:14px;height:14px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-top-color:currentColor;
+    border-radius:50%;animation:spin .6s linear infinite;
+    vertical-align:middle;flex-shrink:0;
+  }
 
   footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
 </style>
@@ -88,7 +111,10 @@
 <body>
   <header class="app">
     <div class="brand">Ani<span>Chan</span></div>
-    <button class="btn" id="backBtn">← Back</button>
+    <div class="header-actions">
+      <button class="btn" id="friendsBtn"><span class="material-symbols-outlined" style="font-size:16px">people</span> Friends</button>
+      <button class="btn" id="backBtn">← Back</button>
+    </div>
   </header>
 
   <main class="container">
@@ -112,6 +138,7 @@
   );
 
   let currentUserId = null;
+  let friendsSet = new Set(); // contains IDs of users we are friends with (either direction)
 
   // ═══════════════════════════════════════════
   //  LIVE SUSPENSION + DELETION CHECK (10 sec)
@@ -142,28 +169,28 @@
   $("backBtn").addEventListener("click", () => {
     window.location.href = "index.html";
   });
+  $("friendsBtn").addEventListener("click", () => {
+    window.location.href = "friend_list.html";
+  });
 
   async function loadMembers() {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = "user_login.html";
-      return;
-    }
+    if (!session) { window.location.href = "user_login.html"; return; }
     currentUserId = session.user.id;
 
-    // Fetch all users except self
+    // 1. Fetch all users except self, newest first
     const { data: users, error } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url, is_online")
       .neq("id", currentUserId)
-      .order("username");
+      .order("created_at", { ascending: false });
 
     if (error) {
       $("membersList").innerHTML = '<div class="empty-state">Failed to load members.</div>';
       return;
     }
 
-    // Fetch blocked user IDs (both directions)
+    // 2. Fetch blocked IDs (both directions) so we can hide them
     const { data: blockedRows } = await supabase
       .from("blocked_users")
       .select("user_id, blocked_user_id")
@@ -172,25 +199,37 @@
     const blockedIds = new Set();
     if (blockedRows) {
       for (const row of blockedRows) {
-        if (row.user_id === currentUserId) {
-          blockedIds.add(row.blocked_user_id); // I blocked them
-        } else if (row.blocked_user_id === currentUserId) {
-          blockedIds.add(row.user_id); // they blocked me
-        }
+        if (row.user_id === currentUserId) blockedIds.add(row.blocked_user_id);
+        else if (row.blocked_user_id === currentUserId) blockedIds.add(row.user_id);
       }
     }
 
-    // Filter out blocked users
+    // 3. Fetch all friendships involving the current user
+    const { data: friendsData } = await supabase
+      .from("friends")
+      .select("user_id, friend_id")
+      .or(`user_id.eq.${currentUserId},friend_id.eq.${currentUserId}`);
+
+    friendsSet.clear();
+    if (friendsData) {
+      for (const row of friendsData) {
+        if (row.user_id === currentUserId) friendsSet.add(row.friend_id);
+        else if (row.friend_id === currentUserId) friendsSet.add(row.user_id);
+      }
+    }
+
+    // 4. Filter and render
     const filteredUsers = users.filter(u => !blockedIds.has(u.id));
 
     const container = $("membersList");
     if (!filteredUsers || filteredUsers.length === 0) {
-      container.innerHTML = '<div class="empty-state">No other members yet.</div>';
+      container.innerHTML = '<div class="empty-state">No one to add yet.</div>';
       return;
     }
 
     container.innerHTML = "";
     filteredUsers.forEach(user => {
+      const isFriend = friendsSet.has(user.id);
       const card = document.createElement("div");
       card.className = "member-card";
       card.innerHTML = `
@@ -205,22 +244,53 @@
             ${user.is_online ? 'Online' : 'Offline'}
           </span>
         </div>
-        <button class="message-btn" data-userid="${user.id}">Message</button>
+        ${isFriend
+          ? `<button class="message-btn" data-userid="${user.id}">💬 Message</button>`
+          : `<button class="add-btn" data-userid="${user.id}"><span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add</button>`
+        }
       `;
       container.appendChild(card);
     });
 
+    // Attach listeners
+    document.querySelectorAll(".add-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const otherId = e.currentTarget.dataset.userid;
+        await addFriend(otherId);
+      });
+    });
+
     document.querySelectorAll(".message-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
-        const otherUserId = e.currentTarget.dataset.userid;
-        await startChat(otherUserId);
+        const otherId = e.currentTarget.dataset.userid;
+        await startChat(otherId);
       });
     });
   }
 
+  async function addFriend(otherUserId) {
+    if (!currentUserId || !otherUserId) return;
+    const btn = document.querySelector(`.add-btn[data-userid="${otherUserId}"]`);
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span> Adding…`;
+
+    const { error } = await supabase
+      .from("friends")
+      .insert({ user_id: currentUserId, friend_id: otherUserId });
+
+    if (error) {
+      alert("Could not add friend: " + error.message);
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">person_add</span> Add`;
+    } else {
+      // Refresh the list so the button changes to Message
+      loadMembers();
+    }
+  }
+
   async function startChat(otherUserId) {
     if (!currentUserId || !otherUserId) return;
-
     const { data: existing } = await supabase
       .from("chat_rooms")
       .select("id")
@@ -235,10 +305,7 @@
         .insert({ user_one_id: currentUserId, user_two_id: otherUserId })
         .select("id")
         .single();
-      if (error) {
-        alert("Could not start chat.");
-        return;
-      }
+      if (error) { alert("Could not start chat."); return; }
       window.location.href = "chat.html?room=" + newRoom.id;
     }
   }
