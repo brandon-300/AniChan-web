@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
+  /* ── (existing styles, unchanged) ── */
   :root{
     --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
     --accent:#51dad3; --accent2:#ffb597;
@@ -135,6 +136,10 @@
   .btn-red:hover{filter:brightness(1.1)}
   .btn-red:disabled{opacity:0.6;cursor:not-allowed;filter:none;}
   .avatar-upload-input{display:none}
+
+  /* Block button */
+  .btn.block-btn{background:var(--danger);border:none;color:#fff;margin-top:8px}
+  .btn.unblock-btn{background:transparent;border:1px solid var(--border);color:var(--text)}
 
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
@@ -263,7 +268,7 @@
         </div>
       </div>
 
-      <!-- Stats (new) -->
+      <!-- Stats -->
       <div class="stats-grid" id="statsGrid">
         <div class="stat-card">
           <div class="stat-value" id="statComments">0</div>
@@ -275,7 +280,7 @@
         </div>
       </div>
 
-      <!-- Bio (new) -->
+      <!-- Bio -->
       <div class="bio-section" id="bioSection">
         <div class="bio-label">About</div>
         <div class="bio-text" id="bioText">—</div>
@@ -295,7 +300,7 @@
         <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
         <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
       </div>
-      <!-- Bio edit (new) -->
+      <!-- Bio edit -->
       <div class="field" id="bioEditField" style="display:none;">
         <label for="bioInput">About</label>
         <textarea id="bioInput" placeholder="Write a little about yourself…" readonly></textarea>
@@ -349,7 +354,10 @@
   let isEditing = false;
   let cropper = null;
   let suspensionCheckInterval = null;
+  let isBlockedByMe = false;
+  let isBlockedByThem = false;
 
+  // ── (helpers, same as before) ──
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
 
@@ -428,13 +436,83 @@
   }
 
   async function loadStats(userId) {
-    // Comments count
     const { count: commentCount } = await supabase
       .from('anime_comments')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
 
     $('statComments').textContent = commentCount || 0;
+  }
+
+  // ── Block state check ──
+  async function checkBlockStatus(viewUserId) {
+    if (!currentUserId || currentUserId === viewUserId) return;
+    const { data: meBlocking } = await supabase
+      .from('blocked_users')
+      .select('blocked_user_id')
+      .eq('user_id', currentUserId)
+      .eq('blocked_user_id', viewUserId)
+      .maybeSingle();
+    isBlockedByMe = !!meBlocking;
+
+    const { data: themBlocking } = await supabase
+      .from('blocked_users')
+      .select('blocked_user_id')
+      .eq('user_id', viewUserId)
+      .eq('blocked_user_id', currentUserId)
+      .maybeSingle();
+    isBlockedByThem = !!themBlocking;
+  }
+
+  function renderBlockButton() {
+    const container = $('headerActions');
+    if (!isOwner && currentUserId) {
+      const blockBtn = document.createElement('button');
+      blockBtn.id = 'blockUnblockBtn';
+      blockBtn.className = 'btn ' + (isBlockedByMe ? '' : 'danger');
+      blockBtn.innerHTML = isBlockedByMe
+        ? 'Unblock'
+        : '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
+      blockBtn.addEventListener('click', toggleBlock);
+      container.insertBefore(blockBtn, container.firstChild);
+    }
+  }
+
+  async function toggleBlock() {
+    const viewUserId = new URLSearchParams(window.location.search).get('user');
+    if (!viewUserId || viewUserId === currentUserId) return;
+    const btn = $('blockUnblockBtn');
+    if (!btn) return;
+    btn.disabled = true;
+
+    if (isBlockedByMe) {
+      // Unblock
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('user_id', currentUserId)
+        .eq('blocked_user_id', viewUserId);
+      if (error) showToast('Error: ' + error.message, 'error');
+      else {
+        isBlockedByMe = false;
+        btn.className = 'btn danger';
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
+        showToast('User unblocked');
+      }
+    } else {
+      // Block
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({ user_id: currentUserId, blocked_user_id: viewUserId });
+      if (error) showToast('Error: ' + error.message, 'error');
+      else {
+        isBlockedByMe = true;
+        btn.className = 'btn';
+        btn.innerHTML = 'Unblock';
+        showToast('User blocked');
+      }
+    }
+    btn.disabled = false;
   }
 
   function renderProfile(profile) {
@@ -474,7 +552,6 @@
       $('statJoined').textContent = '—';
     }
 
-    // Load stats (comments, etc.)
     if (profile?.id) loadStats(profile.id);
   }
 
@@ -483,10 +560,8 @@
     ['fullNameInput','usernameInput','emailInput','ageInput','dobInput','countryInput'].forEach(id => {
       $(id)[enabled ? 'removeAttribute' : 'setAttribute']('readonly', true);
     });
-    // Bio edit
     $('bioEditField').style.display = enabled ? 'block' : 'none';
     $('bioInput')[enabled ? 'removeAttribute' : 'setAttribute']('readonly', true);
-    // Hide/show view-only bio
     $('bioText').style.display = enabled ? 'none' : 'block';
     updateHeaderButtons();
   }
@@ -524,6 +599,9 @@
       msgBtn.textContent = '💬 ' + t('message');
       msgBtn.addEventListener('click', startChat);
       container.appendChild(msgBtn);
+
+      // Block button will be inserted by renderBlockButton()
+      renderBlockButton();
       return;
     }
 
@@ -576,7 +654,6 @@
       $('displayFullName').textContent = fullName;
       $('displayUsername').textContent = '@' + username;
       showToast(t('profileUpdated'), 'success');
-      // Re‑render to update bio display
       const { data: fresh } = await supabase.from('profiles').select('*').eq('id', currentUserId).single();
       if (fresh) renderProfile(fresh);
       setEditMode(false);
@@ -595,7 +672,19 @@
     openCropModal(file);
   });
 
-  async function startChat() { /* same as before */ }
+  async function startChat() {
+    const otherUserId = new URLSearchParams(window.location.search).get('user');
+    if (!otherUserId || otherUserId === currentUserId) return;
+    const { data: room } = await supabase.from('chat_rooms').select('id')
+      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`)
+      .maybeSingle();
+    if (room) { location.href = "chat.html?room=" + room.id; }
+    else {
+      const { data: newRoom, error } = await supabase.from('chat_rooms').insert({ user_one_id: currentUserId, user_two_id: otherUserId }).select('id').single();
+      if (error) { alert('Could not create room.'); return; }
+      location.href = "chat.html?room=" + newRoom.id;
+    }
+  }
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -605,6 +694,7 @@
 
     if (viewUserId && viewUserId !== currentUserId) {
       isOwner = false;
+      await checkBlockStatus(viewUserId);
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', viewUserId).single();
       if (!profile) { alert('User not found'); history.back(); return; }
       renderProfile(profile);
