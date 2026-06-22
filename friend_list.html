@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AniChan · Friend List</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="i18n.js"></script>
+<link rel="icon" href="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
+    --accent:#51dad3; --accent2:#ffb597;
+    --text:#f1f1f1; --muted:#9aa0a6; --border:#2a2a2a;
+    --danger:#ff4757; --success:#2ed573; --offline:#555;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  header.app{
+    background:rgba(19,19,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{font-weight:800;font-size:20px;letter-spacing:.3px}
+  .brand span{color:var(--accent)}
+  .btn{
+    padding:9px 16px;border-radius:12px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);background:var(--panel);color:var(--text);
+    cursor:pointer;transition:all .15s;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{border-color:var(--accent);background:var(--card)}
+  .container{max-width:700px;margin:24px auto;padding:0 16px;width:100%;flex:1}
+
+  .glass-panel{
+    background:rgba(26,26,26,.70);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:20px;padding:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);margin-bottom:20px;
+  }
+
+  .tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)}
+  .tab{
+    flex:1;padding:10px;text-align:center;font-weight:600;font-size:14px;
+    color:var(--muted);cursor:pointer;transition:color .15s;
+    position:relative;
+  }
+  .tab.active{color:var(--accent)}
+  .tab.active::after{
+    content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;
+    background:var(--accent);border-radius:2px 2px 0 0;
+  }
+
+  .list-item{
+    display:flex;align-items:center;gap:14px;padding:12px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .list-item:last-child{border-bottom:none}
+  .avatar-link{flex-shrink:0}
+  .avatar-img{
+    width:44px;height:44px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--border);background:var(--panel);
+  }
+  .info{flex:1;min-width:0}
+  .info .name{
+    font-size:15px;font-weight:600;color:var(--text);text-decoration:none;
+    transition:color .15s;
+  }
+  .info .name:hover{color:var(--accent)}
+  .info .username{font-size:13px;color:var(--muted);margin-top:2px}
+  .actions{flex-shrink:0}
+
+  .empty-state{text-align:center;padding:40px;color:var(--muted)}
+
+  /* Spinner for unblock button */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .btn-spinner{
+    display:inline-block;width:14px;height:14px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-top-color:currentColor;
+    border-radius:50%;animation:spin .6s linear infinite;
+    vertical-align:middle;flex-shrink:0;
+  }
+  .btn.danger{background:transparent;border-color:rgba(255,71,87,.25);color:var(--danger)}
+  .btn.danger:hover{background:rgba(255,71,87,.12)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
+  .btn.primary:hover{filter:brightness(1.08)}
+
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+</style>
+</head>
+<body>
+  <header class="app">
+    <div class="brand">Ani<span>Chan</span></div>
+    <button class="btn" id="backBtn">← Back</button>
+  </header>
+
+  <main class="container">
+    <div class="glass-panel">
+      <div class="tabs">
+        <div class="tab active" id="tabFriends">Friends</div>
+        <div class="tab" id="tabBlocked">Blocked Users</div>
+      </div>
+      <div id="listContainer"></div>
+    </div>
+  </main>
+
+  <footer>AniChan · powered by Supabase</footer>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://yphxpgssdqboufbgazwi.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eKe5liyr5Mc-mumZbXLuZw_Pt3-KVm0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = id => document.getElementById(id);
+  const DEFAULT_AVATAR = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2a2a2a"/><text x="50%" y="55%" font-family="sans-serif" font-size="40" fill="#666" text-anchor="middle" dominant-baseline="middle">?</text></svg>'
+  );
+
+  let currentUserId = null;
+  let currentTab = 'friends'; // 'friends' or 'blocked'
+
+  // Suspension check (same as other pages)
+  setInterval(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
+      alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+      await supabase.auth.signOut();
+      window.location.href = 'user_login.html';
+    }
+    if (data?.is_pending_delete && data.deleted_at) {
+      alert(`Your account has been scheduled for deletion.\n\n${data.admin_note || ''}`);
+      await supabase.auth.signOut();
+      window.location.href = 'user_login.html';
+    }
+  }, 10000);
+
+  $("backBtn").addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+
+  // Tab switching
+  $("tabFriends").addEventListener("click", () => {
+    $("tabFriends").classList.add("active");
+    $("tabBlocked").classList.remove("active");
+    currentTab = 'friends';
+    loadList();
+  });
+  $("tabBlocked").addEventListener("click", () => {
+    $("tabBlocked").classList.add("active");
+    $("tabFriends").classList.remove("active");
+    currentTab = 'blocked';
+    loadList();
+  });
+
+  async function loadList() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = "user_login.html"; return; }
+    currentUserId = session.user.id;
+
+    const container = $("listContainer");
+
+    if (currentTab === 'friends') {
+      // Get all chat room partners
+      const { data: rooms } = await supabase
+        .from("chat_rooms")
+        .select("user_one_id, user_two_id")
+        .or(`user_one_id.eq.${currentUserId},user_two_id.eq.${currentUserId}`);
+
+      if (!rooms || rooms.length === 0) {
+        container.innerHTML = '<div class="empty-state">No conversations yet.</div>';
+        return;
+      }
+
+      // Collect unique partner IDs
+      const partnerIds = new Set();
+      rooms.forEach(r => {
+        if (r.user_one_id !== currentUserId) partnerIds.add(r.user_one_id);
+        if (r.user_two_id !== currentUserId) partnerIds.add(r.user_two_id);
+      });
+
+      if (partnerIds.size === 0) {
+        container.innerHTML = '<div class="empty-state">No conversations yet.</div>';
+        return;
+      }
+
+      // Fetch profiles of these partners
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", Array.from(partnerIds))
+        .order("full_name, username");
+
+      if (error) {
+        container.innerHTML = '<div class="empty-state">Failed to load friends.</div>';
+        return;
+      }
+
+      renderFriends(profiles);
+    } else {
+      // Blocked users tab
+      const { data: blocked } = await supabase
+        .from("blocked_users")
+        .select("blocked_user_id")
+        .eq("user_id", currentUserId);
+
+      if (!blocked || blocked.length === 0) {
+        container.innerHTML = '<div class="empty-state">No blocked users.</div>';
+        return;
+      }
+
+      const blockedIds = blocked.map(b => b.blocked_user_id);
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", blockedIds)
+        .order("username");
+
+      if (error) {
+        container.innerHTML = '<div class="empty-state">Failed to load blocked users.</div>';
+        return;
+      }
+
+      renderBlocked(profiles);
+    }
+  }
+
+  function renderFriends(users) {
+    const container = $("listContainer");
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="empty-state">No friends yet.</div>';
+      return;
+    }
+
+    container.innerHTML = "";
+    users.forEach(user => {
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.innerHTML = `
+        <a class="avatar-link" href="profile.html?user=${user.id}">
+          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        </a>
+        <div class="info">
+          <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
+          <div class="username">@${user.username}</div>
+        </div>
+        <div class="actions">
+          <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.querySelectorAll(".message-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const otherUserId = e.currentTarget.dataset.userid;
+        await startChat(otherUserId);
+      });
+    });
+  }
+
+  function renderBlocked(users) {
+    const container = $("listContainer");
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="empty-state">No blocked users.</div>';
+      return;
+    }
+
+    container.innerHTML = "";
+    users.forEach(user => {
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.innerHTML = `
+        <a class="avatar-link" href="profile.html?user=${user.id}">
+          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
+        </a>
+        <div class="info">
+          <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
+          <div class="username">@${user.username}</div>
+        </div>
+        <div class="actions">
+          <button class="btn danger unblock-btn" data-userid="${user.id}">
+            <span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock
+          </button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    document.querySelectorAll(".unblock-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const unblockId = e.currentTarget.dataset.userid;
+        const button = e.currentTarget;
+        // Show spinner
+        const origHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<span class="btn-spinner"></span> Unblocking…`;
+
+        const { error } = await supabase
+          .from("blocked_users")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("blocked_user_id", unblockId);
+
+        if (error) {
+          alert("Failed to unblock: " + error.message);
+          button.innerHTML = origHTML;
+          button.disabled = false;
+        } else {
+          // Reload the blocked list
+          loadList();
+        }
+      });
+    });
+  }
+
+  async function startChat(otherUserId) {
+    if (!currentUserId || !otherUserId) return;
+    const { data: existing } = await supabase
+      .from("chat_rooms")
+      .select("id")
+      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUserId})`)
+      .maybeSingle();
+
+    if (existing) {
+      window.location.href = "chat.html?room=" + existing.id;
+    } else {
+      const { data: newRoom, error } = await supabase
+        .from("chat_rooms")
+        .insert({ user_one_id: currentUserId, user_two_id: otherUserId })
+        .select("id")
+        .single();
+      if (error) {
+        alert("Could not start chat.");
+        return;
+      }
+      window.location.href = "chat.html?room=" + newRoom.id;
+    }
+  }
+
+  // Initial load
+  document.addEventListener("DOMContentLoaded", async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = "user_login.html"; return; }
+    currentUserId = session.user.id;
+    loadList();
+  });
+})();
+</script>
+</body>
+</html>
