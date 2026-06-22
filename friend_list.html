@@ -259,7 +259,6 @@
       const div = document.createElement("div");
       div.className = "list-item";
 
-      // Avatar – links to profile
       const avatarLink = document.createElement("a");
       avatarLink.className = "avatar-link";
       avatarLink.href = `profile.html?user=${user.id}`;
@@ -269,7 +268,6 @@
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
 
-      // Info column
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
 
@@ -285,7 +283,6 @@
       infoDiv.appendChild(nameLink);
       infoDiv.appendChild(usernameSpan);
 
-      // Actions
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "actions";
       actionsDiv.innerHTML = `
