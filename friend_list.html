@@ -36,7 +36,7 @@
     border:1px solid var(--border);background:var(--panel);color:var(--text);
     cursor:pointer;transition:all .15s;text-decoration:none;
     display:inline-flex;align-items:center;gap:6px;
-    white-space:nowrap;flex-shrink:0;
+    white-space:nowrap;
   }
   .btn:hover{border-color:var(--accent);background:var(--card)}
   .btn.primary{background:var(--accent);border-color:transparent;color:#0a2a28;font-weight:700}
@@ -68,7 +68,7 @@
   }
 
   .list-item{
-    display:flex;align-items:center;gap:12px;padding:12px 0;
+    display:flex;align-items:flex-start;gap:14px;padding:16px 0;
     border-bottom:1px solid var(--border);
   }
   .list-item:last-child{border-bottom:none}
@@ -77,14 +77,14 @@
     width:44px;height:44px;border-radius:50%;object-fit:cover;
     border:2px solid var(--border);background:var(--panel);
   }
-  .info{flex:1;min-width:0;overflow:hidden}
+  .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
   .info .name{
     font-size:15px;font-weight:600;color:var(--text);text-decoration:none;
-    display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    line-height:1.3;
   }
   .info .name:hover{color:var(--accent)}
-  .info .username{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .actions{display:flex;gap:6px;flex-shrink:0}
+  .info .username{font-size:13px;color:var(--muted)}
+  .actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 
   .empty-state{text-align:center;padding:40px;color:var(--muted)}
 
@@ -266,12 +266,12 @@
         <div class="info">
           <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
           <div class="username">@${user.username}</div>
-        </div>
-        <div class="actions">
-          <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
-          <button class="btn danger unfriend-btn" data-userid="${user.id}">
-            <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
-          </button>
+          <div class="actions">
+            <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
+            <button class="btn danger unfriend-btn" data-userid="${user.id}">
+              <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
+            </button>
+          </div>
         </div>
       `;
       container.appendChild(div);
@@ -291,7 +291,7 @@
         if (confirm(`Are you sure you want to unfriend ${userName}?`)) {
           setButtonLoading(btn, true, 'Unfriending…');
           await unfriendUser(otherId);
-          // button state will be reset by loadList() after successful unfriend
+          // button state reset by loadList()
         }
       });
     });
@@ -324,10 +324,10 @@
         <div class="info">
           <div class="name">${user.full_name || user.username}</div>
           <div class="username">@${user.username}</div>
-        </div>
-        <div class="actions">
-          <button class="btn primary accept-btn" data-senderid="${user.id}">Accept</button>
-          <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
+          <div class="actions">
+            <button class="btn primary accept-btn" data-senderid="${user.id}">Accept</button>
+            <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
+          </div>
         </div>
       `;
       container.appendChild(div);
@@ -386,11 +386,11 @@
         <div class="info">
           <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
           <div class="username">@${user.username}</div>
-        </div>
-        <div class="actions">
-          <button class="btn danger unblock-btn" data-userid="${user.id}">
-            <span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock
-          </button>
+          <div class="actions">
+            <button class="btn danger unblock-btn" data-userid="${user.id}">
+              <span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock
+            </button>
+          </div>
         </div>
       `;
       container.appendChild(div);
