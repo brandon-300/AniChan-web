@@ -6,7 +6,6 @@
 <title>AniChan · Login</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="i18n.js"></script>
-<link rel="icon" href="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/logo.png" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
@@ -400,12 +399,28 @@
   const tabLogin = $("tabLogin");
   const tabSignup = $("tabSignup");
 
-  // Redirect helper
+  // ── Improved redirect helper ──
   function getRedirectUrl() {
     const urlParams = new URLSearchParams(window.location.search);
+
+    // 1. Explicit ?redirect=... param
     if (urlParams.get('redirect')) return urlParams.get('redirect');
+
+    // 2. Saved in sessionStorage by another page
     const stored = sessionStorage.getItem('login_redirect');
     if (stored) { sessionStorage.removeItem('login_redirect'); return stored; }
+
+    // 3. Fallback to the referring page (if it's on the same domain and not the login page itself)
+    if (document.referrer) {
+      try {
+        const ref = new URL(document.referrer);
+        if (ref.hostname === window.location.hostname && !ref.pathname.includes('user_login.html')) {
+          return ref.pathname + ref.search;
+        }
+      } catch (e) {}
+    }
+
+    // 4. Default to index.html
     return 'index.html';
   }
 
@@ -753,6 +768,7 @@
           await supabase.from("profiles").update({ is_suspended: false, suspended_until: null, admin_note: null }).eq("id", profile.id);
         }
       }
+      // ── Redirect to the original page ──
       window.location.href = getRedirectUrl();
     } catch(e) {
       err.textContent = e.message || "Login failed."; err.classList.add("show");
@@ -760,15 +776,16 @@
     }
   });
 
-  // ── Google OAuth ──
+  // ── Google OAuth (now carries the return URL) ──
   $("googleLoginBtn").addEventListener("click", async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const redirect = urlParams.get('redirect');
-    if (redirect) sessionStorage.setItem('login_redirect', redirect);
+    const returnUrl = getRedirectUrl();
+    sessionStorage.setItem('login_redirect', returnUrl);
+    // Build the redirectTo URL for Supabase, including the onboarding flag and the return URL
+    const onboardingUrl = window.location.origin + "/user_login.html?onboarding=1&redirect=" + encodeURIComponent(returnUrl);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + "/user_login.html?onboarding=1",
+        redirectTo: onboardingUrl,
       },
     });
   });
@@ -866,6 +883,7 @@
       success.classList.add("show");
       setTimeout(() => {
         hideOnboardingModal();
+        // After onboarding, go to the originally intended page
         window.location.href = getRedirectUrl();
       }, 3000);
     } catch (e) {
@@ -911,6 +929,7 @@
     }
 
     if (profile && profile.username && profile.dob && profile.country) {
+      // Already complete – go to the intended page
       window.location.href = getRedirectUrl();
       return;
     }
