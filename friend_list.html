@@ -168,7 +168,6 @@
 
   $("backBtn").addEventListener("click", () => { window.location.href = "index.html"; });
 
-  // Tab switching
   $("tabFriends").addEventListener("click", () => switchTab('friends'));
   $("tabRequests").addEventListener("click", () => switchTab('requests'));
   $("tabBlocked").addEventListener("click", () => switchTab('blocked'));
@@ -259,21 +258,47 @@
     users.forEach(user => {
       const div = document.createElement("div");
       div.className = "list-item";
-      div.innerHTML = `
-        <a class="avatar-link" href="profile.html?user=${user.id}">
-          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        </a>
-        <div class="info">
-          <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
-          <div class="username">@${user.username}</div>
-          <div class="actions">
-            <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
-            <button class="btn danger unfriend-btn" data-userid="${user.id}">
-              <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
-            </button>
-          </div>
-        </div>
+
+      // Avatar – links to profile
+      const avatarLink = document.createElement("a");
+      avatarLink.className = "avatar-link";
+      avatarLink.href = `profile.html?user=${user.id}`;
+      const avatarImg = document.createElement("img");
+      avatarImg.className = "avatar-img";
+      avatarImg.src = user.avatar_url || DEFAULT_AVATAR;
+      avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
+      avatarLink.appendChild(avatarImg);
+
+      // Info column
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "info";
+
+      const nameLink = document.createElement("a");
+      nameLink.className = "name";
+      nameLink.href = `profile.html?user=${user.id}`;
+      nameLink.textContent = user.full_name || user.username;
+
+      const usernameSpan = document.createElement("div");
+      usernameSpan.className = "username";
+      usernameSpan.textContent = "@" + user.username;
+
+      infoDiv.appendChild(nameLink);
+      infoDiv.appendChild(usernameSpan);
+
+      // Actions
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "actions";
+      actionsDiv.innerHTML = `
+        <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
+        <button class="btn danger unfriend-btn" data-userid="${user.id}">
+          <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
+        </button>
       `;
+
+      div.appendChild(avatarLink);
+      div.appendChild(infoDiv);
+      div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
@@ -291,7 +316,7 @@
         if (confirm(`Are you sure you want to unfriend ${userName}?`)) {
           setButtonLoading(btn, true, 'Unfriending…');
           await unfriendUser(otherId);
-          // button state reset by loadList()
+          // loadList() will be called after success, resetting the button
         }
       });
     });
@@ -317,19 +342,41 @@
     users.forEach(user => {
       const div = document.createElement("div");
       div.className = "list-item";
-      div.innerHTML = `
-        <a class="avatar-link" href="profile.html?user=${user.id}">
-          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        </a>
-        <div class="info">
-          <div class="name">${user.full_name || user.username}</div>
-          <div class="username">@${user.username}</div>
-          <div class="actions">
-            <button class="btn primary accept-btn" data-senderid="${user.id}">Accept</button>
-            <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
-          </div>
-        </div>
+
+      const avatarLink = document.createElement("a");
+      avatarLink.className = "avatar-link";
+      avatarLink.href = `profile.html?user=${user.id}`;
+      const avatarImg = document.createElement("img");
+      avatarImg.className = "avatar-img";
+      avatarImg.src = user.avatar_url || DEFAULT_AVATAR;
+      avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
+      avatarLink.appendChild(avatarImg);
+
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "info";
+
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "name";
+      nameDiv.textContent = user.full_name || user.username;
+
+      const usernameDiv = document.createElement("div");
+      usernameDiv.className = "username";
+      usernameDiv.textContent = "@" + user.username;
+
+      infoDiv.appendChild(nameDiv);
+      infoDiv.appendChild(usernameDiv);
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "actions";
+      actionsDiv.innerHTML = `
+        <button class="btn primary accept-btn" data-senderid="${user.id}">Accept</button>
+        <button class="btn danger decline-btn" data-senderid="${user.id}">Decline</button>
       `;
+
+      div.appendChild(avatarLink);
+      div.appendChild(infoDiv);
+      div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
@@ -379,20 +426,43 @@
     users.forEach(user => {
       const div = document.createElement("div");
       div.className = "list-item";
-      div.innerHTML = `
-        <a class="avatar-link" href="profile.html?user=${user.id}">
-          <img class="avatar-img" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
-        </a>
-        <div class="info">
-          <a class="name" href="profile.html?user=${user.id}">${user.full_name || user.username}</a>
-          <div class="username">@${user.username}</div>
-          <div class="actions">
-            <button class="btn danger unblock-btn" data-userid="${user.id}">
-              <span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock
-            </button>
-          </div>
-        </div>
+
+      const avatarLink = document.createElement("a");
+      avatarLink.className = "avatar-link";
+      avatarLink.href = `profile.html?user=${user.id}`;
+      const avatarImg = document.createElement("img");
+      avatarImg.className = "avatar-img";
+      avatarImg.src = user.avatar_url || DEFAULT_AVATAR;
+      avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
+      avatarLink.appendChild(avatarImg);
+
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "info";
+
+      const nameLink = document.createElement("a");
+      nameLink.className = "name";
+      nameLink.href = `profile.html?user=${user.id}`;
+      nameLink.textContent = user.full_name || user.username;
+
+      const usernameSpan = document.createElement("div");
+      usernameSpan.className = "username";
+      usernameSpan.textContent = "@" + user.username;
+
+      infoDiv.appendChild(nameLink);
+      infoDiv.appendChild(usernameSpan);
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "actions";
+      actionsDiv.innerHTML = `
+        <button class="btn danger unblock-btn" data-userid="${user.id}">
+          <span class="material-symbols-outlined" style="font-size:16px">block</span> Unblock
+        </button>
       `;
+
+      div.appendChild(avatarLink);
+      div.appendChild(infoDiv);
+      div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
