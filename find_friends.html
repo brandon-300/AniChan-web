@@ -57,13 +57,16 @@
     margin-bottom:12px;transition:border-color .15s;
   }
   .member-card:hover{border-color:var(--accent)}
+  .member-avatar-link{flex-shrink:0}
   .member-avatar{
     width:48px;height:48px;border-radius:50%;object-fit:cover;
-    border:2px solid var(--border);flex-shrink:0;transition:border-color .15s;
+    border:2px solid var(--border);transition:border-color .15s;
   }
   .member-avatar:hover{border-color:var(--accent)}
   .member-info{flex:1;min-width:0}
   .member-info strong{display:block;font-size:16px;margin-bottom:4px}
+  .member-info strong a{color:var(--text);text-decoration:none;transition:color .15s}
+  .member-info strong a:hover{color:var(--accent)}
   .member-info span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
   .status-dot{
     width:8px;height:8px;border-radius:50%;
@@ -111,18 +114,26 @@
   let currentUserId = null;
 
   // ═══════════════════════════════════════════
-  //  LIVE SUSPENSION CHECK (every 10 seconds)
+  //  LIVE SUSPENSION + DELETION CHECK (10 sec)
   // ═══════════════════════════════════════════
   setInterval(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
     const { data } = await supabase
       .from('profiles')
-      .select('is_suspended, suspended_until, admin_note')
+      .select('is_suspended, suspended_until, admin_note, is_pending_delete, deleted_at')
       .eq('id', session.user.id)
       .maybeSingle();
+
     if (data?.is_suspended && data.suspended_until && new Date(data.suspended_until) > new Date()) {
       alert(`Your account has been suspended.\n\n${data.admin_note || ''}`);
+      await supabase.auth.signOut();
+      window.location.href = 'user_login.html';
+      return;
+    }
+
+    if (data?.is_pending_delete && data.deleted_at) {
+      alert(`Your account has been scheduled for deletion.\n\n${data.admin_note || ''}`);
       await supabase.auth.signOut();
       window.location.href = 'user_login.html';
     }
@@ -140,32 +151,54 @@
     }
     currentUserId = session.user.id;
 
+    // Fetch all users except self
     const { data: users, error } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url, is_online")
       .neq("id", currentUserId)
       .order("username");
 
-    const container = $("membersList");
     if (error) {
-      container.innerHTML = '<div class="empty-state">Failed to load members.</div>';
+      $("membersList").innerHTML = '<div class="empty-state">Failed to load members.</div>';
       return;
     }
-    if (!users || users.length === 0) {
+
+    // Fetch blocked user IDs (both directions)
+    const { data: blockedRows } = await supabase
+      .from("blocked_users")
+      .select("user_id, blocked_user_id")
+      .or(`user_id.eq.${currentUserId},blocked_user_id.eq.${currentUserId}`);
+
+    const blockedIds = new Set();
+    if (blockedRows) {
+      for (const row of blockedRows) {
+        if (row.user_id === currentUserId) {
+          blockedIds.add(row.blocked_user_id); // I blocked them
+        } else if (row.blocked_user_id === currentUserId) {
+          blockedIds.add(row.user_id); // they blocked me
+        }
+      }
+    }
+
+    // Filter out blocked users
+    const filteredUsers = users.filter(u => !blockedIds.has(u.id));
+
+    const container = $("membersList");
+    if (!filteredUsers || filteredUsers.length === 0) {
       container.innerHTML = '<div class="empty-state">No other members yet.</div>';
       return;
     }
 
     container.innerHTML = "";
-    users.forEach(user => {
+    filteredUsers.forEach(user => {
       const card = document.createElement("div");
       card.className = "member-card";
       card.innerHTML = `
-        <a href="profile.html?user=${user.id}">
+        <a class="member-avatar-link" href="profile.html?user=${user.id}">
           <img class="member-avatar" src="${user.avatar_url || DEFAULT_AVATAR}" onerror="this.src='${DEFAULT_AVATAR}'" />
         </a>
         <div class="member-info">
-          <strong>${user.full_name || user.username}</strong>
+          <strong><a href="profile.html?user=${user.id}">${user.full_name || user.username}</a></strong>
           <span>
             @${user.username}
             <span class="status-dot ${user.is_online ? 'online' : 'offline'}"></span>
