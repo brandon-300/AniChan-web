@@ -208,7 +208,14 @@
         .in("id", Array.from(friendIds))
         .order("full_name, username");
 
-      renderFriends(profiles || []);
+      // Also fetch blocked users to know if already blocked
+      const { data: blockedRows } = await supabase
+        .from("blocked_users")
+        .select("blocked_user_id")
+        .eq("user_id", currentUserId);
+      const blockedIds = new Set(blockedRows?.map(r => r.blocked_user_id) || []);
+
+      renderFriends(profiles || [], blockedIds);
     } else if (currentTab === 'requests') {
       const { data: requests } = await supabase
         .from("friend_requests")
@@ -251,7 +258,7 @@
     }
   }
 
-  function renderFriends(users) {
+  function renderFriends(users, blockedIds) {
     const container = $("listContainer");
     if (!users.length) { container.innerHTML = '<div class="empty-state">No friends yet.</div>'; return; }
     container.innerHTML = "";
@@ -269,39 +276,57 @@
       avatarImg.onerror = () => { avatarImg.src = DEFAULT_AVATAR; };
       avatarLink.appendChild(avatarImg);
 
-      // Info column
+      // Info
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
+
       const nameLink = document.createElement("a");
       nameLink.className = "name";
       nameLink.href = `profile.html?user=${user.id}`;
       nameLink.textContent = user.full_name || user.username;
+
       const usernameSpan = document.createElement("div");
       usernameSpan.className = "username";
       usernameSpan.textContent = "@" + user.username;
+
       infoDiv.appendChild(nameLink);
       infoDiv.appendChild(usernameSpan);
 
       // Actions
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "actions";
-      actionsDiv.innerHTML = `
-        <button class="btn primary message-btn" data-userid="${user.id}">Message</button>
-        <button class="btn danger unfriend-btn" data-userid="${user.id}">
-          <span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend
-        </button>
-        <button class="btn danger block-btn" data-userid="${user.id}">
-          <span class="material-symbols-outlined" style="font-size:16px">block</span> Block
-        </button>
-      `;
+
+      // Message button
+      const msgBtn = document.createElement("button");
+      msgBtn.className = "btn primary message-btn";
+      msgBtn.dataset.userid = user.id;
+      msgBtn.textContent = "💬 Message";
+      actionsDiv.appendChild(msgBtn);
+
+      // Unfriend button
+      const unfriendBtn = document.createElement("button");
+      unfriendBtn.className = "btn danger unfriend-btn";
+      unfriendBtn.dataset.userid = user.id;
+      unfriendBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">person_remove</span> Unfriend`;
+      actionsDiv.appendChild(unfriendBtn);
+
+      // Block button (only if not already blocked)
+      if (!blockedIds.has(user.id)) {
+        const blockBtn = document.createElement("button");
+        blockBtn.className = "btn danger block-btn";
+        blockBtn.dataset.userid = user.id;
+        blockBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">block</span> Block`;
+        actionsDiv.appendChild(blockBtn);
+      }
 
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
       div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
-    // Message buttons
+    // Listeners
     document.querySelectorAll(".message-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
@@ -309,7 +334,6 @@
       });
     });
 
-    // Unfriend buttons
     document.querySelectorAll(".unfriend-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
@@ -321,14 +345,13 @@
       });
     });
 
-    // Block buttons
     document.querySelectorAll(".block-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         const otherId = e.currentTarget.dataset.userid;
         const userName = btn.closest('.list-item').querySelector('.name').textContent;
-        if (confirm(`Block ${userName}? You will be unfriended and blocked.`)) {
+        if (confirm(`Are you sure you want to block ${userName}?`)) {
           setButtonLoading(btn, true, 'Blocking…');
-          await blockFriend(otherId);
+          await blockUser(otherId);
         }
       });
     });
@@ -347,17 +370,10 @@
     }
   }
 
-  async function blockFriend(friendId) {
-    // Remove friendship
-    await supabase
-      .from("friends")
-      .delete()
-      .or(`and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`);
-
-    // Insert block
+  async function blockUser(userId) {
     const { error } = await supabase
       .from("blocked_users")
-      .insert({ user_id: currentUserId, blocked_user_id: friendId });
+      .insert({ user_id: currentUserId, blocked_user_id: userId });
 
     if (error) {
       alert("Failed to block: " + error.message);
@@ -385,12 +401,15 @@
 
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
+
       const nameDiv = document.createElement("div");
       nameDiv.className = "name";
       nameDiv.textContent = user.full_name || user.username;
+
       const usernameDiv = document.createElement("div");
       usernameDiv.className = "username";
       usernameDiv.textContent = "@" + user.username;
+
       infoDiv.appendChild(nameDiv);
       infoDiv.appendChild(usernameDiv);
 
@@ -404,6 +423,7 @@
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
       div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
@@ -465,13 +485,16 @@
 
       const infoDiv = document.createElement("div");
       infoDiv.className = "info";
+
       const nameLink = document.createElement("a");
       nameLink.className = "name";
       nameLink.href = `profile.html?user=${user.id}`;
       nameLink.textContent = user.full_name || user.username;
+
       const usernameSpan = document.createElement("div");
       usernameSpan.className = "username";
       usernameSpan.textContent = "@" + user.username;
+
       infoDiv.appendChild(nameLink);
       infoDiv.appendChild(usernameSpan);
 
@@ -486,6 +509,7 @@
       div.appendChild(avatarLink);
       div.appendChild(infoDiv);
       div.appendChild(actionsDiv);
+
       container.appendChild(div);
     });
 
