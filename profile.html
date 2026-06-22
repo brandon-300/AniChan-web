@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 <style>
-  /* ── (existing styles, unchanged) ── */
   :root{
     --bg:#131313; --card:#1a1a1a; --panel:#1f1f1f;
     --accent:#51dad3; --accent2:#ffb597;
@@ -137,9 +136,22 @@
   .btn-red:disabled{opacity:0.6;cursor:not-allowed;filter:none;}
   .avatar-upload-input{display:none}
 
-  /* Block button */
-  .btn.block-btn{background:var(--danger);border:none;color:#fff;margin-top:8px}
-  .btn.unblock-btn{background:transparent;border:1px solid var(--border);color:var(--text)}
+  /* Block button – bold, bottom placement */
+  .btn.block-btn {
+    background:var(--danger);border:none;color:#fff;font-weight:700;
+    padding:12px 24px;border-radius:12px;font-size:14px;
+    cursor:pointer;transition:filter .15s;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn.block-btn:hover{filter:brightness(1.1)}
+  .btn.block-btn:disabled{opacity:0.7;cursor:not-allowed;filter:none;}
+  .btn.unblock-btn {
+    background:transparent;border:1px solid var(--border);color:var(--text);font-weight:700;
+    padding:12px 24px;border-radius:12px;font-size:14px;
+    cursor:pointer;transition:all .15s;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn.unblock-btn:hover{background:var(--card);border-color:var(--accent)}
 
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn-spinner{
@@ -357,7 +369,6 @@
   let isBlockedByMe = false;
   let isBlockedByThem = false;
 
-  // ── (helpers, same as before) ──
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
 
@@ -440,7 +451,6 @@
       .from('anime_comments')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
-
     $('statComments').textContent = commentCount || 0;
   }
 
@@ -465,54 +475,76 @@
   }
 
   function renderBlockButton() {
-    const container = $('headerActions');
-    if (!isOwner && currentUserId) {
-      const blockBtn = document.createElement('button');
-      blockBtn.id = 'blockUnblockBtn';
-      blockBtn.className = 'btn ' + (isBlockedByMe ? '' : 'danger');
-      blockBtn.innerHTML = isBlockedByMe
-        ? 'Unblock'
-        : '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
-      blockBtn.addEventListener('click', toggleBlock);
-      container.insertBefore(blockBtn, container.firstChild);
+    if (isOwner) return;
+    const bottom = $('bottomActions');
+    if (!bottom) return;
+
+    // Remove any existing block button
+    const existing = bottom.querySelector('#blockUnblockBtn');
+    if (existing) existing.remove();
+
+    const blockBtn = document.createElement('button');
+    blockBtn.id = 'blockUnblockBtn';
+    blockBtn.className = isBlockedByMe ? 'btn unblock-btn' : 'btn block-btn';
+    blockBtn.innerHTML = isBlockedByMe
+      ? 'Unblock'
+      : '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
+    blockBtn.addEventListener('click', toggleBlock);
+    bottom.insertBefore(blockBtn, bottom.firstChild);
+  }
+
+  function setButtonLoading(btn, loading, label) {
+    if (loading) {
+      btn._originalHTML = btn.innerHTML;
+      btn._originalDisabled = btn.disabled;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="btn-spinner"></span> ${label || ''}`;
+    } else {
+      btn.innerHTML = btn._originalHTML || btn.innerHTML;
+      btn.disabled = btn._originalDisabled || false;
+      delete btn._originalHTML;
+      delete btn._originalDisabled;
     }
   }
 
   async function toggleBlock() {
     const viewUserId = new URLSearchParams(window.location.search).get('user');
     if (!viewUserId || viewUserId === currentUserId) return;
-    const btn = $('blockUnblockBtn');
+    const btn = document.getElementById('blockUnblockBtn');
     if (!btn) return;
-    btn.disabled = true;
+
+    setButtonLoading(btn, true, isBlockedByMe ? 'Unblocking…' : 'Blocking…');
 
     if (isBlockedByMe) {
-      // Unblock
       const { error } = await supabase
         .from('blocked_users')
         .delete()
         .eq('user_id', currentUserId)
         .eq('blocked_user_id', viewUserId);
-      if (error) showToast('Error: ' + error.message, 'error');
-      else {
-        isBlockedByMe = false;
-        btn.className = 'btn danger';
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
-        showToast('User unblocked');
+      if (error) {
+        showToast('Error: ' + error.message, 'error');
+        setButtonLoading(btn, false);
+        return;
       }
+      isBlockedByMe = false;
+      btn.className = 'btn block-btn';
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
+      showToast('User unblocked');
     } else {
-      // Block
       const { error } = await supabase
         .from('blocked_users')
         .insert({ user_id: currentUserId, blocked_user_id: viewUserId });
-      if (error) showToast('Error: ' + error.message, 'error');
-      else {
-        isBlockedByMe = true;
-        btn.className = 'btn';
-        btn.innerHTML = 'Unblock';
-        showToast('User blocked');
+      if (error) {
+        showToast('Error: ' + error.message, 'error');
+        setButtonLoading(btn, false);
+        return;
       }
+      isBlockedByMe = true;
+      btn.className = 'btn unblock-btn';
+      btn.innerHTML = 'Unblock';
+      showToast('User blocked');
     }
-    btn.disabled = false;
+    setButtonLoading(btn, false);
   }
 
   function renderProfile(profile) {
@@ -539,12 +571,10 @@
     $('dobInput').value = profile?.dob || '';
     $('countryInput').value = profile?.country || '';
 
-    // Bio
     const bio = profile?.bio || '';
     $('bioText').textContent = bio || '—';
     $('bioInput').value = bio;
 
-    // Joined date
     if (profile?.created_at) {
       const d = new Date(profile.created_at);
       $('statJoined').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
@@ -566,20 +596,6 @@
     updateHeaderButtons();
   }
 
-  function setButtonLoading(btn, loading, label) {
-    if (loading) {
-      btn._originalHTML = btn.innerHTML;
-      btn._originalDisabled = btn.disabled;
-      btn.disabled = true;
-      btn.innerHTML = `<span class="btn-spinner"></span> ${label || ''}`;
-    } else {
-      btn.innerHTML = btn._originalHTML || btn.innerHTML;
-      btn.disabled = btn._originalDisabled || false;
-      delete btn._originalHTML;
-      delete btn._originalDisabled;
-    }
-  }
-
   function updateHeaderButtons() {
     const container = $('headerActions');
     container.innerHTML = '';
@@ -599,9 +615,6 @@
       msgBtn.textContent = '💬 ' + t('message');
       msgBtn.addEventListener('click', startChat);
       container.appendChild(msgBtn);
-
-      // Block button will be inserted by renderBlockButton()
-      renderBlockButton();
       return;
     }
 
@@ -660,9 +673,54 @@
     } catch(e) { showToast(e.message, 'error'); }
   }
 
-  function openCropModal(file) { /* same as before */ }
-  function closeCropModal() { /* same as before */ }
-  async function handleCropConfirm() { /* same as before */ }
+  function openCropModal(file) {
+    if (cropper) { cropper.destroy(); cropper = null; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      $('cropImage').src = e.target.result;
+      $('cropModal').classList.add('active');
+      cropper = new Cropper($('cropImage'), {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 1,
+        cropBoxResizable: false,
+        background: false
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+  function closeCropModal() {
+    $('cropModal').classList.remove('active');
+    if (cropper) { cropper.destroy(); cropper = null; }
+    $('cropImage').src = '';
+    $('avatarInput').value = '';
+  }
+  async function handleCropConfirm() {
+    if (!cropper) return;
+    const confirmBtn = $('confirmCropBtn');
+    setButtonLoading(confirmBtn, true, 'Uploading…');
+    try {
+      const canvas = cropper.getCroppedCanvas({ width: 256, height: 256 });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.9));
+      const formData = new FormData();
+      formData.append('file', blob, 'avatar.webp');
+      formData.append('userId', currentUserId);
+      const response = await fetch('/api/resize-avatar', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Upload failed');
+      }
+      const { url } = await response.json();
+      if (!url) throw new Error('No URL returned from server');
+      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', currentUserId);
+      if (updateErr) throw new Error('DB update failed: ' + updateErr.message);
+      $('avatarImg').src = url;
+      showToast(t('avatarUpdated'), 'success');
+      closeCropModal();
+    } catch (err) { showToast(err.message, 'error'); }
+    finally { setButtonLoading(confirmBtn, false); }
+  }
   $('cancelCropBtn').addEventListener('click', closeCropModal);
   $('confirmCropBtn').addEventListener('click', handleCropConfirm);
   $('pencilBtn').addEventListener('click', () => $('avatarInput').click());
@@ -702,6 +760,7 @@
       $('bioEditField').style.display = 'none';
       $('bottomActions').innerHTML = '';
       updateHeaderButtons();
+      renderBlockButton();  // Block button appears at bottom
       return;
     }
 
