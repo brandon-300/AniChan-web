@@ -364,8 +364,10 @@
     align-items: center;
   }
   .out .msg-foot { justify-content: flex-end; }
-  .tick-icon { font-size: 14px; }
-  .out .tick-icon.read { color: var(--accent); }
+  .tick-icon { font-size: 14px; color: rgba(255,255,255,0.45); }
+  .tick-icon.delivered { color: rgba(255,255,255,0.45); }
+  .tick-icon.read { color: var(--accent); }
+  .read-label { font-size: 10px; color: var(--accent); font-weight: 500; margin-left: 1px; }
 
   /* Deleted message */
   .deleted-note {
@@ -614,25 +616,37 @@
   .out .voice-play-btn { background: rgba(0,0,0,0.2); color: #0a2a28; }
   .in .voice-play-btn { background: rgba(81,218,211,0.15); color: var(--accent); }
   .voice-play-btn .material-symbols-outlined { font-size: 18px; }
-  .voice-track { flex: 1; height: 4px; border-radius: 2px; position: relative; cursor: pointer; }
+  .voice-track { flex: 1; height: 4px; border-radius: 2px; position: relative; cursor: pointer; touch-action: none; }
   .in .voice-track { background: rgba(255,255,255,0.12); }
   .out .voice-track { background: rgba(0,0,0,0.2); }
-  .voice-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; width: 0%; }
+  .voice-track-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; width: 0%; transition: none; }
   .in .voice-track-fill { background: var(--accent); }
   .out .voice-track-fill { background: #0a2a28; }
+  .voice-track-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 14px; height: 14px; border-radius: 50%; left: 0%;
+    transition: transform .1s, opacity .1s; opacity: 0;
+  }
+  .in .voice-track-thumb { background: var(--accent); }
+  .out .voice-track-thumb { background: #0a2a28; }
+  .voice-bubble:hover .voice-track-thumb,
+  .voice-bubble.seeking .voice-track-thumb { opacity: 1; }
   .voice-time { font-size: 11px; flex-shrink: 0; min-width: 34px; text-align: right; }
   .in .voice-time { color: var(--muted); }
   .out .voice-time { color: rgba(0,0,0,0.6); }
 
-  /* Video note bubble (Telegram-style circular) */
+  /* Video note bubble (Telegram-style circular with progress ring) */
   .video-note-msg .bubble {
     background: transparent !important; box-shadow: none !important;
     padding: 0; border-radius: 0;
   }
+  /* Wrapper sits outside overflow:hidden so the ring is visible */
+  .video-note-wrap {
+    position: relative; width: 208px; height: 208px; flex-shrink: 0; cursor: pointer;
+  }
   .video-note-bubble {
-    position: relative; width: 200px; height: 200px; border-radius: 50%;
-    overflow: hidden; cursor: pointer; background: #000;
-    border: 2px solid var(--border-solid); flex-shrink: 0;
+    position: absolute; inset: 4px; border-radius: 50%;
+    overflow: hidden; background: #000;
   }
   .video-note-bubble video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .video-note-play {
@@ -640,20 +654,27 @@
     background: rgba(0,0,0,0.28); color: #fff; transition: opacity .18s; pointer-events: none;
   }
   .video-note-play .material-symbols-outlined { font-size: 46px; filter: drop-shadow(0 1px 5px rgba(0,0,0,.6)); }
-  /* Hide overlay entirely while playing */
-  .video-note-bubble.playing .video-note-play { opacity: 0; }
-  /* Brief pause flash when tapped mid-play */
-  .video-note-bubble.show-pause .video-note-play { opacity: 1 !important; }
+  .video-note-wrap.playing .video-note-play { opacity: 0; }
+  /* SVG ring around the circle */
+  .video-note-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+  }
+  .video-note-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); }
+  .video-note-ring-fg {
+    fill: none; stroke: var(--accent); stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 50% 50%;
+    transition: stroke-dashoffset .25s linear;
+  }
   .video-note-time {
-    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
     font-size: 11px; color: #fff; white-space: nowrap;
-    background: rgba(0,0,0,0.5); padding: 2px 7px; border-radius: 10px;
-    font-variant-numeric: tabular-nums; pointer-events: none;
+    background: rgba(0,0,0,0.55); padding: 2px 7px; border-radius: 10px;
+    font-variant-numeric: tabular-nums; pointer-events: none; z-index: 3;
   }
 
   /* Reply snip on video note rows sits OUTSIDE the transparent bubble */
   .video-note-msg > .reply-snip {
-    border-radius: 12px; margin-bottom: 4px; max-width: 204px;
+    border-radius: 12px; margin-bottom: 4px; max-width: 208px;
   }
   .video-note-msg.in > .reply-snip { background: #1e2a36; border-left-color: var(--accent); }
   .video-note-msg.out > .reply-snip { background: rgba(30,42,56,.92); border-left-color: rgba(255,255,255,.3); }
@@ -662,15 +683,32 @@
   .video-note-msg.in  > .reply-snip .reply-body { color: var(--muted); }
   .video-note-msg.out > .reply-snip .reply-body { color: rgba(255,255,255,.65); }
 
-  /* Live circular preview while recording a video note */
-  .video-rec-preview {
-    position: absolute; bottom: 100%; right: 6px; margin-bottom: 10px;
-    width: 84px; height: 84px; border-radius: 50%; overflow: hidden;
-    border: 2px solid var(--danger); display: none; box-shadow: 0 4px 18px rgba(0,0,0,.5);
-    z-index: 5;
+  /* Fullscreen centered recording overlay */
+  .video-rec-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.82);
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
   }
-  .video-rec-preview.active { display: block; }
-  .video-rec-preview video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .video-rec-overlay.active { display: flex; }
+  .video-rec-circle { position: relative; width: 240px; height: 240px; }
+  .video-rec-circle video {
+    width: 216px; height: 216px; border-radius: 50%; object-fit: cover;
+    position: absolute; inset: 12px; transform: scaleX(-1);
+  }
+  .video-rec-circle svg {
+    position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg);
+  }
+  .video-rec-ring-bg { fill: none; stroke: rgba(255,255,255,0.15); }
+  .video-rec-ring-fg { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .2s linear; }
+  .video-rec-label {
+    font-size: 16px; color: #fff; font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .video-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: recPulse 1s infinite; }
+  .video-rec-hint { font-size: 13px; color: rgba(255,255,255,0.55); }
+
+  /* Small compose-bar preview is now removed — fullscreen replaces it */
+  .video-rec-preview { display: none !important; }
 
   /* ── Group chat ── */
   .group-avatar-badge {
@@ -823,13 +861,13 @@
   /* Reaction pills under a message bubble */
   .reaction-row {
     display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
-    max-width: 75%; /* matches bubble max-width so pills align under it */
-    overflow: visible;
+    width: 100%; max-width: 100%; overflow: visible; padding: 0 2px;
   }
-  .out .reaction-row { justify-content: flex-end; align-self: flex-end; }
-  .in .reaction-row { justify-content: flex-start; align-self: flex-start; }
-  /* Video notes have a fixed 200px bubble so reactions should match */
-  .video-note-msg .reaction-row { max-width: 204px; }
+  .out .reaction-row { justify-content: flex-end; align-self: stretch; }
+  .in .reaction-row { justify-content: flex-start; align-self: stretch; }
+  /* Video notes: align row under the 200px circle */
+  .video-note-msg .reaction-row { max-width: 200px; align-self: flex-start; }
+  .video-note-msg.out .reaction-row { align-self: flex-end; }
   .reaction-pill {
     display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
     background: #1e262e; border: 1px solid var(--border-solid); border-radius: 12px;
@@ -1150,6 +1188,23 @@
     <div class="no-more">No more friends?</div>
     <button class="add-more-btn" id="addMoreBtn">Add more friends</button>
   </div>
+</div>
+
+<!-- Fullscreen video note recording overlay -->
+<div class="video-rec-overlay" id="videoRecOverlay">
+  <div class="video-rec-circle" id="videoRecCircle">
+    <video id="videoRecOverlayEl" muted autoplay playsinline></video>
+    <svg viewBox="0 0 240 240">
+      <circle class="video-rec-ring-bg" cx="120" cy="120" r="114" stroke-width="5"/>
+      <circle class="video-rec-ring-fg" id="videoRecRingFg" cx="120" cy="120" r="114" stroke-width="5"
+        stroke-dasharray="716.3" stroke-dashoffset="716.3"/>
+    </svg>
+  </div>
+  <div class="video-rec-label">
+    <div class="video-rec-dot"></div>
+    <span id="videoRecTimer">0:00</span>
+  </div>
+  <div class="video-rec-hint">Release to send · Slide to cancel</div>
 </div>
 
 <!-- Context menu -->
@@ -1783,24 +1838,40 @@
         </button>
         <div class="voice-track">
           <div class="voice-track-fill"></div>
+          <div class="voice-track-thumb"></div>
         </div>
         <span class="voice-time">0:00</span>
         <audio preload="metadata" src="${esc(msg.message)}"></audio>
       </div>` : '';
-    const videoNoteHtml = isVideoNote ? `
-      <div class="video-note-bubble">
-        <video preload="metadata" playsinline src="${esc(msg.message)}"></video>
-        <div class="video-note-play"><span class="material-symbols-outlined">play_arrow</span></div>
+    const videoNoteHtml = isVideoNote ? (() => {
+      const r = 100; const circ = +(2 * Math.PI * r).toFixed(1);
+      return `<div class="video-note-wrap" id="vnw-${msg.id}">
+        <div class="video-note-bubble">
+          <video preload="metadata" playsinline src="${esc(msg.message)}"></video>
+          <div class="video-note-play"><span class="material-symbols-outlined">play_arrow</span></div>
+        </div>
+        <svg class="video-note-svg" viewBox="0 0 208 208">
+          <circle class="video-note-ring-bg" cx="104" cy="104" r="${r}" stroke-width="4"/>
+          <circle class="video-note-ring-fg" cx="104" cy="104" r="${r}" stroke-width="4"
+            stroke-dasharray="${circ}" stroke-dashoffset="${circ}"/>
+        </svg>
         <span class="video-note-time">0:00</span>
-      </div>` : '';
-    const editedHtml = (msg.edited_at || msg.is_edited)
-      ? '<span class="edited-label">(edited)</span>'
-      : '';
+      </div>`;
+    })() : '';
+    const editedHtml = (msg.edited_at || msg.is_edited) ? '<span class="edited-label">(edited)</span>' : '';
 
     const iconSide = out ? 'left' : 'right';
     const replyIconHtml = `<span class="material-symbols-outlined swipe-reply-icon" style="${iconSide}:-28px">reply</span>`;
 
     if (isVideoNote) row.classList.add('video-note-msg');
+
+    // Tick: single=sent, double=delivered(online), double+read=seen
+    const partnerOnline = $('partnerDot')?.classList.contains('live');
+    const tickHtml = out ? (() => {
+      if (msg.is_read) return `<span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span><span class="read-label">read</span>`;
+      if (partnerOnline) return `<span class="material-symbols-outlined tick-icon delivered" style="font-size:14px">done_all</span>`;
+      return `<span class="material-symbols-outlined tick-icon" style="font-size:14px">done</span>`;
+    })() : '';
 
     row.innerHTML = `
       ${replyIconHtml}
@@ -1812,11 +1883,11 @@
       ${renderReactionsHtml(msg.id)}
       <div class="msg-foot">
         <span>${fmtTimeOnly(msg.created_at)}</span>
-        ${out ? '<span class="material-symbols-outlined tick-icon read" style="font-size:14px">done_all</span>' : ''}
+        ${tickHtml}
       </div>`;
 
     if (isVoice) initVoicePlayer(row.querySelector('.voice-bubble'));
-    if (isVideoNote) initVideoNotePlayer(row.querySelector('.video-note-bubble'));
+    if (isVideoNote) initVideoNotePlayer(row.querySelector('.video-note-wrap'));
     bindReactionRow(row, msg.id);
 
     attachSwipe(row, msg);
@@ -1859,7 +1930,10 @@
     });
     audio.addEventListener('timeupdate', () => {
       if (audio.duration) {
-        fill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+        const ratio = audio.currentTime / audio.duration;
+        fill.style.width = `${ratio * 100}%`;
+        const thumb = track.querySelector('.voice-track-thumb');
+        if (thumb) thumb.style.left = `${ratio * 100}%`;
         timeLabel.textContent = fmtRecTime((audio.duration - audio.currentTime) * 1000);
       }
     });
@@ -1878,40 +1952,64 @@
       e.stopPropagation();
       if (audio.paused) audio.play(); else audio.pause();
     });
-    track.addEventListener('click', e => {
-      e.stopPropagation();
+
+    // Scrub by click or touch-drag on the track
+    function scrubTo(clientX) {
       const rect = track.getBoundingClientRect();
-      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-      if (audio.duration) audio.currentTime = ratio * audio.duration;
-    });
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      if (audio.duration) {
+        audio.currentTime = ratio * audio.duration;
+        fill.style.width = `${ratio * 100}%`;
+        const thumb = track.querySelector('.voice-track-thumb');
+        if (thumb) thumb.style.left = `${ratio * 100}%`;
+      }
+    }
+    track.addEventListener('click', e => { e.stopPropagation(); scrubTo(e.clientX); });
+    track.addEventListener('touchstart', e => {
+      e.stopPropagation(); el.classList.add('seeking');
+      scrubTo(e.touches[0].clientX);
+    }, { passive: true });
+    track.addEventListener('touchmove', e => {
+      e.stopPropagation(); scrubTo(e.touches[0].clientX);
+    }, { passive: true });
+    track.addEventListener('touchend', e => { e.stopPropagation(); el.classList.remove('seeking'); }, { passive: true });
   }
 
-  function initVideoNotePlayer(el) {
-    if (!el) return;
-    const video = el.querySelector('video');
-    const timeLabel = el.querySelector('.video-note-time');
+  function initVideoNotePlayer(wrap) {
+    if (!wrap) return;
+    const bubble = wrap.querySelector('.video-note-bubble');
+    const video = wrap.querySelector('video');
+    const timeLabel = wrap.querySelector('.video-note-time');
+    const ringFg = wrap.querySelector('.video-note-ring-fg');
+    const circ = parseFloat(ringFg?.getAttribute('stroke-dasharray') || '628');
+
+    function setRing(ratio) {
+      if (ringFg) ringFg.setAttribute('stroke-dashoffset', String(circ * (1 - ratio)));
+    }
 
     video.addEventListener('loadedmetadata', () => {
-      if (isFinite(video.duration)) timeLabel.textContent = fmtRecTime(video.duration * 1000);
+      if (isFinite(video.duration)) { timeLabel.textContent = fmtRecTime(video.duration * 1000); setRing(0); }
     });
     video.addEventListener('timeupdate', () => {
-      if (video.duration) timeLabel.textContent = fmtRecTime((video.duration - video.currentTime) * 1000);
+      if (video.duration) {
+        timeLabel.textContent = fmtRecTime((video.duration - video.currentTime) * 1000);
+        setRing(video.currentTime / video.duration);
+      }
     });
     video.addEventListener('play', () => {
       if (currentlyPlayingVideo && currentlyPlayingVideo !== video) currentlyPlayingVideo.pause();
       if (currentlyPlayingAudio) currentlyPlayingAudio.pause();
       currentlyPlayingVideo = video;
-      el.classList.add('playing');
+      wrap.classList.add('playing');
     });
-    video.addEventListener('pause', () => {
-      el.classList.remove('playing');
-    });
+    video.addEventListener('pause', () => { wrap.classList.remove('playing'); });
     video.addEventListener('ended', () => {
-      el.classList.remove('playing');
+      wrap.classList.remove('playing');
+      setRing(0);
       if (isFinite(video.duration)) timeLabel.textContent = fmtRecTime(video.duration * 1000);
     });
 
-    el.addEventListener('click', e => {
+    wrap.addEventListener('click', e => {
       e.stopPropagation();
       if (video.paused) video.play(); else video.pause();
     });
@@ -2287,15 +2385,25 @@
     $('recTrash').classList.remove('visible', 'armed');
 
     if (wantsVideo) {
-      const previewEl = $('videoRecPreviewEl');
-      previewEl.srcObject = recStream;
-      $('videoRecPreview').classList.add('active');
+      const overlayVid = $('videoRecOverlayEl');
+      overlayVid.srcObject = recStream;
+      $('videoRecOverlay').classList.add('active');
+      const ringFg = $('videoRecRingFg');
+      const ringCirc = 716.3; // 2π×114
+      ringFg.setAttribute('stroke-dashoffset', String(ringCirc));
       clearTimeout(videoNoteStopTimer);
       videoNoteStopTimer = setTimeout(() => { if (isRecordingActive()) mediaRecorder.stop(); }, VIDEO_NOTE_MAX_MS);
     }
 
     recordTimerInterval = setInterval(() => {
-      $('recTimer').textContent = fmtRecTime(Date.now() - recordStartTime);
+      const elapsed = Date.now() - recordStartTime;
+      $('recTimer').textContent = fmtRecTime(elapsed);
+      if (wantsVideo) {
+        $('videoRecTimer').textContent = fmtRecTime(elapsed);
+        const ringFg = $('videoRecRingFg');
+        const ratio = Math.min(elapsed / VIDEO_NOTE_MAX_MS, 1);
+        ringFg.setAttribute('stroke-dashoffset', String(716.3 * (1 - ratio)));
+      }
     }, 200);
   }
 
@@ -2330,8 +2438,8 @@
     $('recordingBar').classList.remove('active');
     $('msgInput').style.display = '';
     syncSendMicBtn();
-    $('videoRecPreview').classList.remove('active');
-    $('videoRecPreviewEl').srcObject = null;
+    $('videoRecOverlay').classList.remove('active');
+    $('videoRecOverlayEl').srcObject = null;
     if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
     broadcastRecording(false);
   }
@@ -2479,9 +2587,21 @@
           const isReadReceiptOnly = o && n && o.message === n.message && o.is_deleted === n.is_deleted && o.is_edited === n.is_edited && o.is_read !== n.is_read;
           if (isReadReceiptOnly) {
             const row = $('msgFeed').querySelector(`.msg-row[data-msg-id="${n.id}"]`);
-            if (row) {
-              const tick = row.querySelector('.tick-icon');
-              if (tick && n.is_read) tick.style.color = 'var(--accent)';
+            if (row && n.is_read) {
+              const foot = row.querySelector('.msg-foot');
+              const tick = foot?.querySelector('.tick-icon');
+              if (tick) {
+                tick.className = 'material-symbols-outlined tick-icon read';
+                tick.style.fontSize = '14px';
+                tick.textContent = 'done_all';
+                // Add read label if not already there
+                if (!foot.querySelector('.read-label')) {
+                  const lbl = document.createElement('span');
+                  lbl.className = 'read-label';
+                  lbl.textContent = 'read';
+                  foot.appendChild(lbl);
+                }
+              }
             }
           } else {
             // Actual edit or delete — do a full reload
