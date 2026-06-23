@@ -498,6 +498,7 @@
   .compose-area {
     flex-shrink: 0;
     position: relative;
+    z-index: 160; /* above video-rec-overlay at z-index 150 */
     border-top: 1px solid var(--border);
     background: rgba(21, 28, 36, 0.85);
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -683,17 +684,19 @@
   .video-note-msg.in  > .reply-snip .reply-body { color: var(--muted); }
   .video-note-msg.out > .reply-snip .reply-body { color: rgba(255,255,255,.65); }
 
-  /* Fullscreen centered recording overlay */
+  /* Fullscreen centered recording overlay — leaves the compose bar visible */
   .video-rec-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,0.82);
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 150; /* below compose area z-index so bar stays on top */
+    background: rgba(0,0,0,0.84);
     display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    padding-bottom: 80px; /* reserve space so circle isn't hidden behind compose bar */
   }
   .video-rec-overlay.active { display: flex; }
-  .video-rec-circle { position: relative; width: 240px; height: 240px; }
+  .video-rec-circle { position: relative; width: 300px; height: 300px; }
   .video-rec-circle video {
-    width: 216px; height: 216px; border-radius: 50%; object-fit: cover;
-    position: absolute; inset: 12px; transform: scaleX(-1);
+    width: 274px; height: 274px; border-radius: 50%; object-fit: cover;
+    position: absolute; inset: 13px; transform: scaleX(-1);
   }
   .video-rec-circle svg {
     position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg);
@@ -837,7 +840,7 @@
   .ctx-menu {
     position: fixed; background: #1a1f26;
     border: 1px solid var(--border-solid);
-    border-radius: 14px; padding: 4px 0; min-width: 180px; z-index: 200;
+    border-radius: 14px; padding: 4px 0; min-width: 220px; z-index: 200;
     display: none; box-shadow: 0 12px 32px rgba(0,0,0,.6);
   }
   .ctx-menu button {
@@ -1194,10 +1197,10 @@
 <div class="video-rec-overlay" id="videoRecOverlay">
   <div class="video-rec-circle" id="videoRecCircle">
     <video id="videoRecOverlayEl" muted autoplay playsinline></video>
-    <svg viewBox="0 0 240 240">
-      <circle class="video-rec-ring-bg" cx="120" cy="120" r="114" stroke-width="5"/>
-      <circle class="video-rec-ring-fg" id="videoRecRingFg" cx="120" cy="120" r="114" stroke-width="5"
-        stroke-dasharray="716.3" stroke-dashoffset="716.3"/>
+    <svg viewBox="0 0 300 300">
+      <circle class="video-rec-ring-bg" cx="150" cy="150" r="144" stroke-width="5"/>
+      <circle class="video-rec-ring-fg" id="videoRecRingFg" cx="150" cy="150" r="144" stroke-width="5"
+        stroke-dasharray="904.8" stroke-dashoffset="904.8"/>
     </svg>
   </div>
   <div class="video-rec-label">
@@ -2001,11 +2004,12 @@
       if (currentlyPlayingAudio) currentlyPlayingAudio.pause();
       currentlyPlayingVideo = video;
       wrap.classList.add('playing');
+      if (ringFg) ringFg.style.opacity = '1'; // restore ring on replay
     });
     video.addEventListener('pause', () => { wrap.classList.remove('playing'); });
     video.addEventListener('ended', () => {
       wrap.classList.remove('playing');
-      setRing(0);
+      if (ringFg) ringFg.style.opacity = '0'; // hide ring, don't reset to start
       if (isFinite(video.duration)) timeLabel.textContent = fmtRecTime(video.duration * 1000);
     });
 
@@ -2183,8 +2187,10 @@
 
     menu.style.display = 'block';
     const tx = e.touches[0];
-    menu.style.left = Math.min(tx.clientX, window.innerWidth - 200) + 'px';
-    menu.style.top  = Math.max(tx.clientY - 120, 10) + 'px';
+    const menuW = 224; // slightly wider than min-width to account for padding
+    const rawLeft = tx.clientX - menuW / 2; // center on tap
+    menu.style.left = Math.min(Math.max(rawLeft, 6), window.innerWidth - menuW - 6) + 'px';
+    menu.style.top  = Math.max(tx.clientY - 160, 10) + 'px';
   }
   document.addEventListener('click', e => {
     if (!$('ctxMenu').contains(e.target)) $('ctxMenu').style.display = 'none';
@@ -2389,7 +2395,7 @@
       overlayVid.srcObject = recStream;
       $('videoRecOverlay').classList.add('active');
       const ringFg = $('videoRecRingFg');
-      const ringCirc = 716.3; // 2π×114
+      const ringCirc = 904.8; // 2π×144 (r=144 in 300px viewBox)
       ringFg.setAttribute('stroke-dashoffset', String(ringCirc));
       clearTimeout(videoNoteStopTimer);
       videoNoteStopTimer = setTimeout(() => { if (isRecordingActive()) mediaRecorder.stop(); }, VIDEO_NOTE_MAX_MS);
@@ -2402,7 +2408,7 @@
         $('videoRecTimer').textContent = fmtRecTime(elapsed);
         const ringFg = $('videoRecRingFg');
         const ratio = Math.min(elapsed / VIDEO_NOTE_MAX_MS, 1);
-        ringFg.setAttribute('stroke-dashoffset', String(716.3 * (1 - ratio)));
+        ringFg.setAttribute('stroke-dashoffset', String(904.8 * (1 - ratio)));
       }
     }, 200);
   }
