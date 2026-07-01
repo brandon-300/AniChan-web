@@ -424,6 +424,22 @@
     return 'index.html';
   }
 
+  // ═══════════════════════════════════════
+  //  PREVENT LOGGED‑IN USERS FROM STAYING
+  // ═══════════════════════════════════════
+  (async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    // If they're in the onboarding flow, let them stay.
+    if (urlParams.get("onboarding") === "1") return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      // User is already logged in – redirect them away.
+      const redirectTo = getRedirectUrl();
+      window.location.href = redirectTo;
+    }
+  })();
+
   // DOB dropdowns for SIGNUP
   const dobDay = $("dobDay"), dobMonth = $("dobMonth"), dobYear = $("dobYear");
   const signupAge = $("signupAge"), ageError = $("ageError");
