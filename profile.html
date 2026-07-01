@@ -842,7 +842,9 @@
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn-red';
     logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span> ' + t('logout');
+    // ── Logout confirmation ──
     logoutBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to log out?')) return;
       setButtonLoading(logoutBtn, true, 'Logging out…');
       await handleLogout();
     });
