@@ -22,7 +22,6 @@ export default async function handler(req, res) {
     let isAdmin = false;
 
     if (cronToken && cronToken === process.env.CRON_SECRET) {
-      // Allowed via cron
       isAdmin = true;
     } else if (authHeader) {
       const token = authHeader.split(' ')[1];
@@ -175,6 +174,9 @@ export default async function handler(req, res) {
 
     const emailBody = `
       <div style="font-family:Arial,sans-serif;max-width:650px;margin:auto">
+        <div style="text-align:center;margin-bottom:16px">
+          <img src="https://yphxpgssdqboufbgazwi.supabase.co/storage/v1/object/public/avatars/site-logo/icon-512.png" alt="AniChan" style="width:60px;height:60px;border-radius:50%" />
+        </div>
         <h2 style="color:#51dad3">AniChan Weekly Report</h2>
         <p style="color:#666">Period: ${new Date(weekAgo).toLocaleDateString()} – ${new Date().toLocaleDateString()}</p>
 
