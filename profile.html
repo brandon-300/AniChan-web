@@ -109,13 +109,12 @@
   .bio-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
   .bio-text{font-size:14px;line-height:1.5;color:var(--text)}
 
-  .stats-grid{display:flex;gap:20px;margin-top:16px;flex-wrap:wrap}
-  .stat-card{
-    background:var(--panel);border:1px solid var(--border);border-radius:12px;
-    padding:12px 16px;flex:1 1 140px;text-align:center;
+  .joined-date{
+    font-size:14px;color:var(--muted);
+    margin-bottom:16px;
+    display:flex;align-items:center;gap:6px;
   }
-  .stat-value{font-size:22px;font-weight:800;color:var(--accent)}
-  .stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+  .joined-date .material-symbols-outlined{font-size:18px;color:var(--accent)}
 
   .lang-selector{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
   .lang-btn{
@@ -125,7 +124,10 @@
   }
   .lang-btn:hover{border-color:var(--accent);background:var(--card)}
 
-  .bottom-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+  .bottom-actions{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+
+  .btn-row{display:flex;gap:12px;flex-wrap:wrap}
+
   .btn-red{
     background:var(--danger);color:#fff;border:none;
     padding:12px 24px;border-radius:12px;font-weight:600;font-size:14px;
@@ -287,19 +289,7 @@
         </div>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card">
-          <div class="stat-value" id="statComments">0</div>
-          <div class="stat-label">Comments</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="statJoined">—</div>
-          <div class="stat-label">Joined</div>
-        </div>
-      </div>
-
-      <!-- Bio -->
+      <!-- Bio (moved above details, no stats) -->
       <div class="bio-section" id="bioSection">
         <div class="bio-label">About</div>
         <div class="bio-text" id="bioText">—</div>
@@ -319,7 +309,7 @@
         <div class="field"><label for="dobInput">Date of birth</label><input id="dobInput" type="date" readonly /></div>
         <div class="field"><label for="countryInput">Country</label><input id="countryInput" type="text" readonly /></div>
       </div>
-      <!-- Bio edit -->
+      <!-- Bio edit (remains hidden unless editing) -->
       <div class="field" id="bioEditField" style="display:none;">
         <label for="bioInput">About</label>
         <textarea id="bioInput" placeholder="Write a little about yourself…" readonly></textarea>
@@ -333,7 +323,9 @@
       </div>
     </div>
 
-    <div class="bottom-actions" id="bottomActions"><!-- dynamic --></div>
+    <div class="bottom-actions" id="bottomActions">
+      <!-- Joined date and action buttons will be inserted here -->
+    </div>
   </main>
 
   <!-- Crop Modal -->
@@ -376,6 +368,7 @@
   let isBlockedByMe = false;
   let isBlockedByThem = false;
   let isFriend = false;
+  let profileJoinedDate = null; // to hold full date
 
   const labelsMap = { fullNameInput:'fullName', usernameInput:'username', emailInput:'email', ageInput:'age', dobInput:'dob', countryInput:'country' };
   Object.entries(labelsMap).forEach(([id,key]) => { const el = $(id); if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key); });
@@ -454,14 +447,6 @@
     window.location.href = "index.html";
   }
 
-  async function loadStats(userId) {
-    const { count: commentCount } = await supabase
-      .from('anime_comments')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-    $('statComments').textContent = commentCount || 0;
-  }
-
   // ── Friendship check ──
   async function checkFriendship(viewUserId) {
     if (!currentUserId || currentUserId === viewUserId) return;
@@ -507,7 +492,7 @@
       ? 'Unblock'
       : '<span class="material-symbols-outlined" style="font-size:16px">block</span> Block';
     blockBtn.addEventListener('click', toggleBlock);
-    bottom.insertBefore(blockBtn, bottom.firstChild);
+    bottom.insertBefore(blockBtn, bottom.querySelector('.btn-row')); // before logout/delete row
   }
 
   function renderUnfriendButton() {
@@ -529,7 +514,7 @@
         unfriendUser(viewUserId);
       }
     });
-    bottom.insertBefore(unfriendBtn, bottom.firstChild);
+    bottom.insertBefore(unfriendBtn, bottom.querySelector('.btn-row')); // before logout/delete row
   }
 
   async function unfriendUser(friendId) {
@@ -637,14 +622,28 @@
     $('bioText').textContent = bio || '—';
     $('bioInput').value = bio;
 
-    if (profile?.created_at) {
-      const d = new Date(profile.created_at);
-      $('statJoined').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
-    } else {
-      $('statJoined').textContent = '—';
-    }
+    // Store full joined date
+    profileJoinedDate = profile?.created_at || null;
+    renderJoinedDate();
+  }
 
-    if (profile?.id) loadStats(profile.id);
+  function renderJoinedDate() {
+    const bottom = $('bottomActions');
+    // Remove any existing joined element
+    const existing = bottom.querySelector('.joined-date');
+    if (existing) existing.remove();
+
+    if (profileJoinedDate) {
+      const dateEl = document.createElement('div');
+      dateEl.className = 'joined-date';
+      const fullDate = new Date(profileJoinedDate).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      dateEl.innerHTML = `<span class="material-symbols-outlined">calendar_today</span> Joined ${fullDate}`;
+      bottom.insertBefore(dateEl, bottom.firstChild);
+    }
   }
 
   function setEditMode(enabled) {
@@ -812,6 +811,10 @@
     currentUserId = session.user.id;
     const viewUserId = new URLSearchParams(window.location.search).get('user');
 
+    // Bottom container – clear first
+    const bottom = $('bottomActions');
+    bottom.innerHTML = '';
+
     if (viewUserId && viewUserId !== currentUserId) {
       isOwner = false;
       await checkBlockStatus(viewUserId);
@@ -821,13 +824,19 @@
       renderProfile(profile);
       $('pencilBtn').style.display = 'none';
       $('bioEditField').style.display = 'none';
-      $('bottomActions').innerHTML = '';
       updateHeaderButtons();
+
+      // Show joined date for the viewed user
+      profileJoinedDate = profile?.created_at || null;
+      renderJoinedDate();
+
+      // Block / Unfriend buttons
       renderBlockButton();
       renderUnfriendButton();
       return;
     }
 
+    // Own profile
     isOwner = true;
     await setOnlineStatus(true);
     setupInactivity();
@@ -838,16 +847,22 @@
     if (profile) renderProfile(profile); else renderProfile({});
     updateHeaderButtons();
 
-    const bottom = $('bottomActions');
+    // Build bottom-actions: joined date, then logout/delete in a row
+    profileJoinedDate = profile?.created_at || null;
+    renderJoinedDate();
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'btn-row';
+
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn-red';
     logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span> ' + t('logout');
-    // ── Logout confirmation ──
     logoutBtn.addEventListener('click', async () => {
       if (!confirm('Are you sure you want to log out?')) return;
       setButtonLoading(logoutBtn, true, 'Logging out…');
       await handleLogout();
     });
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn-red';
     deleteBtn.style.background = 'transparent';
@@ -863,8 +878,10 @@
       await supabase.auth.signOut();
       location.href = "user_login.html";
     });
-    bottom.appendChild(logoutBtn);
-    bottom.appendChild(deleteBtn);
+
+    btnRow.appendChild(logoutBtn);
+    btnRow.appendChild(deleteBtn);
+    bottom.appendChild(btnRow);
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) { setOnlineStatus(true); resetInactivity(); }
